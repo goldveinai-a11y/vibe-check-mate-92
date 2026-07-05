@@ -14,7 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analyses: {
+        Row: {
+          created_at: string
+          email: string | null
+          error_message: string | null
+          id: string
+          image_paths: string[]
+          owner_anon_id: string
+          paid: boolean
+          plan: string | null
+          preview_json: Json | null
+          report_json: Json | null
+          status: string
+          stripe_session_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          image_paths?: string[]
+          owner_anon_id: string
+          paid?: boolean
+          plan?: string | null
+          preview_json?: Json | null
+          report_json?: Json | null
+          status?: string
+          stripe_session_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          image_paths?: string[]
+          owner_anon_id?: string
+          paid?: boolean
+          plan?: string | null
+          preview_json?: Json | null
+          report_json?: Json | null
+          status?: string
+          stripe_session_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          email: string | null
+          id: string
+          owner_anon_id: string | null
+          plan: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          email?: string | null
+          id?: string
+          owner_anon_id?: string | null
+          plan: string
+          status: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          email?: string | null
+          id?: string
+          owner_anon_id?: string | null
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
