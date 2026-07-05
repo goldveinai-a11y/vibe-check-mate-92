@@ -1,94 +1,62 @@
-## Цель
-Доделать оплату целиком через managed Stripe от Lovable. Никаких ручных действий в Stripe Dashboard от вас не требуется — я создаю продукты, настраиваю Checkout, вебхуки уже подключены. Налоги: только `automatic_tax` (+0.5%), налоги подаёте сами. Ваш платный триал $4.99 → $9.99/мес реализуется штатным механизмом Stripe.
 
-## Шаг 1. Создать 4 сущности в managed Stripe (`payments--batch_create_product`)
+## Ответ на вопрос
 
-| product_id | price_id | Сумма | Тип | tax_code |
-|---|---|---|---|---|
-| `single_report` | `single_report_onetime` | $4.99 | one-time | `txcd_10000000` |
-| `premium_monthly` | `premium_monthly` | $9.99 / month | recurring | `txcd_10000000` |
-| `premium_monthly` | `premium_monthly_trial_fee` | $4.99 | one-time (upfront для trial) | `txcd_10000000` |
-| `premium_yearly` | `premium_yearly` | $49.99 / year | recurring | `txcd_10000000` |
+**Нет, сейчас в коде НЕ твой промт.** Я ранее собрал упрощённую версию (Gen Z tone, verbatim quotes, JSON). Она рабочая, но заметно проще, чем то, что ты сейчас скинул: у тебя добавлены `reciprocity_score`, `emotional_warmth`, числовой `conversation_health` (0–100 вместо enum), блок `hardcore_analytics` со **статистикой + временнóй динамикой**, `gottman_patterns`, и более жёсткие требования к тону. Это заметно **более продающий** продукт.
 
-quantity_min/max = 1 везде.
+**Схема report_json тоже отличается** — если просто подменить промт, парсинг сломается. Нужно синхронно обновить Zod-схему, preview, и обе страницы отображения (results + report).
 
-## Шаг 2. Обновить `createCheckoutSession` в `src/lib/vibecheck.functions.ts`
+## Что предлагаю
 
-Один server function, три ветки по `priceId`:
+### 1. Принять твой промт и схему целиком (без ослаблений)
 
-```ts
-// single_report_onetime → mode: "payment", один line item
-// premium_yearly → mode: "subscription", один line item, automatic_tax
-// premium_monthly → mode: "subscription", line_items: [{price: premium_monthly}],
-//   subscription_data: {
-//     trial_period_days: 3,
-//     metadata: { userId, vibecheck_id },
-//     add_invoice_items: [{ price: premium_monthly_trial_fee }]  // ← списывает $4.99 сразу
-//   }
+Обновить `src/lib/vibecheck.server.ts`:
+- `SYSTEM_PROMPT` = твой текст дословно (Critical Instruction + Tone of Voice + Audience & Culture Fit + JSON schema)
+- Оставить `temperature: 0` для стабильности скоринга
+- Модель: `claude-sonnet-4-5` (уже используется). Опция апгрейда — `claude-opus-4-5` для «wow»-качества, но в 5× дороже и медленнее. По умолчанию оставлю Sonnet 4.5, если ты не скажешь иначе.
+
+### 2. Обновить Zod-схему `ReportSchema`
+
+Новая форма (совпадает с твоей 1-в-1):
+```
+scores: {
+  interest_score, reciprocity_score, emotional_warmth,
+  response_consistency, flirting_signals, toxicity_score,
+  conversation_health   // теперь number 0–100
+}
+hardcore_analytics: { initiative_stat, engagement_stat, timeline_changes, communication_style }
+psychological_analysis: { attachment_style_prediction, gottman_patterns }
+green_flags[], red_flags[], future_outlook
 ```
 
-Общее для всех:
-- `ui_mode: "embedded_page"` (инлайн, без редиректа)
-- `return_url: <origin>/checkout/return?session_id={CHECKOUT_SESSION_ID}&vibecheck_id=<id>`
-- `automatic_tax: { enabled: true }` — вы платите +0.5%, налоги подаёте сами
-- `customer_email` (если авторизован) + `metadata: { vibecheck_id, anon_id, tier }`
-- try/catch с `getStripeErrorMessage` → возвращаем `{ error }`, клиент бросает `new Error(result.error)`
-- Разрешение priceId через `stripe.prices.list({ lookup_keys: [priceId] })`
-- Для one-time — `payment_intent_data.description = product.name` (чтобы в дашборде Lovable Payments показывалось нормальное имя)
+Плюс валидатор, требующий **минимум 2 green_flags и 2 red_flags** и что все строки на английском.
 
-## Шаг 3. Обновить `paywall.$id.tsx`
+### 3. Пересобрать `buildPreview`
 
-3 кнопки открывают `VibeCheckout` с разным `priceId`:
-- Single Report → `single_report_onetime`
-- Premium Monthly (Trial) → `premium_monthly` (тексты кнопки: "Start 3-day trial for $4.99, then $9.99/month")
-- Premium Yearly → `premium_yearly`
+Что уходит в бесплатное превью (продающее, но не спойлерит):
+- Все 7 scores (для крутого dashboard-грид с барами)
+- `hardcore_analytics.initiative_stat` (один хук со статистикой — «out of 15 messages, 12 came from you»)
+- 1 green_flag (title + quote) полностью
+- 1 red_flag только `title`, quote/explanation блюрятся
+- Verdict-заголовок (вычисляется из scores как сейчас)
 
-Копия и вёрстка — как в восстановленном 2-column layout. Не меняю ничего визуально, только `priceId` в onClick.
+Что уходит **только в платный отчёт**: остальные 3 hardcore_analytics, psychological_analysis, все остальные green/red flags целиком, future_outlook.
 
-## Шаг 4. Вебхук `src/routes/api/public/payments/webhook.ts`
+### 4. Переверстать `/results/$id` под новую схему
+Продающее превью с 7-барным score board, hero-verdict, один statистический хук, тизер флагов. Заменит нынешнюю верстку (её я уже поднял, но она под старую схему — придётся синхронизировать).
 
-Проверяю что уже обрабатывается (код есть):
-- `checkout.session.completed` → для `mode: "payment"` (single report) → апдейт `vibechecks.is_paid = true`, `tier = 'single'` по `vibecheck_id` из metadata
-- `customer.subscription.created` → для monthly/yearly → апсерт в `subscriptions`, апдейт `vibechecks.is_paid = true`, `tier = 'monthly'|'yearly'`
-- `customer.subscription.updated` → синк статуса (trialing/active/past_due/canceled)
-- `customer.subscription.deleted` → status = canceled
-- `invoice.payment_failed` → лог, никаких блокировок (Stripe сам ретраит)
+### 5. Переверстать `/report/$id` под новую схему
+Полный отчёт: hero verdict, статистика с иконками (4 блока hardcore_analytics), psychological analysis (2 карточки: attachment style + Gottman patterns), все green flags, все red flags, future_outlook как финальный «verdict card». Тон и подача — как ты описал (продающая, живая).
 
-Если каких-то обработчиков нет — дописываю. Signing secret (`PAYMENTS_SANDBOX_WEBHOOK_SECRET`) уже настроен.
+### 6. Сгенерить и показать тебе живой пример полного отчёта
 
-## Шаг 5. `PaymentTestModeBanner`
+**Как:** пойти на `/upload`, загрузить набор тестовых скриншотов реального чата (я могу либо сгенерить синтетические скрины через imagegen, либо ты кинешь свои реальные — так лучше, потому что real conversation → real report). Дам ID, ты откроешь `/report/{id}` (я временно разблокирую его, миную paywall для теста, потом уберу заглушку).
 
-Проверить что рендерится в `__root.tsx` над контентом на всех страницах — в preview показывает "Test mode".
+**Что тебе даст:** увидишь фактический тон Claude, качество статистики, насколько «wow» получается. Если промт нужно докрутить (усилить хамство/юмор, добавить конкретики) — правим итеративно.
 
-## Шаг 6. E2E проверка через Playwright
+## Что НЕ трогаю
+- Оплата, webhook, RLS, дизайн-система, схема Supabase (report_json — jsonb, форма ему безразлична)
+- Компонент VibeCheckout и стрип-интеграция
 
-Прогон каждого из 3 сценариев в preview:
-
-1. **Single Report ($4.99)**: `/` → `/upload` → загрузка → `/analyzing/$id` → `/results/$id` → `/paywall/$id` → Single → карта `4242 4242 4242 4242` 12/34 123 → `/checkout/return` → `/report/$id` разблокирован
-2. **Monthly (trial $4.99 → $9.99)**: те же шаги → выбор Monthly → на checkout проверить что показывается "Total today: $4.99" + "Then $9.99/month starting <date+3>" → оплата → `/report/$id` разблокирован → в Supabase `subscriptions.status = 'trialing'`, `current_period_end` через 3 дня
-3. **Yearly ($49.99)**: те же шаги → Yearly → $49.99 сразу → `/report/$id` разблокирован
-
-На каждом шаге — скриншот. Проверка вебхука через Supabase read: `vibechecks.is_paid`, `subscriptions.*`.
-
-## Шаг 7. Дашборд Stripe в Lovable
-
-Проверить `<presentation-open-payments>` — там видно 3 продукта, тестовые транзакции появляются после E2E.
-
-## Что не трогаем
-- Весь визуал (лендинг, upload, results, paywall, report, checkout return, header, 404) — восстановлен ранее
-- `src/lib/stripe.server.ts`, `src/components/VibeCheckout.tsx` (уже сделан правильно)
-- Supabase-схема (таблицы `vibechecks`, `subscriptions`), RLS, миграции
-- Ваши личные продукты в вашем Stripe sandbox (не трогаем и не используем)
-
-## Go-live (когда решите публиковать)
-При `publish` Lovable сам:
-1. Пересоздаёт те же 4 сущности в live Stripe
-2. Регистрирует live-вебхук на `?env=live`
-3. Переключает `VITE_PAYMENTS_CLIENT_TOKEN` на `pk_live_*`
-
-От вас — 0 действий в Stripe Dashboard.
-
-## Риски / что важно знать
-- **Триал как "оплаченный триал"**: $4.99 списывается сразу и **не возвращается** при отмене в первые 3 дня. Это стандартное поведение Stripe и то, чего вы хотели.
-- **automatic_tax + чек-аут** покажет пользователю строку налога на основе адреса, если Stripe знает юрисдикцию. Для чисто-цифровых продуктов $4.99 налог часто $0, но в некоторых штатах/странах — нет.
-- **Триал считается по первому платному счёту**: `current_period_end` в вебхуке `customer.subscription.created` будет = момент оформления + 3 дня. Логика разблокировки в `webhook.ts` должна разблокировать `report` в статусе `trialing`, а не ждать `active` — проверю и починю если что.
+## Вопрос к тебе перед реализацией
+1. **Тестовые скрины для sample report:** ты кинешь 2–5 реальных скринов чата, или сгенерить синтетические? Реальные → правдивее ощущение продукта.
+2. **Модель:** остаёмся на `claude-sonnet-4-5` или пробуем `claude-opus-4-5` для сравнения качества? (Opus заметно дороже — ~$15/M input vs $3/M).

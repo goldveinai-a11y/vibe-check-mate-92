@@ -72,15 +72,29 @@ function ReportPage() {
           <div className="mt-10 space-y-5">
             <ReportSection Icon={Heart} title="Compatibility Breakdown">
               <div className="grid gap-3 sm:grid-cols-2">
-                <StatLine label="Interest" value={report.interest_score} />
-                <StatLine label="Emotional investment" value={report.emotional_investment_score} />
-                <StatLine label="Response consistency" value={report.response_consistency} />
-                <StatLine label="Flirting signals" value={report.flirting_signals} />
-                <StatLine label="Toxicity" value={report.toxicity_score} invert />
-                <div className="rounded-2xl bg-purple-soft/60 p-4">
-                  <p className="text-xs uppercase tracking-widest text-purple-deep">Conversation health</p>
-                  <p className="font-serif mt-1 text-2xl capitalize">{report.conversation_health}</p>
-                </div>
+                <StatLine label="Interest" value={report.scores.interest_score} />
+                <StatLine label="Reciprocity" value={report.scores.reciprocity_score} />
+                <StatLine label="Emotional warmth" value={report.scores.emotional_warmth} />
+                <StatLine label="Response consistency" value={report.scores.response_consistency} />
+                <StatLine label="Flirting signals" value={report.scores.flirting_signals} />
+                <StatLine label="Toxicity" value={report.scores.toxicity_score} invert />
+                <StatLine label="Conversation health" value={report.scores.conversation_health} />
+              </div>
+            </ReportSection>
+
+            <ReportSection Icon={MessageCircle} title="Hardcore Analytics">
+              <div className="space-y-3">
+                {([
+                  ["Initiative", report.hardcore_analytics.initiative_stat],
+                  ["Engagement", report.hardcore_analytics.engagement_stat],
+                  ["Timeline shifts", report.hardcore_analytics.timeline_changes],
+                  ["Communication style", report.hardcore_analytics.communication_style],
+                ] as const).map(([label, val]) => (
+                  <div key={label} className="rounded-2xl bg-muted/50 p-4">
+                    <p className="text-xs uppercase tracking-widest text-purple">{label}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-ink/85">{val}</p>
+                  </div>
+                ))}
               </div>
             </ReportSection>
 
@@ -111,28 +125,21 @@ function ReportPage() {
               </div>
             </ReportSection>
 
-            <ReportSection Icon={MessageCircle} title="Conversation Tone">
+            <ReportSection Icon={Sparkles} title="Psychological Analysis">
               <div className="space-y-3">
-                {Object.entries(report.psychological_analysis).map(([k, v]) => (
-                  <div key={k} className="rounded-2xl bg-muted/50 p-4">
-                    <p className="text-xs uppercase tracking-widest text-purple">{k.replaceAll("_", " ")}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-ink/80">{v}</p>
-                  </div>
-                ))}
+                <div className="rounded-2xl bg-purple-soft/60 p-4">
+                  <p className="text-xs uppercase tracking-widest text-purple-deep">Attachment style prediction</p>
+                  <p className="mt-2 text-sm leading-relaxed text-ink/85">{report.psychological_analysis.attachment_style_prediction}</p>
+                </div>
+                <div className="rounded-2xl bg-pink-soft p-4">
+                  <p className="text-xs uppercase tracking-widest text-pink">Gottman patterns</p>
+                  <p className="mt-2 text-sm leading-relaxed text-ink/85">{report.psychological_analysis.gottman_patterns}</p>
+                </div>
               </div>
-              <div className="mt-4 h-3 overflow-hidden rounded-full bg-pink" />
             </ReportSection>
 
             <ReportSection Icon={Bell} title="Future Outlook">
               <p className="font-serif text-lg leading-snug text-ink/90">{report.future_outlook}</p>
-              <dl className="mt-4 space-y-2 rounded-2xl bg-muted/40 p-4 text-sm">
-                {Object.entries(report.hardcore_analytics).map(([k, v]) => (
-                  <div key={k} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                    <dt className="min-w-0 truncate text-xs uppercase tracking-widest text-ink/60">{k.replaceAll("_", " ")}</dt>
-                    <dd className="shrink-0 text-right font-medium">{v}</dd>
-                  </div>
-                ))}
-              </dl>
             </ReportSection>
 
             <div className="rounded-3xl bg-pink p-6 shadow-md sm:p-8">
@@ -140,9 +147,9 @@ function ReportPage() {
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-pink-soft">
                   <Star className="h-5 w-5" />
                 </div>
-                <h3 className="font-serif text-2xl">Our Recommendation</h3>
+                <h3 className="font-serif text-2xl">The Verdict</h3>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-ink/90">{report.future_outlook}</p>
+              <p className="mt-4 text-sm leading-relaxed text-ink/90">{report.hardcore_analytics.communication_style}</p>
             </div>
           </div>
 
