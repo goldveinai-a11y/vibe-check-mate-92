@@ -37,8 +37,8 @@ export const createAnalysis = createServerFn({ method: "POST" })
         .from("analyses")
         .update({
           status: "ready",
-          report_json: report as unknown as Record<string, unknown>,
-          preview_json: preview as unknown as Record<string, unknown>,
+          report_json: report as never,
+          preview_json: preview as never,
         })
         .eq("id", id);
       if (updErr) return { error: updErr.message };
@@ -74,9 +74,13 @@ const FullInputSchema = z.object({
   ownerAnonId: z.string().min(8).max(128),
 });
 
+export type FullResult =
+  | { locked: true; paid: boolean }
+  | { locked: false; report: unknown };
+
 export const getAnalysisFull = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => FullInputSchema.parse(input))
-  .handler(async ({ data }): Promise<{ report: Record<string, unknown> } | { locked: true; paid: boolean }> => {
+  .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("analyses")
@@ -100,9 +104,9 @@ export const getAnalysisFull = createServerFn({ method: "POST" })
     }
 
     if (!entitled || !row.report_json) {
-      return { locked: true, paid: row.paid === true };
+      return { locked: true as const, paid: row.paid === true };
     }
-    return { report: row.report_json as Record<string, unknown> };
+    return { locked: false as const, report: JSON.parse(JSON.stringify(row.report_json)) };
   });
 
 const PlanEnum = z.enum(["single", "monthly", "yearly"]);
