@@ -1,76 +1,94 @@
-# Visual restoration of VibeCheck (Bubble → Lovable)
+## Цель
+Доделать оплату целиком через managed Stripe от Lovable. Никаких ручных действий в Stripe Dashboard от вас не требуется — я создаю продукты, настраиваю Checkout, вебхуки уже подключены. Налоги: только `automatic_tax` (+0.5%), налоги подаёте сами. Ваш платный триал $4.99 → $9.99/мес реализуется штатным механизмом Stripe.
 
-Goal: rebuild all Bubble pages 1:1 in look, copy, fonts, colors, and layout. Keep every existing backend piece (Claude, Supabase, Stripe, webhooks, server functions) untouched. Fully responsive (mobile-first, 320px → 1920+).
+## Шаг 1. Создать 4 сущности в managed Stripe (`payments--batch_create_product`)
 
-## Pages (matches Bubble App Manager)
+| product_id | price_id | Сумма | Тип | tax_code |
+|---|---|---|---|---|
+| `single_report` | `single_report_onetime` | $4.99 | one-time | `txcd_10000000` |
+| `premium_monthly` | `premium_monthly` | $9.99 / month | recurring | `txcd_10000000` |
+| `premium_monthly` | `premium_monthly_trial_fee` | $4.99 | one-time (upfront для trial) | `txcd_10000000` |
+| `premium_yearly` | `premium_yearly` | $49.99 / year | recurring | `txcd_10000000` |
 
-Bubble Web Pages: index, upload, analyzing, results, paywall, full-report, reset_pw, 404
-Bubble Web Reusables: header
+quantity_min/max = 1 везде.
 
-Lovable route mapping:
+## Шаг 2. Обновить `createCheckoutSession` в `src/lib/vibecheck.functions.ts`
 
-1. `/` — index (landing)
-2. `/upload` — upload
-3. `/analyzing/$id` — analyzing (loading / progress state between upload and results) — **new route to add**
-4. `/results/$id` — results (free preview)
-5. `/paywall/$id` — paywall (pricing tiers)
-6. `/report/$id` — full-report (unlocked paid report)
-7. `/reset-password` — reset_pw (password reset) — **new route to add**
-8. `/checkout/return` — Stripe return (kept, styled to match)
-9. 404 not-found (root `notFoundComponent`)
-10. Error boundary (`defaultErrorComponent`)
+Один server function, три ветки по `priceId`:
 
-Shared: `SiteHeader` component (mirrors Bubble "header" reusable) + shared footer if present.
+```ts
+// single_report_onetime → mode: "payment", один line item
+// premium_yearly → mode: "subscription", один line item, automatic_tax
+// premium_monthly → mode: "subscription", line_items: [{price: premium_monthly}],
+//   subscription_data: {
+//     trial_period_days: 3,
+//     metadata: { userId, vibecheck_id },
+//     add_invoice_items: [{ price: premium_monthly_trial_fee }]  // ← списывает $4.99 сразу
+//   }
+```
 
-## Design system
+Общее для всех:
+- `ui_mode: "embedded_page"` (инлайн, без редиректа)
+- `return_url: <origin>/checkout/return?session_id={CHECKOUT_SESSION_ID}&vibecheck_id=<id>`
+- `automatic_tax: { enabled: true }` — вы платите +0.5%, налоги подаёте сами
+- `customer_email` (если авторизован) + `metadata: { vibecheck_id, anon_id, tier }`
+- try/catch с `getStripeErrorMessage` → возвращаем `{ error }`, клиент бросает `new Error(result.error)`
+- Разрешение priceId через `stripe.prices.list({ lookup_keys: [priceId] })`
+- Для one-time — `payment_intent_data.description = product.name` (чтобы в дашборде Lovable Payments показывалось нормальное имя)
 
-- Cream `#FBF7F2` bg, pink primary `#EFA4B8`, lavender accent `#E7DEFB`, success green.
-- Fonts via `<link>` in `__root.tsx`: "DM Serif Display" (headers) + "DM Sans" (body).
-- Tokens in `src/styles.css` under `@theme inline`, no hardcoded colors in components.
+## Шаг 3. Обновить `paywall.$id.tsx`
 
-## Responsive rules
+3 кнопки открывают `VibeCheckout` с разным `priceId`:
+- Single Report → `single_report_onetime`
+- Premium Monthly (Trial) → `premium_monthly` (тексты кнопки: "Start 3-day trial for $4.99, then $9.99/month")
+- Premium Yearly → `premium_yearly`
 
-- Breakpoints: `sm 640 / md 768 / lg 1024 / xl 1280`.
-- Container: `max-w-[420px]` mobile → `max-w-6xl` desktop.
-- Header: hamburger `Sheet` on mobile, inline nav on `md+`.
-- Rows with text + widget: `grid-cols-[minmax(0,1fr)_auto]` + `min-w-0` + `shrink-0`.
-- Tap targets ≥44px. Paywall: 1-col mobile, 2-col `lg+`.
+Копия и вёрстка — как в восстановленном 2-column layout. Не меняю ничего визуально, только `priceId` в onClick.
 
-## Per-page structure
+## Шаг 4. Вебхук `src/routes/api/public/payments/webhook.ts`
 
-- **Landing (`/`)**: purple pill → serif "Is it a match…" → pink CTA pill → lock privacy line → "How VibeCheck works" (3 cards) → "The Science of Every Conversation" (5 emoji cards) → Privacy block → final CTA.
-- **Upload (`/upload`)**: purple "Step 2 of 3" → serif title → dashed drop-zone → previews → privacy block → "Analyze the vibe" CTA (wired to existing upload logic; navigates to `/analyzing/$id`).
-- **Analyzing (`/analyzing/$id`)**: centered card with animated progress / status text ("Reading the vibe…"), auto-redirects to `/results/$id` when analysis completes (polls existing server fn).
-- **Results (`/results/$id`)**: green "Analysis Complete" → vibe circle card → "Unlock the Full Story" 4 locked cards → "Unlock Full Report" CTA → `/paywall/$id`.
-- **Paywall (`/paywall/$id`)**: 2-col — left 4 feature cards, right 3 tiers (Single $4.99, Premium Monthly $4.99 "MOST POPULAR", Premium Yearly $49.99 "billed annually"). Uses existing `VibeCheckout`.
-- **Full report (`/report/$id`)**: unlocked report — same visual language as results, all sections revealed.
-- **Reset password (`/reset-password`)**: cream card with serif heading, email field, pink submit button — wired to existing Supabase auth reset flow.
-- **Checkout return (`/checkout/return`)**: logo + spinner + "Finalizing your report…".
-- **404 / Error**: cream shell, serif heading, pink CTA back to `/`.
+Проверяю что уже обрабатывается (код есть):
+- `checkout.session.completed` → для `mode: "payment"` (single report) → апдейт `vibechecks.is_paid = true`, `tier = 'single'` по `vibecheck_id` из metadata
+- `customer.subscription.created` → для monthly/yearly → апсерт в `subscriptions`, апдейт `vibechecks.is_paid = true`, `tier = 'monthly'|'yearly'`
+- `customer.subscription.updated` → синк статуса (trialing/active/past_due/canceled)
+- `customer.subscription.deleted` → status = canceled
+- `invoice.payment_failed` → лог, никаких блокировок (Stripe сам ретраит)
 
-## Files touched (frontend only)
+Если каких-то обработчиков нет — дописываю. Signing secret (`PAYMENTS_SANDBOX_WEBHOOK_SECRET`) уже настроен.
 
-- `src/styles.css`
-- `src/routes/__root.tsx` (fonts, meta, header, `notFoundComponent`)
-- `src/router.tsx` (`defaultErrorComponent` if missing)
-- `src/components/SiteHeader.tsx` (new)
-- `src/routes/index.tsx`
-- `src/routes/upload.tsx`
-- `src/routes/analyzing.$id.tsx` (new)
-- `src/routes/results.$id.tsx`
-- `src/routes/paywall.$id.tsx`
-- `src/routes/report.$id.tsx`
-- `src/routes/reset-password.tsx` (new)
-- `src/routes/checkout.return.tsx`
+## Шаг 5. `PaymentTestModeBanner`
 
-## Untouched (backend/logic)
+Проверить что рендерится в `__root.tsx` над контентом на всех страницах — в preview показывает "Test mode".
 
-- `src/lib/vibecheck.functions.ts`, `vibecheck.server.ts`, `vibecheck-schema.ts`
-- `src/lib/stripe.ts`, `stripe.server.ts`, `anon-id.ts`
-- `src/components/VibeCheckout.tsx`, `PaymentTestModeBanner.tsx`
-- `src/routes/api/public/payments/webhook.ts`
-- Supabase integration files, `.env`
+## Шаг 6. E2E проверка через Playwright
 
-## Verification
+Прогон каждого из 3 сценариев в preview:
 
-Playwright screenshots of every page at 375 / 768 / 1280 widths, compared against the Bubble originals.
+1. **Single Report ($4.99)**: `/` → `/upload` → загрузка → `/analyzing/$id` → `/results/$id` → `/paywall/$id` → Single → карта `4242 4242 4242 4242` 12/34 123 → `/checkout/return` → `/report/$id` разблокирован
+2. **Monthly (trial $4.99 → $9.99)**: те же шаги → выбор Monthly → на checkout проверить что показывается "Total today: $4.99" + "Then $9.99/month starting <date+3>" → оплата → `/report/$id` разблокирован → в Supabase `subscriptions.status = 'trialing'`, `current_period_end` через 3 дня
+3. **Yearly ($49.99)**: те же шаги → Yearly → $49.99 сразу → `/report/$id` разблокирован
+
+На каждом шаге — скриншот. Проверка вебхука через Supabase read: `vibechecks.is_paid`, `subscriptions.*`.
+
+## Шаг 7. Дашборд Stripe в Lovable
+
+Проверить `<presentation-open-payments>` — там видно 3 продукта, тестовые транзакции появляются после E2E.
+
+## Что не трогаем
+- Весь визуал (лендинг, upload, results, paywall, report, checkout return, header, 404) — восстановлен ранее
+- `src/lib/stripe.server.ts`, `src/components/VibeCheckout.tsx` (уже сделан правильно)
+- Supabase-схема (таблицы `vibechecks`, `subscriptions`), RLS, миграции
+- Ваши личные продукты в вашем Stripe sandbox (не трогаем и не используем)
+
+## Go-live (когда решите публиковать)
+При `publish` Lovable сам:
+1. Пересоздаёт те же 4 сущности в live Stripe
+2. Регистрирует live-вебхук на `?env=live`
+3. Переключает `VITE_PAYMENTS_CLIENT_TOKEN` на `pk_live_*`
+
+От вас — 0 действий в Stripe Dashboard.
+
+## Риски / что важно знать
+- **Триал как "оплаченный триал"**: $4.99 списывается сразу и **не возвращается** при отмене в первые 3 дня. Это стандартное поведение Stripe и то, чего вы хотели.
+- **automatic_tax + чек-аут** покажет пользователю строку налога на основе адреса, если Stripe знает юрисдикцию. Для чисто-цифровых продуктов $4.99 налог часто $0, но в некоторых штатах/странах — нет.
+- **Триал считается по первому платному счёту**: `current_period_end` в вебхуке `customer.subscription.created` будет = момент оформления + 3 дня. Логика разблокировки в `webhook.ts` должна разблокировать `report` в статусе `trialing`, а не ждать `active` — проверю и починю если что.
