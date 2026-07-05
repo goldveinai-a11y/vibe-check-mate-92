@@ -75,7 +75,7 @@ function UploadPage() {
       return result.id;
     },
     onSuccess: (id) => {
-      navigate({ to: "/results/$id", params: { id } });
+      navigate({ to: "/analyzing/$id", params: { id } });
     },
   });
 
