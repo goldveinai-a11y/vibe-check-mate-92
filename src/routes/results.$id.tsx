@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp } from "lucide-react";
+import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Zap, Activity, BarChart3 } from "lucide-react";
 import { getAnalysisPreview } from "@/lib/vibecheck.functions";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -34,22 +34,28 @@ export const Route = createFileRoute("/results/$id")({
 });
 
 type PreviewJson = {
-  interest_score: number;
-  emotional_investment_score: number;
-  response_consistency: number;
-  flirting_signals: number;
-  toxicity_score: number;
-  conversation_health: "healthy" | "caution" | "toxic";
+  scores: {
+    interest_score: number;
+    reciprocity_score: number;
+    emotional_warmth: number;
+    response_consistency: number;
+    flirting_signals: number;
+    toxicity_score: number;
+    conversation_health: number;
+  };
+  initiative_stat: string;
   green_flag_preview: { title: string; quote: string; explanation: string } | null;
-  red_flag_preview: { title: string; quote: string; explanation: string } | null;
+  red_flag_preview: { title: string } | null;
+  green_flags_count: number;
+  red_flags_count: number;
 };
 
 function computeVerdict(p: PreviewJson) {
-  const { interest_score: i, flirting_signals: f, toxicity_score: t, conversation_health: h } = p;
-  if (t >= 60 || h === "toxic") return { title: "Red Flag Zone", tag: "Proceed with caution", tone: "danger" as const, blurb: "There's tension under the surface — the vibe is off in ways worth naming out loud." };
+  const { interest_score: i, flirting_signals: f, toxicity_score: t, conversation_health: h } = p.scores;
+  if (t >= 60 || h <= 35) return { title: "Red Flag Zone", tag: "Proceed with caution", tone: "danger" as const, blurb: "There's tension under the surface — the vibe is off in ways worth naming out loud." };
   if (i >= 75 && f >= 60) return { title: "Mutual Crush", tag: "It's giving main character energy", tone: "hot" as const, blurb: "Warm, playful energy flowing both ways. You two mirror each other's enthusiasm and keep the conversation alive with genuine curiosity." };
   if (i >= 70) return { title: "Warming Up", tag: "The spark is real", tone: "warm" as const, blurb: "They're leaning in. Real interest, real engagement — this one has legs if you keep the momentum." };
-  if (i >= 50 && h === "caution") return { title: "Mixed Signals", tag: "It's… complicated", tone: "caution" as const, blurb: "Some warmth, some distance. There's a pattern here you'll want to see before you invest more." };
+  if (i >= 50 && h < 65) return { title: "Mixed Signals", tag: "It's… complicated", tone: "caution" as const, blurb: "Some warmth, some distance. There's a pattern here you'll want to see before you invest more." };
   if (i < 45) return { title: "One-Sided Energy", tag: "You're doing the work", tone: "cold" as const, blurb: "The math isn't mathing. Effort and interest are lopsided — the full report shows exactly where." };
   return { title: "Steady Vibes", tag: "Low-key promising", tone: "neutral" as const, blurb: "Nothing electric yet, nothing broken. There's a slow-burn possibility here worth reading closer." };
 }
@@ -114,6 +120,7 @@ function ResultsPage() {
   const preview = data.preview_json as unknown as PreviewJson;
   const verdict = computeVerdict(preview);
   const V = VERDICT_STYLES[verdict.tone];
+  const s = preview.scores;
 
   return (
     <main className="min-h-screen bg-cream pb-20 text-ink">
@@ -156,7 +163,7 @@ function ResultsPage() {
               className="relative mx-auto mt-6 grid h-40 w-40 place-items-center rounded-full bg-pink text-white sm:h-48 sm:w-48"
             >
               <div className="text-center">
-                <div className="font-serif text-5xl leading-none sm:text-6xl">{preview.interest_score}%</div>
+                <div className="font-serif text-5xl leading-none sm:text-6xl">{s.interest_score}%</div>
                 <div className="mt-1 text-xs uppercase tracking-widest">Interest Level</div>
               </div>
             </motion.div>
@@ -165,12 +172,26 @@ function ResultsPage() {
             </p>
           </div>
 
-          {/* Score breakdown */}
+          {/* Score breakdown — full 7-metric board */}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <ScoreBar label="Emotional Investment" value={preview.emotional_investment_score} Icon={Heart} tone="pink" />
-            <ScoreBar label="Flirting Signals" value={preview.flirting_signals} Icon={Flame} tone="purple" />
-            <ScoreBar label="Response Consistency" value={preview.response_consistency} Icon={TrendingUp} tone="mint" />
-            <ScoreBar label="Toxicity Level" value={preview.toxicity_score} Icon={AlertTriangle} tone="danger" />
+            <ScoreBar label="Reciprocity" value={s.reciprocity_score} Icon={Users} tone="pink" />
+            <ScoreBar label="Emotional Warmth" value={s.emotional_warmth} Icon={Heart} tone="pink" />
+            <ScoreBar label="Flirting Signals" value={s.flirting_signals} Icon={Flame} tone="purple" />
+            <ScoreBar label="Response Consistency" value={s.response_consistency} Icon={TrendingUp} tone="mint" />
+            <ScoreBar label="Conversation Health" value={s.conversation_health} Icon={Activity} tone="mint" />
+            <ScoreBar label="Toxicity Level" value={s.toxicity_score} Icon={AlertTriangle} tone="danger" />
+          </div>
+
+          {/* Hard statistic hook */}
+          <div className="mt-5 rounded-3xl bg-ink p-6 text-white shadow-lg">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-white/60">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Receipt
+            </div>
+            <p className="font-serif mt-3 text-xl leading-snug sm:text-2xl">{preview.initiative_stat}</p>
+            <p className="mt-3 text-xs text-white/50">
+              3 more hard stats + full timeline dynamics inside the report.
+            </p>
           </div>
 
           {/* Teaser: one flag revealed, one hidden */}
@@ -178,20 +199,21 @@ function ResultsPage() {
             <div className="mt-5 rounded-3xl border border-mint/40 bg-mint-soft p-5 shadow-sm">
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-mint px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">Green Flag</span>
-                <span className="text-xs text-ink/60">1 of {5}+ found</span>
+                <span className="text-xs text-ink/60">1 of {preview.green_flags_count} found</span>
               </div>
               <h4 className="font-serif mt-3 text-xl">{preview.green_flag_preview.title}</h4>
               <p className="mt-2 text-sm italic text-ink/70">"{preview.green_flag_preview.quote}"</p>
+              <p className="mt-2 text-sm text-ink/80">{preview.green_flag_preview.explanation}</p>
             </div>
           )}
           {preview.red_flag_preview && (
             <div className="mt-3 relative overflow-hidden rounded-3xl border border-destructive/30 bg-card p-5 shadow-sm">
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-destructive px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">Red Flag</span>
-                <span className="text-xs text-ink/60">Unlock to reveal</span>
+                <span className="text-xs text-ink/60">{preview.red_flags_count} found — unlock to reveal</span>
               </div>
               <h4 className="font-serif mt-3 text-xl blur-sm select-none">{preview.red_flag_preview.title}</h4>
-              <p className="mt-2 text-sm italic text-ink/70 blur-sm select-none">"{preview.red_flag_preview.quote}"</p>
+              <p className="mt-2 text-sm italic text-ink/70 blur-sm select-none">"the exact quote is locked — it's a receipt you'll want to see"</p>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card via-card/85 to-transparent" />
             </div>
           )}
@@ -204,15 +226,15 @@ function ResultsPage() {
             </span>
             <h2 className="font-serif mt-4 text-3xl sm:text-4xl">Unlock the Full Story</h2>
             <p className="mt-3 max-w-md text-sm text-ink/70">
-              Every red flag, exact-quote receipts, psychological breakdown, and a forecast of where this is headed.
+              Every red flag with verbatim receipts, full timeline dynamics, attachment style + Gottman pattern breakdown, and an uncompromising forecast.
             </p>
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <LockedCard title="Compatibility Breakdown" items={["Communication • 88%", "Emotional sync • 74%", "Shared humor • 91%"]} />
-            <LockedCard title="Red & Green Flags" items={["Consistent replies detected", "Occasional mixed signals", "Strong reciprocity"]} />
-            <LockedCard title="Conversation Tone" items={["Warm & Flirty energy", "Playful banter throughout", "Rarely tense or cold"]} />
-            <LockedCard title="Future Outlook" items={["Positive momentum ahead", "Suggested next steps", "Long-term potential score"]} />
+            <LockedCard title="Hardcore Analytics" items={["Initiative ratio", "Engagement % breakdown", "Timeline shifts over the chat", "Communication style verdict"]} />
+            <LockedCard title={`All ${preview.red_flags_count} Red Flags`} items={["Verbatim quote receipts", "Why each is a pattern", "Which ones are dealbreakers"]} />
+            <LockedCard title="Psychological Analysis" items={["Attachment style prediction", "Gottman Four Horsemen check", "Power dynamic read"]} />
+            <LockedCard title="Future Outlook" items={["3–5 sentence forecast", "What happens if nothing changes", "The one move that flips it"]} />
           </div>
 
           <div className="mt-10">
