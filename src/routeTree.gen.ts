@@ -10,16 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResultsIdRouteImport } from './routes/results.$id'
 import { Route as ReportIdRouteImport } from './routes/report.$id'
 import { Route as PaywallIdRouteImport } from './routes/paywall.$id'
 import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
+import { Route as AnalyzingIdRouteImport } from './routes/analyzing.$id'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
   path: '/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +54,11 @@ const CheckoutReturnRoute = CheckoutReturnRouteImport.update({
   path: '/checkout/return',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyzingIdRoute = AnalyzingIdRouteImport.update({
+  id: '/analyzing/$id',
+  path: '/analyzing/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -56,7 +68,9 @@ const ApiPublicPaymentsWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/upload': typeof UploadRoute
+  '/analyzing/$id': typeof AnalyzingIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/paywall/$id': typeof PaywallIdRoute
   '/report/$id': typeof ReportIdRoute
@@ -65,7 +79,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/upload': typeof UploadRoute
+  '/analyzing/$id': typeof AnalyzingIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/paywall/$id': typeof PaywallIdRoute
   '/report/$id': typeof ReportIdRoute
@@ -75,7 +91,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/upload': typeof UploadRoute
+  '/analyzing/$id': typeof AnalyzingIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/paywall/$id': typeof PaywallIdRoute
   '/report/$id': typeof ReportIdRoute
@@ -86,7 +104,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/reset-password'
     | '/upload'
+    | '/analyzing/$id'
     | '/checkout/return'
     | '/paywall/$id'
     | '/report/$id'
@@ -95,7 +115,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/reset-password'
     | '/upload'
+    | '/analyzing/$id'
     | '/checkout/return'
     | '/paywall/$id'
     | '/report/$id'
@@ -104,7 +126,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/reset-password'
     | '/upload'
+    | '/analyzing/$id'
     | '/checkout/return'
     | '/paywall/$id'
     | '/report/$id'
@@ -114,7 +138,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   UploadRoute: typeof UploadRoute
+  AnalyzingIdRoute: typeof AnalyzingIdRoute
   CheckoutReturnRoute: typeof CheckoutReturnRoute
   PaywallIdRoute: typeof PaywallIdRoute
   ReportIdRoute: typeof ReportIdRoute
@@ -129,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/upload'
       fullPath: '/upload'
       preLoaderRoute: typeof UploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -166,6 +199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analyzing/$id': {
+      id: '/analyzing/$id'
+      path: '/analyzing/$id'
+      fullPath: '/analyzing/$id'
+      preLoaderRoute: typeof AnalyzingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -178,7 +218,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   UploadRoute: UploadRoute,
+  AnalyzingIdRoute: AnalyzingIdRoute,
   CheckoutReturnRoute: CheckoutReturnRoute,
   PaywallIdRoute: PaywallIdRoute,
   ReportIdRoute: ReportIdRoute,
