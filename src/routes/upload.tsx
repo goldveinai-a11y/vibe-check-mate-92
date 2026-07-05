@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
@@ -156,12 +156,10 @@ const STATUSES = [
 
 function AnalyzingScreen() {
   const [step, setStep] = useState(0);
-  useState(() => {
-    if (typeof window !== "undefined") {
-      const iv = setInterval(() => setStep((s) => (s + 1) % STATUSES.length), 2400);
-      return () => clearInterval(iv);
-    }
-  });
+  useEffect(() => {
+    const iv = setInterval(() => setStep((s) => (s + 1) % STATUSES.length), 2400);
+    return () => clearInterval(iv);
+  }, []);
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="max-w-sm text-center">
