@@ -137,6 +137,14 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       if (!prices.data.length) return { error: `Price ${priceLookup} not found` };
       const price = prices.data[0];
 
+      // For monthly plan: resolve the one-time $4.99 upfront trial fee.
+      let trialFeePriceId: string | undefined;
+      if (data.plan === "monthly") {
+        const feePrices = await stripe.prices.list({ lookup_keys: ["vibecheck_monthly_trial_fee"] });
+        if (!feePrices.data.length) return { error: "Trial fee price not found" };
+        trialFeePriceId = feePrices.data[0].id;
+      }
+
       const metadata = {
         analysisId: data.analysisId,
         ownerAnonId: data.ownerAnonId,
@@ -149,13 +157,19 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         mode: isSubscription ? "subscription" : "payment",
         ui_mode: "embedded_page",
         return_url: data.returnUrl,
+        automatic_tax: { enabled: true },
         ...(data.email ? { customer_email: data.email } : {}),
         metadata,
         ...(isSubscription
           ? {
               subscription_data: {
                 metadata,
-                ...(data.plan === "monthly" ? { trial_period_days: 3 } : {}),
+                ...(data.plan === "monthly" && trialFeePriceId
+                  ? {
+                      trial_period_days: 3,
+                      add_invoice_items: [{ price: trialFeePriceId, quantity: 1 }],
+                    }
+                  : {}),
               },
             }
           : {
