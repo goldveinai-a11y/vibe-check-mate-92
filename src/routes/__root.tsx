@@ -14,19 +14,19 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+    <div className="flex min-h-screen items-center justify-center bg-cream px-6">
+      <div className="w-full max-w-md text-center">
+        <div className="font-serif text-[96px] leading-none text-pink sm:text-[128px]">404</div>
+        <h2 className="font-serif mt-4 text-2xl sm:text-3xl">Page not found</h2>
+        <p className="mt-3 text-sm text-ink/60">
+          Sorry, the page you're looking for doesn't exist or has been moved.
         </p>
-        <div className="mt-6">
+        <div className="mt-8">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-full bg-pink px-6 py-3 text-sm font-medium text-white shadow-md transition hover:opacity-90"
           >
-            Go home
+            Go Home
           </Link>
         </div>
       </div>
