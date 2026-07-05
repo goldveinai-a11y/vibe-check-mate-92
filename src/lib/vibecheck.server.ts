@@ -70,6 +70,7 @@ export async function analyzeConversation(images: ImageInput[]): Promise<Report>
       body: JSON.stringify({
         model: "claude-sonnet-4-5",
         max_tokens: 4096,
+        temperature: 0,
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content }],
       }),
