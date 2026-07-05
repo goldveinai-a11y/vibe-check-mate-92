@@ -152,8 +152,20 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       };
 
       const isSubscription = data.plan !== "single";
+      // For monthly paid trial: charge $4.99 upfront AND start recurring $9.99/mo
+      // after 3-day trial. Stripe Checkout does NOT support subscription_data.add_invoice_items,
+      // but a subscription-mode session accepts a one-time price as a second line item —
+      // that one-time price is billed at checkout completion while the recurring price
+      // enters the trial. This gives us the exact "pay now, then subscribe" behavior.
+      const lineItems: Array<{ price: string; quantity: number }> = [
+        { price: price.id, quantity: 1 },
+      ];
+      if (data.plan === "monthly" && trialFeePriceId) {
+        lineItems.push({ price: trialFeePriceId, quantity: 1 });
+      }
+
       const session = await stripe.checkout.sessions.create({
-        line_items: [{ price: price.id, quantity: 1 }],
+        line_items: lineItems,
         mode: isSubscription ? "subscription" : "payment",
         ui_mode: "embedded_page",
         return_url: data.returnUrl,
@@ -164,12 +176,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
           ? {
               subscription_data: {
                 metadata,
-                ...(data.plan === "monthly" && trialFeePriceId
-                  ? {
-                      trial_period_days: 3,
-                      add_invoice_items: [{ price: trialFeePriceId, quantity: 1 }],
-                    }
-                  : {}),
+                ...(data.plan === "monthly" ? { trial_period_days: 3 } : {}),
               },
             }
           : {
