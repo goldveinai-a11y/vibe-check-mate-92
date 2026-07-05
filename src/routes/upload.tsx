@@ -1,10 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
+import { Upload as UploadIcon, Sparkles, ShieldCheck, Lock } from "lucide-react";
 import { createAnalysis } from "@/lib/vibecheck.functions";
 import { getAnonId, rememberOwnedAnalysis } from "@/lib/anon-id";
+import { SiteHeader } from "@/components/SiteHeader";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -77,112 +79,111 @@ function UploadPage() {
     },
   });
 
-  if (mutation.isPending) return <AnalyzingScreen />;
-
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-6 pb-16">
-        <Link to="/" className="text-sm text-muted-foreground">← Back</Link>
-        <h1 className="font-serif mt-6 text-4xl leading-tight">Drop your chat screenshots</h1>
-        <p className="mt-2 text-sm text-muted-foreground">1 to 6 images. PNG, JPG, WebP, GIF. Auto-deleted in 24h.</p>
+    <main className="min-h-screen bg-cream text-ink">
+      <SiteHeader />
+      <section className="px-5 pt-4 pb-16 sm:pb-24">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex flex-col items-center text-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-purple-soft px-4 py-2 text-xs font-medium text-purple-deep sm:text-sm">
+              <Sparkles className="h-3.5 w-3.5" />
+              Step 2 of 3
+            </span>
+            <h1 className="font-serif mt-6 text-4xl leading-[1.05] sm:text-5xl md:text-6xl">
+              Upload your chat screenshots
+            </h1>
+            <p className="mt-4 max-w-lg text-base text-ink/70">
+              Drop in a few screenshots of your conversation and we'll read the vibe. The more context, the better the insights.
+            </p>
+          </div>
 
-        <div
-          {...getRootProps()}
-          className={`mt-6 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed p-8 text-center transition ${
-            isDragActive ? "border-primary bg-secondary" : "border-border bg-card"
-          }`}
-        >
-          <input {...getInputProps()} />
-          <div className="text-3xl">📸</div>
-          <p className="mt-3 text-sm font-medium">
-            {isDragActive ? "Drop them here" : "Tap or drag screenshots"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">Max 6 images, 6 MB each</p>
-        </div>
-
-        {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-
-        <AnimatePresence>
-          {files.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-6 grid grid-cols-3 gap-3"
+          <div className="mt-10 rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-8">
+            <div
+              {...getRootProps()}
+              className={`flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition ${
+                isDragActive ? "border-pink bg-pink-soft/40" : "border-purple-soft bg-purple-soft/25"
+              }`}
             >
-              {files.map((f, i) => (
-                <div key={i} className="relative aspect-[3/5] overflow-hidden rounded-2xl bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={f.previewUrl} alt={f.name} className="h-full w-full object-cover" />
-                  <button
-                    onClick={() => setFiles((cur) => cur.filter((_, idx) => idx !== i))}
-                    className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white"
-                    aria-label="Remove"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <input {...getInputProps()} />
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-pink text-white shadow-sm">
+                <UploadIcon className="h-6 w-6" />
+              </div>
+              <h3 className="font-serif mt-5 text-xl sm:text-2xl">Drag &amp; drop your screenshots here</h3>
+              <p className="mt-2 text-sm text-ink/60">or tap to browse — PNG, JPG, HEIC accepted</p>
+              <span className="mt-6 inline-flex items-center rounded-full bg-pink px-6 py-3 text-sm font-medium text-white shadow-sm">
+                Choose images
+              </span>
+            </div>
 
-        {mutation.isError && (
-          <p className="mt-3 text-sm text-destructive">{(mutation.error as Error).message}</p>
-        )}
+            {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
-        <button
-          onClick={() => mutation.mutate()}
-          disabled={files.length === 0 || mutation.isPending}
-          className="mt-8 inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-4 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition hover:opacity-90 disabled:opacity-40"
-        >
-          Reveal the vibe 🔮
-        </button>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Takes ~30 seconds. Free preview, no signup.
-        </p>
-      </div>
-    </main>
-  );
-}
+            <AnimatePresence>
+              {files.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <div className="mt-6 flex items-center justify-between text-sm">
+                    <span className="font-medium">Your uploads</span>
+                    <button
+                      onClick={() => setFiles([])}
+                      className="text-xs text-ink/50 hover:text-ink"
+                    >
+                      Remove any before analyzing
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                    {files.map((f, i) => (
+                      <div key={i} className="relative aspect-[3/5] overflow-hidden rounded-2xl bg-muted">
+                        <img src={f.previewUrl} alt={f.name} className="h-full w-full object-cover" />
+                        <button
+                          onClick={() => setFiles((cur) => cur.filter((_, idx) => idx !== i))}
+                          className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white"
+                          aria-label="Remove"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-const STATUSES = [
-  "Reading the vibe…",
-  "Counting emojis and dry replies…",
-  "Detecting attachment style…",
-  "Cross-referencing the ick database…",
-  "Composing the truth…",
-];
+            <div className="mt-6 flex items-start gap-3 rounded-2xl bg-mint-soft/60 p-4 text-sm text-ink/80">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-mint text-white">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <p className="min-w-0">
+                Your screenshots are analyzed privately and are never stored or shared. They're deleted the moment your report is generated.
+              </p>
+            </div>
 
-function AnalyzingScreen() {
-  const [step, setStep] = useState(0);
-  useEffect(() => {
-    const iv = setInterval(() => setStep((s) => (s + 1) % STATUSES.length), 2400);
-    return () => clearInterval(iv);
-  }, []);
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="max-w-sm text-center">
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], rotate: [0, 8, -8, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="mx-auto mb-8 inline-flex h-24 w-24 items-center justify-center rounded-full bg-primary text-5xl text-primary-foreground shadow-xl shadow-primary/30"
-        >
-          🔮
-        </motion.div>
-        <h2 className="font-serif text-3xl">Cooking your report</h2>
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={step}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="mt-4 text-sm text-muted-foreground"
-          >
-            {STATUSES[step]}
-          </motion.p>
-        </AnimatePresence>
-      </div>
+            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-muted/50 p-4 text-xs text-ink/60">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink/80 text-white">
+                <Lock className="h-4 w-4" />
+              </div>
+              <p className="min-w-0">
+                Your privacy is protected. Screenshots are heavily encrypted, analyzed instantly, and permanently deleted from our system immediately after processing.
+              </p>
+            </div>
+
+            {mutation.isError && (
+              <p className="mt-4 text-sm text-destructive">{(mutation.error as Error).message}</p>
+            )}
+
+            <button
+              onClick={() => mutation.mutate()}
+              disabled={files.length === 0 || mutation.isPending}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-40"
+            >
+              <Sparkles className="h-4 w-4" />
+              {mutation.isPending ? "Analyzing…" : "Analyze the vibe"}
+            </button>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
