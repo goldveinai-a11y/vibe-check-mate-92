@@ -7,6 +7,7 @@ import { Upload as UploadIcon, Sparkles, ShieldCheck, Lock } from "lucide-react"
 import { createAnalysis } from "@/lib/vibecheck.functions";
 import { getAnonId, rememberOwnedAnalysis } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
+import { AnalyzingOverlay } from "@/components/AnalyzingOverlay";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -184,6 +185,13 @@ function UploadPage() {
           </div>
         </div>
       </section>
+      <AnimatePresence>
+        {mutation.isPending && (
+          <AnalyzingOverlay
+            thumbs={files.map((f) => ({ previewUrl: f.previewUrl, name: f.name }))}
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }
