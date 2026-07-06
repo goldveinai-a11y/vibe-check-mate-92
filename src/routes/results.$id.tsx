@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Zap, Activity, BarChart3 } from "lucide-react";
+import { useRef } from "react";
+import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Activity, BarChart3, Award, Film, Share2, Quote } from "lucide-react";
 import { getAnalysisPreview } from "@/lib/vibecheck.functions";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 
 const previewQuery = (id: string) =>
   queryOptions({
@@ -48,6 +50,12 @@ type PreviewJson = {
   red_flag_preview: { title: string } | null;
   green_flags_count: number;
   red_flags_count: number;
+  viral_preview?: {
+    vibe_award: { title: string; subtitle: string };
+    pop_culture_match: { couple: string; source: string; explanation: string };
+    first_keyword: { word: string; type: "red_flag" | "green_flag" | "beige_flag"; impact: string } | null;
+    keywords_count: number;
+  } | null;
 };
 
 function computeVerdict(p: PreviewJson) {
@@ -121,6 +129,20 @@ function ResultsPage() {
   const verdict = computeVerdict(preview);
   const V = VERDICT_STYLES[verdict.tone];
   const s = preview.scores;
+  const viral = preview.viral_preview ?? null;
+  const overallScore = Math.round(
+    (s.interest_score + s.reciprocity_score + s.emotional_warmth + s.response_consistency + s.flirting_signals + (100 - s.toxicity_score) + s.conversation_health) / 7,
+  );
+  const shareData: ShareCardData = {
+    award: viral?.vibe_award ?? null,
+    popCulture: viral?.pop_culture_match ?? null,
+    overallScore,
+    headline: verdict.title,
+  };
+  const shareRef = useRef<HTMLDivElement>(null);
+  const handleShare = async () => {
+    if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
+  };
 
   return (
     <main className="min-h-screen bg-cream pb-20 text-ink">
@@ -153,6 +175,49 @@ function ResultsPage() {
             <h2 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{verdict.title}</h2>
             <p className="mt-4 text-base leading-relaxed text-white/90">{verdict.blurb}</p>
           </motion.div>
+
+          {/* Vibe Award badge — the hero screenshot moment */}
+          {viral?.vibe_award && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 }}
+              className="mt-5 relative overflow-hidden rounded-3xl bg-gradient-to-br from-pink via-purple to-ink p-6 text-white shadow-lg sm:p-8"
+            >
+              <div className="absolute right-4 top-4 text-[10px] uppercase tracking-widest text-white/60">VibeCheck</div>
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/80">
+                <Award className="h-4 w-4" />
+                Vibe Award
+              </div>
+              <h3 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{viral.vibe_award.title}</h3>
+              <p className="mt-3 text-base text-white/90">{viral.vibe_award.subtitle}</p>
+              <button
+                onClick={handleShare}
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-medium text-white backdrop-blur transition hover:bg-white/25"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                Share to Stories
+              </button>
+            </motion.div>
+          )}
+
+          {/* Pop-culture match — meme-instant comparison */}
+          {viral?.pop_culture_match && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mt-5 rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm"
+            >
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
+                <Film className="h-4 w-4" />
+                You're Giving…
+              </div>
+              <h3 className="font-serif mt-3 text-3xl leading-tight">{viral.pop_culture_match.couple}</h3>
+              <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
+              <p className="mt-4 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
+            </motion.div>
+          )}
 
           {/* Interest score circle card */}
           <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 text-center shadow-sm sm:p-10">
@@ -193,6 +258,28 @@ function ResultsPage() {
               3 more hard stats + full timeline dynamics inside the report.
             </p>
           </div>
+
+          {/* One viral keyword revealed, rest teased */}
+          {viral?.first_keyword && (
+            <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-pink">
+                <Quote className="h-4 w-4" />
+                The Word That's {viral.first_keyword.type === "green_flag" ? "Saving" : viral.first_keyword.type === "beige_flag" ? "Diluting" : "Killing"} It
+              </div>
+              <div className="mt-4 flex items-baseline gap-3">
+                <span className={`font-serif text-4xl sm:text-5xl ${viral.first_keyword.type === "green_flag" ? "text-mint" : viral.first_keyword.type === "beige_flag" ? "text-ink/60" : "text-destructive"}`}>
+                  "{viral.first_keyword.word}"
+                </span>
+              </div>
+              <p className="mt-3 text-sm text-ink/80">{viral.first_keyword.impact}</p>
+              {viral.keywords_count > 1 && (
+                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-pink-soft px-3 py-1.5 text-xs font-medium text-ink/80">
+                  <Lock className="h-3 w-3" />
+                  +{viral.keywords_count - 1} more words moving the needle
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Teaser: one flag revealed, one hidden */}
           {preview.green_flag_preview && (
@@ -235,6 +322,8 @@ function ResultsPage() {
             <LockedCard title={`All ${preview.red_flags_count} Red Flags`} items={["Verbatim quote receipts", "Why each is a pattern", "Which ones are dealbreakers"]} />
             <LockedCard title="Psychological Analysis" items={["Attachment style prediction", "Gottman Four Horsemen check", "Power dynamic read"]} />
             <LockedCard title="Future Outlook" items={["3–5 sentence forecast", "What happens if nothing changes", "The one move that flips it"]} />
+            <LockedCard title="Their Type in 3 Words" items={["The 3 words that define them", "Why they land that way", "How to work with (or around) it"]} />
+            <LockedCard title="Vibe Decay Trajectory" items={["Weekly % interest change", "Cooling / rising / nose-diving", "Realistic window if nothing changes"]} />
           </div>
 
           <div className="mt-10">
@@ -252,6 +341,11 @@ function ResultsPage() {
           </div>
         </div>
       </section>
+
+      {/* Hidden 9:16 export node */}
+      <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
+        <ShareCard ref={shareRef} data={shareData} />
+      </div>
     </main>
   );
 }
