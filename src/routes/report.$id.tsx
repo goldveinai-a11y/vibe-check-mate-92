@@ -295,3 +295,35 @@ function FlagRow({ tone, flag }: { tone: "green" | "red"; flag: Flag }) {
     </div>
   );
 }
+
+function VibeDecayCard({ decay }: { decay: NonNullable<Report["viral"]>["vibe_decay"] }) {
+  const Icon = decay.trajectory === "rising" ? TrendingUp : decay.trajectory === "steady" ? Minus : TrendingDown;
+  const tone = decay.trajectory === "rising" ? "text-mint" : decay.trajectory === "steady" ? "text-ink/70" : "text-destructive";
+  const sign = decay.weekly_delta_pct > 0 ? "+" : "";
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6"
+    >
+      <div className="flex items-center gap-3">
+        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted ${tone}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <h2 className="font-serif text-xl sm:text-2xl">Vibe Decay Trajectory</h2>
+      </div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl bg-muted/40 p-4">
+          <p className="text-xs uppercase tracking-widest text-ink/60">Weekly change</p>
+          <p className={`font-serif mt-2 text-5xl ${tone}`}>{sign}{decay.weekly_delta_pct}%</p>
+          <p className="mt-1 text-xs text-ink/50 capitalize">{decay.trajectory}</p>
+        </div>
+        <div className="rounded-2xl bg-muted/40 p-4">
+          <p className="text-xs uppercase tracking-widest text-ink/60">Window</p>
+          <p className="font-serif mt-2 text-3xl">{decay.range}</p>
+        </div>
+      </div>
+      <p className="mt-4 font-serif text-lg leading-snug text-ink/90">{decay.verdict}</p>
+    </motion.section>
+  );
+}
