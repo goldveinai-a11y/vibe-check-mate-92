@@ -52,6 +52,21 @@ function ReportPage() {
   }
 
   const report = (data as { locked: false; report: Report }).report;
+  const viral = report.viral;
+  const s = report.scores;
+  const overallScore = Math.round(
+    (s.interest_score + s.reciprocity_score + s.emotional_warmth + s.response_consistency + s.flirting_signals + (100 - s.toxicity_score) + s.conversation_health) / 7,
+  );
+  const shareData: ShareCardData = {
+    award: viral?.vibe_award ?? null,
+    popCulture: viral?.pop_culture_match ?? null,
+    overallScore,
+    headline: "Full Report Unlocked",
+  };
+  const shareRef = useRef<HTMLDivElement>(null);
+  const handleShare = async () => {
+    if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
+  };
 
   return (
     <main className="min-h-screen bg-cream pb-20 text-ink">
@@ -72,6 +87,67 @@ function ReportPage() {
           </div>
 
           <div className="mt-10 space-y-5">
+            {viral?.vibe_award && (
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pink via-purple to-ink p-6 text-white shadow-lg sm:p-8">
+                <div className="absolute right-4 top-4 text-[10px] uppercase tracking-widest text-white/60">VibeCheck</div>
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/80">
+                  <Award className="h-4 w-4" /> Vibe Award
+                </div>
+                <h3 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{viral.vibe_award.title}</h3>
+                <p className="mt-3 text-base text-white/90">{viral.vibe_award.subtitle}</p>
+                <button
+                  onClick={handleShare}
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-medium text-white backdrop-blur transition hover:bg-white/25"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> Share to Stories
+                </button>
+              </div>
+            )}
+
+            {viral?.pop_culture_match && (
+              <ReportSection Icon={Film} title="You're Giving…">
+                <h3 className="font-serif text-3xl leading-tight">{viral.pop_culture_match.couple}</h3>
+                <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
+                <p className="mt-4 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
+              </ReportSection>
+            )}
+
+            {viral?.their_type_in_3_words && (
+              <ReportSection Icon={Sparkles} title="Their Type in 3 Words">
+                <div className="flex flex-wrap justify-center gap-3">
+                  {viral.their_type_in_3_words.map((w, i) => (
+                    <span
+                      key={i}
+                      className="rounded-full bg-purple-soft px-6 py-3 font-serif text-2xl text-purple-deep sm:text-3xl"
+                    >
+                      {w}
+                    </span>
+                  ))}
+                </div>
+              </ReportSection>
+            )}
+
+            {viral?.vibe_decay && <VibeDecayCard decay={viral.vibe_decay} />}
+
+            {viral?.viral_keywords && viral.viral_keywords.length > 0 && (
+              <ReportSection Icon={Quote} title="Words That Moved the Needle">
+                <div className="space-y-3">
+                  {viral.viral_keywords.map((k, i) => {
+                    const color = k.type === "green_flag" ? "bg-mint-soft text-mint" : k.type === "beige_flag" ? "bg-muted text-ink/70" : "bg-destructive/10 text-destructive";
+                    return (
+                      <div key={i} className="rounded-2xl border border-border/50 bg-card p-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`inline-block rounded-full px-3 py-1 font-serif text-lg ${color}`}>"{k.word}"</span>
+                          <span className="text-[10px] uppercase tracking-widest text-ink/50">{k.type.replace("_", " ")}</span>
+                        </div>
+                        <p className="mt-2 text-sm text-ink/80">{k.impact}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ReportSection>
+            )}
+
             <ReportSection Icon={Heart} title="Compatibility Breakdown">
               <div className="grid gap-3 sm:grid-cols-2">
                 <StatLine label="Interest" value={report.scores.interest_score} />
@@ -166,6 +242,10 @@ function ReportPage() {
           </div>
         </div>
       </section>
+
+      <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
+        <ShareCard ref={shareRef} data={shareData} />
+      </div>
     </main>
   );
 }
