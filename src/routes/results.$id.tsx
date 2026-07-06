@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Zap, Activity, BarChart3 } from "lucide-react";
+import { useRef } from "react";
+import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Activity, BarChart3, Award, Film, Share2, Quote } from "lucide-react";
 import { getAnalysisPreview } from "@/lib/vibecheck.functions";
 import { SiteHeader } from "@/components/SiteHeader";
+import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 
 const previewQuery = (id: string) =>
   queryOptions({
@@ -48,6 +50,12 @@ type PreviewJson = {
   red_flag_preview: { title: string } | null;
   green_flags_count: number;
   red_flags_count: number;
+  viral_preview?: {
+    vibe_award: { title: string; subtitle: string };
+    pop_culture_match: { couple: string; source: string; explanation: string };
+    first_keyword: { word: string; type: "red_flag" | "green_flag" | "beige_flag"; impact: string } | null;
+    keywords_count: number;
+  } | null;
 };
 
 function computeVerdict(p: PreviewJson) {
