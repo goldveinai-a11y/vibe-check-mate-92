@@ -7,6 +7,7 @@ import { Upload as UploadIcon, Sparkles, ShieldCheck, Lock } from "lucide-react"
 import { createAnalysis } from "@/lib/vibecheck.functions";
 import { getAnonId, rememberOwnedAnalysis } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
+import { AnalyzingOverlay } from "@/components/AnalyzingOverlay";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
