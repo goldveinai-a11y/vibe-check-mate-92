@@ -1,62 +1,100 @@
+# Viral Enrichment Plan
 
-## Ответ на вопрос
+Turn VibeCheck from an "analytical report" into a screenshot-worthy meme machine. Every new block is designed to be either **quoted in a tweet**, **shown to a friend in DMs**, or **posted to IG Stories**.
 
-**Нет, сейчас в коде НЕ твой промт.** Я ранее собрал упрощённую версию (Gen Z tone, verbatim quotes, JSON). Она рабочая, но заметно проще, чем то, что ты сейчас скинул: у тебя добавлены `reciprocity_score`, `emotional_warmth`, числовой `conversation_health` (0–100 вместо enum), блок `hardcore_analytics` со **статистикой + временнóй динамикой**, `gottman_patterns`, и более жёсткие требования к тону. Это заметно **более продающий** продукт.
+## 1. New JSON schema fields (extend `ReportSchema`)
 
-**Схема report_json тоже отличается** — если просто подменить промт, парсинг сломается. Нужно синхронно обновить Zod-схему, preview, и обе страницы отображения (results + report).
+Add to `src/lib/vibecheck-schema.ts`:
 
-## Что предлагаю
-
-### 1. Принять твой промт и схему целиком (без ослаблений)
-
-Обновить `src/lib/vibecheck.server.ts`:
-- `SYSTEM_PROMPT` = твой текст дословно (Critical Instruction + Tone of Voice + Audience & Culture Fit + JSON schema)
-- Оставить `temperature: 0` для стабильности скоринга
-- Модель: `claude-sonnet-4-5` (уже используется). Опция апгрейда — `claude-opus-4-5` для «wow»-качества, но в 5× дороже и медленнее. По умолчанию оставлю Sonnet 4.5, если ты не скажешь иначе.
-
-### 2. Обновить Zod-схему `ReportSchema`
-
-Новая форма (совпадает с твоей 1-в-1):
-```
-scores: {
-  interest_score, reciprocity_score, emotional_warmth,
-  response_consistency, flirting_signals, toxicity_score,
-  conversation_health   // теперь number 0–100
+```text
+viral: {
+  vibe_award: {
+    title: string             // e.g. "Certified Breadcrumb Recipient"
+    subtitle: string          // one witty line explaining the title
+  }
+  pop_culture_match: {
+    couple: string            // e.g. "Ross & Rachel (post-break era)"
+    source: string            // "Friends" | "Euphoria" | ...
+    explanation: string       // 1–2 sentences why
+  }
+  their_type_in_3_words: [string, string, string]
+  viral_keywords: [           // 3–5 items
+    { word: string, type: "red_flag" | "green_flag" | "beige_flag",
+      impact: string }        // short punchy line
+  ]
+  vibe_decay: {
+    trajectory: "rising" | "steady" | "cooling" | "nose-diving"
+    weekly_delta_pct: number  // e.g. -8 means -8% interest/week
+    range: string             // e.g. "2–4 weeks"
+    verdict: string           // one-liner, no exact-day promises
+  }
 }
-hardcore_analytics: { initiative_stat, engagement_stat, timeline_changes, communication_style }
-psychological_analysis: { attachment_style_prediction, gottman_patterns }
-green_flags[], red_flags[], future_outlook
 ```
 
-Плюс валидатор, требующий **минимум 2 green_flags и 2 red_flags** и что все строки на английском.
+Prompt updates (`vibecheck.server.ts`):
+- Add a `VIRAL BLOCK` section demanding all above fields.
+- Pop-culture references limited to a curated US/UK Gen Z + Millennial pool (Euphoria, Normal People, Fleabag, Bridgerton, Friends, SATC, After, Heartstopper, The Summer I Turned Pretty, Sally Rooney adaptations, You, White Lotus).
+- Award title must be a *badge-style noun phrase*, not a sentence.
+- Decay: forbid exact day counts. Require a range + weekly % + trajectory keyword.
+- Keywords: must be verbatim tokens from screenshots; skip if <3 clean examples.
 
-### 3. Пересобрать `buildPreview`
+Update `buildPreview` to expose:
+- `vibe_award` (full)
+- `pop_culture_match` (full)
+- `viral_keywords[0]` only, rest count teased ("+4 more words that killed the vibe")
+- Keep existing score preview + one full green flag + blurred red flag
+- Hide: `their_type_in_3_words`, `vibe_decay`, remaining keywords, all hardcore/psych blocks
 
-Что уходит в бесплатное превью (продающее, но не спойлерит):
-- Все 7 scores (для крутого dashboard-грид с барами)
-- `hardcore_analytics.initiative_stat` (один хук со статистикой — «out of 15 messages, 12 came from you»)
-- 1 green_flag (title + quote) полностью
-- 1 red_flag только `title`, quote/explanation блюрятся
-- Verdict-заголовок (вычисляется из scores как сейчас)
+## 2. Preview redesign (`src/routes/results.$id.tsx`)
 
-Что уходит **только в платный отчёт**: остальные 3 hardcore_analytics, psychological_analysis, все остальные green/red flags целиком, future_outlook.
+New hero order (top → bottom), each a distinct visual card:
 
-### 4. Переверстать `/results/$id` под новую схему
-Продающее превью с 7-барным score board, hero-verdict, один statистический хук, тизер флагов. Заменит нынешнюю верстку (её я уже поднял, но она под старую схему — придётся синхронизировать).
+1. **Vibe Award badge** — big medal/ribbon graphic, serif title, one-line subtitle. This is the first thing the user sees.
+2. **Pop-Culture Match card** — "You're giving: **Ross & Rachel (post-break)**" with a short blurb. Styled like a movie poster tag.
+3. **7-metric scoreboard** (existing, keep).
+4. **"The receipt"** — initiative_stat (existing).
+5. **1 Viral Keyword card** — "The word that's killing you: **'ok'**" + impact line + "+4 more words locked in the full report".
+6. **1 green flag full + 1 red flag blurred** (existing pattern).
+7. Unlock CTA.
 
-### 5. Переверстать `/report/$id` под новую схему
-Полный отчёт: hero verdict, статистика с иконками (4 блока hardcore_analytics), psychological analysis (2 карточки: attachment style + Gottman patterns), все green flags, все red flags, future_outlook как финальный «verdict card». Тон и подача — как ты описал (продающая, живая).
+All new cards must be visually distinct (different bg tokens from `styles.css`: `bg-pink-soft`, `bg-mint-soft`, `bg-purple-soft`) and screenshot-ready — every card needs a small "VibeCheck" wordmark in a corner so screenshots stay branded.
 
-### 6. Сгенерить и показать тебе живой пример полного отчёта
+## 3. Full report additions (`src/routes/report.$id.tsx`)
 
-**Как:** пойти на `/upload`, загрузить набор тестовых скриншотов реального чата (я могу либо сгенерить синтетические скрины через imagegen, либо ты кинешь свои реальные — так лучше, потому что real conversation → real report). Дам ID, ты откроешь `/report/{id}` (я временно разблокирую его, миную paywall для теста, потом уберу заглушку).
+Insert BEFORE the existing "Compatibility Breakdown" section:
 
-**Что тебе даст:** увидишь фактический тон Claude, качество статистики, насколько «wow» получается. Если промт нужно докрутить (усилить хамство/юмор, добавить конкретики) — правим итеративно.
+- **Their Type in 3 Words** — 3 large chip words, huge serif, centered. Very shareable.
+- **Vibe Decay Trajectory** — animated arrow (trajectory icon), "-8% interest/week" big number, range "2–4 weeks until it fizzles" as subtitle, verdict as body.
+- **Viral Keywords** — full list: each keyword as a chip with color (red/green/beige) + impact line.
+- Keep existing sections (hardcore analytics, psych, flags, outlook) but move `pop_culture_match` and `vibe_award` also to the top of the paid report for consistency.
 
-## Что НЕ трогаю
-- Оплата, webhook, RLS, дизайн-система, схема Supabase (report_json — jsonb, форма ему безразлична)
-- Компонент VibeCheckout и стрип-интеграция
+## 4. Shareable Story Card (9:16)
 
-## Вопрос к тебе перед реализацией
-1. **Тестовые скрины для sample report:** ты кинешь 2–5 реальных скринов чата, или сгенерить синтетические? Реальные → правдивее ощущение продукта.
-2. **Модель:** остаёмся на `claude-sonnet-4-5` или пробуем `claude-opus-4-5` для сравнения качества? (Opus заметно дороже — ~$15/M input vs $3/M).
+New component `src/components/ShareCard.tsx` + button "Share to Stories" on both preview and full report:
+- Renders a 1080×1920 card in a hidden div using existing tokens: gradient bg, Vibe Award badge, overall score (average of the 7), Pop-Culture Match line, VibeCheck logo/URL.
+- Uses `html-to-image` (or `dom-to-image-more`) to export PNG → triggers native share sheet on mobile (`navigator.share` with file), fallback download on desktop.
+- Requires `bun add html-to-image`.
+
+## 5. Non-goals (untouched this turn)
+
+- Payment / Stripe / webhook logic
+- Supabase schema (JSON blob absorbs all new fields, no migration needed)
+- Analyzing overlay
+- Auth, RLS
+
+## Technical details
+
+- All new fields optional in Zod at first (`.optional()`) so old analyses in DB don't 500. Preview/report UI guards with `report.viral?.…`.
+- `buildPreview` re-derives from full report at read time (already the pattern), so re-runs on existing rows work.
+- Model stays `claude-sonnet-4-5`, `temperature: 0`. Prompt gets ~600 extra tokens; well within limits.
+- Story card export: lazy-load `html-to-image` only when Share is clicked to avoid bundle bloat.
+
+## Deliverable order when built
+
+1. Schema + prompt (backend truth first)
+2. Preview UI
+3. Full report UI
+4. ShareCard component + button wiring
+5. Manual test with a real re-run to verify JSON validates and renders
+
+Approve to build, or tell me what to cut/add.
