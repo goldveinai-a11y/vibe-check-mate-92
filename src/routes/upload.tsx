@@ -185,6 +185,13 @@ function UploadPage() {
           </div>
         </div>
       </section>
+      <AnimatePresence>
+        {mutation.isPending && (
+          <AnalyzingOverlay
+            thumbs={files.map((f) => ({ previewUrl: f.previewUrl, name: f.name }))}
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }
