@@ -23,6 +23,24 @@ ANALYSIS RULES:
 - psychological_analysis: attachment_style_prediction based on Bowlby & Ainsworth (Anxious / Avoidant / Secure / Disorganized) stated as a strong assumption from text patterns. gottman_patterns tracks the Four Horsemen (Criticism, Contempt, Defensiveness, Stonewalling) and Reciprocity.
 - future_outlook: 3-5 sentences. Uncompromising, actionable final verdict and forecast if nothing changes.
 
+VIRAL BLOCK (MANDATORY — this is what makes the report shareable):
+You MUST include a "viral" object with these five fields. They exist to make the report screenshot-worthy for IG Stories, TikTok, and group chats. Rules:
+- vibe_award: { title, subtitle }
+  * title = a short badge-style noun phrase, 2-5 words, punchy and specific. Examples: "Certified Breadcrumb Recipient", "Gold Medalist in Dry Texting", "Lead Actor in a Situationship", "Chairman of the Delulu Committee". NOT a full sentence.
+  * subtitle = one witty line (max 20 words) that justifies the title with a specific behavior observed in the chat.
+- pop_culture_match: { couple, source, explanation }
+  * Pull ONLY from this curated US/UK Gen Z + Millennial pool: Euphoria, Normal People, Fleabag, Bridgerton, Friends, Sex and the City, After, Heartstopper, The Summer I Turned Pretty, Conversations With Friends, You, The White Lotus, How I Met Your Mother, New Girl, Emily in Paris. No older/regional references (no Twilight-only, no soap operas, no non-English shows).
+  * couple = "Name & Name (specific era or arc)", e.g. "Ross & Rachel (post-break era)", "Rue & Jules (season 1)".
+  * source = the show/film name only.
+  * explanation = 1-2 sentences on WHY this pairing fits, tying to actual observed behavior.
+- their_type_in_3_words: exactly 3 lowercase adjectives/short phrases describing the partner ("them"). Meme-friendly. Examples: ["charming", "avoidant", "chronically online"] or ["hot", "emotionally constipated", "reply-in-4-days coded"].
+- viral_keywords: 3-5 items. Each { word, type, impact }. word MUST be an exact verbatim token or short phrase from the screenshots. type is one of "red_flag" | "green_flag" | "beige_flag". impact = one punchy line (max 25 words) explaining why this specific word/phrase moves the needle. If fewer than 3 clean verbatim tokens exist, return only what you can defend — never invent.
+- vibe_decay: { trajectory, weekly_delta_pct, range, verdict }
+  * trajectory = "rising" | "steady" | "cooling" | "nose-diving" (choose the closest).
+  * weekly_delta_pct = an integer between -40 and +20 representing estimated weekly change in engagement/interest if current patterns continue. Negative = decline.
+  * range = a soft window like "2-4 weeks", "1-2 months", "already fizzled" — NEVER an exact day count and NEVER a specific date. If trajectory is "rising" or "steady", range describes stability window ("stable for 4-6 weeks").
+  * verdict = one uncompromising line (max 30 words). No exact-day promises.
+
 OUTPUT: Return ONLY valid JSON matching this exact TypeScript type. No prose before or after. No markdown code fences.
 
 type Report = {
@@ -48,6 +66,13 @@ type Report = {
   green_flags: Array<{ title: string; quote: string; explanation: string }>;  // quote MUST be verbatim
   red_flags:   Array<{ title: string; quote: string; explanation: string }>;  // quote MUST be verbatim
   future_outlook: string;  // uncompromising, actionable final verdict
+  viral: {
+    vibe_award: { title: string; subtitle: string };
+    pop_culture_match: { couple: string; source: string; explanation: string };
+    their_type_in_3_words: [string, string, string];
+    viral_keywords: Array<{ word: string; type: "red_flag" | "green_flag" | "beige_flag"; impact: string }>;
+    vibe_decay: { trajectory: "rising" | "steady" | "cooling" | "nose-diving"; weekly_delta_pct: number; range: string; verdict: string };
+  };
 };`;
 
 type ImageInput = { mediaType: string; base64: string };
