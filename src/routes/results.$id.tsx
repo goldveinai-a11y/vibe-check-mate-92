@@ -322,6 +322,8 @@ function ResultsPage() {
             <LockedCard title={`All ${preview.red_flags_count} Red Flags`} items={["Verbatim quote receipts", "Why each is a pattern", "Which ones are dealbreakers"]} />
             <LockedCard title="Psychological Analysis" items={["Attachment style prediction", "Gottman Four Horsemen check", "Power dynamic read"]} />
             <LockedCard title="Future Outlook" items={["3–5 sentence forecast", "What happens if nothing changes", "The one move that flips it"]} />
+            <LockedCard title="Their Type in 3 Words" items={["The 3 words that define them", "Why they land that way", "How to work with (or around) it"]} />
+            <LockedCard title="Vibe Decay Trajectory" items={["Weekly % interest change", "Cooling / rising / nose-diving", "Realistic window if nothing changes"]} />
           </div>
 
           <div className="mt-10">
@@ -339,6 +341,11 @@ function ResultsPage() {
           </div>
         </div>
       </section>
+
+      {/* Hidden 9:16 export node */}
+      <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
+        <ShareCard ref={shareRef} data={shareData} />
+      </div>
     </main>
   );
 }
