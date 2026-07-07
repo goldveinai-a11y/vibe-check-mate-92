@@ -12,15 +12,15 @@ export function InterestDonut({ value, size = 208 }: { value: number; size?: num
       <svg width={size} height={size} className="-rotate-90">
         <defs>
           <linearGradient id="donut-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--pink))" />
-            <stop offset="100%" stopColor="hsl(var(--purple))" />
+            <stop offset="0%" stopColor="var(--pink)" />
+            <stop offset="100%" stopColor="var(--purple)" />
           </linearGradient>
         </defs>
         <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke="hsl(var(--muted))"
+          stroke="var(--muted)"
           strokeWidth={stroke}
           fill="none"
           opacity={0.4}
