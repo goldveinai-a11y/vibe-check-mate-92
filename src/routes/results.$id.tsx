@@ -1,17 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Activity, BarChart3, Award, Film, Share2, Quote } from "lucide-react";
-import { getAnalysisPreview } from "@/lib/vibecheck.functions";
+import { getAnalysisPreview, getUnlockedCount } from "@/lib/vibecheck.functions";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
+import { InterestDonut } from "@/components/InterestDonut";
+import { StickyUnlockBar } from "@/components/StickyUnlockBar";
 
 const previewQuery = (id: string) =>
   queryOptions({
     queryKey: ["analysis-preview", id],
     queryFn: () => getAnalysisPreview({ data: { id } }),
   });
+
+const unlockedCountQuery = queryOptions({
+  queryKey: ["unlocked-count"],
+  queryFn: () => getUnlockedCount(),
+  staleTime: 60_000,
+});
 
 export const Route = createFileRoute("/results/$id")({
   head: () => ({
@@ -21,7 +29,10 @@ export const Route = createFileRoute("/results/$id")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  loader: ({ params, context }) => context.queryClient.ensureQueryData(previewQuery(params.id)),
+  loader: ({ params, context }) => {
+    context.queryClient.prefetchQuery(unlockedCountQuery);
+    return context.queryClient.ensureQueryData(previewQuery(params.id));
+  },
   component: ResultsPage,
   errorComponent: ({ error }) => (
     <main className="flex min-h-screen items-center justify-center bg-cream px-6 text-center">
@@ -104,6 +115,9 @@ function ScoreBar({ label, value, Icon, tone = "pink" }: { label: string; value:
 function ResultsPage() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQuery(previewQuery(id));
+  const { data: unlocked } = useSuspenseQuery(unlockedCountQuery);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const footerCtaRef = useRef<HTMLDivElement>(null);
 
   if (data.status === "failed") {
     return (
@@ -164,9 +178,10 @@ function ResultsPage() {
 
           {/* Headline Verdict */}
           <motion.div
+            ref={heroRef}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`mt-8 overflow-hidden rounded-3xl ${V.bg} p-6 text-white shadow-lg sm:p-8`}
+            className={`relative mt-8 overflow-hidden rounded-3xl ${V.bg} p-6 text-white shadow-lg sm:p-8`}
           >
             <span className={`inline-flex items-center gap-2 rounded-full ${V.chip} px-3 py-1 text-[11px] font-semibold uppercase tracking-widest`}>
               <V.icon className="h-3.5 w-3.5" />
@@ -174,6 +189,14 @@ function ResultsPage() {
             </span>
             <h2 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{verdict.title}</h2>
             <p className="mt-4 text-base leading-relaxed text-white/90">{verdict.blurb}</p>
+            <button
+              onClick={handleShare}
+              aria-label="Share to stories"
+              className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur transition hover:bg-white/25"
+            >
+              <Share2 className="h-3 w-3" />
+              Share
+            </button>
           </motion.div>
 
           {/* Vibe Award badge — the hero screenshot moment */}
@@ -207,7 +230,7 @@ function ResultsPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="mt-5 rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm"
+              className="relative mt-5 rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm"
             >
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
                 <Film className="h-4 w-4" />
@@ -216,23 +239,24 @@ function ResultsPage() {
               <h3 className="font-serif mt-3 text-3xl leading-tight">{viral.pop_culture_match.couple}</h3>
               <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
               <p className="mt-4 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
+              <button
+                onClick={handleShare}
+                aria-label="Share to stories"
+                className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-purple/15 px-3 py-1.5 text-[11px] font-medium text-purple-deep backdrop-blur transition hover:bg-purple/25"
+              >
+                <Share2 className="h-3 w-3" />
+                Share
+              </button>
             </motion.div>
           )}
 
-          {/* Interest score circle card */}
+          {/* Interest score donut */}
           <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 text-center shadow-sm sm:p-10">
             <h2 className="font-serif text-2xl sm:text-3xl">Interest Score</h2>
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="relative mx-auto mt-6 grid h-40 w-40 place-items-center rounded-full bg-pink text-white sm:h-48 sm:w-48"
-            >
-              <div className="text-center">
-                <div className="font-serif text-5xl leading-none sm:text-6xl">{s.interest_score}%</div>
-                <div className="mt-1 text-xs uppercase tracking-widest">Interest Level</div>
-              </div>
-            </motion.div>
-            <p className="mt-4 text-sm text-ink/60">
+            <div className="mt-6">
+              <InterestDonut value={s.interest_score} />
+            </div>
+            <p className="mt-6 text-sm text-ink/60">
               How invested they are, based on tone, response times, and engagement.
             </p>
           </div>
@@ -326,7 +350,19 @@ function ResultsPage() {
             <LockedCard title="Vibe Decay Trajectory" items={["Weekly % interest change", "Cooling / rising / nose-diving", "Realistic window if nothing changes"]} />
           </div>
 
-          <div className="mt-10">
+          {/* Social proof — live counter */}
+          <div className="mt-8 text-center text-sm text-ink/60">
+            <span className="inline-flex items-center gap-2 rounded-full bg-mint-soft px-4 py-2">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-mint opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-mint" />
+              </span>
+              <span className="font-medium text-ink/80">{unlocked.count.toLocaleString("en-US")}</span>
+              <span>reports unlocked</span>
+            </span>
+          </div>
+
+          <div ref={footerCtaRef} className="mt-6">
             <Link
               to="/paywall/$id"
               params={{ id }}
@@ -346,25 +382,42 @@ function ResultsPage() {
       <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
         <ShareCard ref={shareRef} data={shareData} />
       </div>
+
+      <StickyUnlockBar id={id} showAfterRef={heroRef} hideNearRef={footerCtaRef} />
     </main>
   );
 }
 
 function LockedCard({ title, items }: { title: string; items: string[] }) {
+  const [peek, setPeek] = useState(false);
+  const triggerPeek = () => {
+    if (peek) return;
+    setPeek(true);
+    window.setTimeout(() => setPeek(false), 550);
+  };
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-5 shadow-sm">
+    <button
+      type="button"
+      onPointerDown={triggerPeek}
+      className="group relative block w-full overflow-hidden rounded-3xl border border-border/60 bg-card p-5 text-left shadow-sm transition-transform hover:scale-[1.02]"
+    >
       <div className="flex items-center gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-pink-soft text-ink/70">
           <Lock className="h-4 w-4" />
         </div>
         <h4 className="font-serif text-lg">{title}</h4>
       </div>
-      <ul className="mt-4 space-y-2 text-sm text-ink/70">
+      <ul className={`mt-4 space-y-2 text-sm text-ink/70 transition-[filter] duration-200 ${peek ? "" : "blur-[3px]"}`}>
         {items.map((it) => (
           <li key={it} className="truncate">{it}</li>
         ))}
       </ul>
+      {!peek && (
+        <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-ink/70 px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest text-white opacity-0 transition-opacity group-hover:opacity-100">
+          tap to peek
+        </div>
+      )}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card via-card/85 to-transparent" />
-    </div>
+    </button>
   );
 }

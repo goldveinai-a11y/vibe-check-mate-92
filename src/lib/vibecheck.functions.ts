@@ -211,3 +211,19 @@ export const saveEmail = createServerFn({ method: "POST" })
     await supabaseAdmin.from("analyses").update({ email: data.email }).eq("id", data.id);
     return { ok: true };
   });
+
+export const getUnlockedCount = createServerFn({ method: "GET" }).handler(async () => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_PUBLISHABLE_KEY!,
+    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+  );
+  const { count } = await supabase
+    .from("analyses")
+    .select("id", { count: "exact", head: true })
+    .eq("paid", true);
+  // Baseline social-proof floor so early days still read as busy.
+  const baseline = 12_478;
+  return { count: baseline + (count ?? 0) };
+});

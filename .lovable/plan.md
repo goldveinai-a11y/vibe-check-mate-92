@@ -1,100 +1,61 @@
-# Viral Enrichment Plan
+# Превью-отчёт: буст конверсии в покупку и шер
 
-Turn VibeCheck from an "analytical report" into a screenshot-worthy meme machine. Every new block is designed to be either **quoted in a tweet**, **shown to a friend in DMs**, or **posted to IG Stories**.
+Цель: увеличить CR в оплату + виральный шер, ничего не ломая в схеме/промпте/оплате.
 
-## 1. New JSON schema fields (extend `ReportSchema`)
+## Что делаем
 
-Add to `src/lib/vibecheck-schema.ts`:
+### 1. Share-кнопки на трёх карточках
+- Добавить компактную иконку-кнопку «Share to Stories» (`Share2`) в правый нижний угол:
+  - карточки **verdict** (Mutual Crush и т.д.) — сейчас там только текст
+  - карточки **Pop-Culture Match** (Nick & Jess)
+  - оставить существующую на Vibe Award
+- Все три жмут один и тот же `exportShareCard(shareRef.current)` — экспортит одну общую 9:16 карту (в ней и так есть award + couple + score + verdict). Один хендлер, три триггера.
 
-```text
-viral: {
-  vibe_award: {
-    title: string             // e.g. "Certified Breadcrumb Recipient"
-    subtitle: string          // one witty line explaining the title
-  }
-  pop_culture_match: {
-    couple: string            // e.g. "Ross & Rachel (post-break era)"
-    source: string            // "Friends" | "Euphoria" | ...
-    explanation: string       // 1–2 sentences why
-  }
-  their_type_in_3_words: [string, string, string]
-  viral_keywords: [           // 3–5 items
-    { word: string, type: "red_flag" | "green_flag" | "beige_flag",
-      impact: string }        // short punchy line
-  ]
-  vibe_decay: {
-    trajectory: "rising" | "steady" | "cooling" | "nose-diving"
-    weekly_delta_pct: number  // e.g. -8 means -8% interest/week
-    range: string             // e.g. "2–4 weeks"
-    verdict: string           // one-liner, no exact-day promises
-  }
-}
-```
+### 2. Interest Score → градиентный donut с анимацией
+- Заменить плоский розовый круг на SVG-donut:
+  - внешнее кольцо: `conic-gradient` / SVG stroke от `--pink` к `--purple`
+  - анимация заливки от 0 до `interest_score`% через `framer-motion` (`strokeDashoffset`)
+  - в центре число + подпись «их интерес к вам» (уточняет двусмысленность без правок схемы)
+- Без разделения You/Her — это потребовало бы правок промпта и Zod и сломало бы старые отчёты.
 
-Prompt updates (`vibecheck.server.ts`):
-- Add a `VIRAL BLOCK` section demanding all above fields.
-- Pop-culture references limited to a curated US/UK Gen Z + Millennial pool (Euphoria, Normal People, Fleabag, Bridgerton, Friends, SATC, After, Heartstopper, The Summer I Turned Pretty, Sally Rooney adaptations, You, White Lotus).
-- Award title must be a *badge-style noun phrase*, not a sentence.
-- Decay: forbid exact day counts. Require a range + weekly % + trajectory keyword.
-- Keywords: must be verbatim tokens from screenshots; skip if <3 clean examples.
+### 3. Sticky CTA снизу (мобайл)
+- Компонент `StickyUnlockBar`: фикс-плашка `fixed bottom-0` с `Unlock Full Report` + цена.
+- Триггер появления: `IntersectionObserver` на hero-блоке verdict (появляется, когда hero ушёл из вьюпорта).
+- Скрывается, когда виден финальный CTA внизу (тот же observer на нижнем блоке).
+- Только `sm:hidden` — на desktop лишний шум.
+- Плавное `translate-y` + `opacity` через Tailwind transition.
 
-Update `buildPreview` to expose:
-- `vibe_award` (full)
-- `pop_culture_match` (full)
-- `viral_keywords[0]` only, rest count teased ("+4 more words that killed the vibe")
-- Keep existing score preview + one full green flag + blurred red flag
-- Hide: `their_type_in_3_words`, `vibe_decay`, remaining keywords, all hardcore/psych blocks
+### 4. Живой счётчик разблокированных отчётов
+- Новый server function `getUnlockedCount` в `src/lib/vibecheck.functions.ts`: публичный `createServerFn`, читает `count(*) from analyses where paid=true` через server publishable client (уже есть anon SELECT-политика на таблице).
+- В превью над финальным CTA: «12,847 отчётов разблокировано • обнови через 30с» — небольшая социалка, но без фейка.
+- Кэш через TanStack Query, `staleTime: 60_000`. Первый рендер — через loader `ensureQueryData` (параллельно с превью).
 
-## 2. Preview redesign (`src/routes/results.$id.tsx`)
+### 5. Peek-эффект на locked-карточках (`LockedCard`)
+- На `onPointerDown` (или tap) карточка на 400ms снимает `blur-sm` и показывает намёк-плейсхолдер («3 signals detected…»), потом возвращает блюр.
+- Реализация: local `useState` + `setTimeout`, класс `blur-sm` условно.
+- Плюс лёгкий `hover:scale-[1.02]` для десктопа.
 
-New hero order (top → bottom), each a distinct visual card:
+## Что НЕ трогаем
 
-1. **Vibe Award badge** — big medal/ribbon graphic, serif title, one-line subtitle. This is the first thing the user sees.
-2. **Pop-Culture Match card** — "You're giving: **Ross & Rachel (post-break)**" with a short blurb. Styled like a movie poster tag.
-3. **7-metric scoreboard** (existing, keep).
-4. **"The receipt"** — initiative_stat (existing).
-5. **1 Viral Keyword card** — "The word that's killing you: **'ok'**" + impact line + "+4 more words locked in the full report".
-6. **1 green flag full + 1 red flag blurred** (existing pattern).
-7. Unlock CTA.
+- `vibecheck-schema.ts`, `vibecheck.server.ts` (промпт/Zod) — 0 правок
+- `report.$id.tsx` (полный отчёт) — вне scope
+- Оплата, вебхуки, Stripe, RLS
+- `ShareCard.tsx` — используем как есть
 
-All new cards must be visually distinct (different bg tokens from `styles.css`: `bg-pink-soft`, `bg-mint-soft`, `bg-purple-soft`) and screenshot-ready — every card needs a small "VibeCheck" wordmark in a corner so screenshots stay branded.
+## Файлы
 
-## 3. Full report additions (`src/routes/report.$id.tsx`)
+- **Edit** `src/routes/results.$id.tsx` — share-кнопки на 2 карточки, donut, sticky bar mount, live counter, loader обновить
+- **New** `src/components/InterestDonut.tsx` — SVG-donut с градиентом и анимацией
+- **New** `src/components/StickyUnlockBar.tsx` — фикс-плашка + observer-логика
+- **Edit** `src/lib/vibecheck.functions.ts` — `getUnlockedCount` server fn
+- Обновить `LockedCard` внутри `results.$id.tsx` (peek)
 
-Insert BEFORE the existing "Compatibility Breakdown" section:
+## Технические детали
 
-- **Their Type in 3 Words** — 3 large chip words, huge serif, centered. Very shareable.
-- **Vibe Decay Trajectory** — animated arrow (trajectory icon), "-8% interest/week" big number, range "2–4 weeks until it fizzles" as subtitle, verdict as body.
-- **Viral Keywords** — full list: each keyword as a chip with color (red/green/beige) + impact line.
-- Keep existing sections (hardcore analytics, psych, flags, outlook) but move `pop_culture_match` and `vibe_award` also to the top of the paid report for consistency.
+- Donut: SVG 200×200, `<circle r=90 stroke="url(#grad)" stroke-dasharray=565 stroke-dashoffset={565*(1-p/100)}>` + `<motion.circle>` для анимации.
+- Sticky bar `z-40`, safe-area `pb-[env(safe-area-inset-bottom)]`, высота ~64px, не перекрывает финальный CTA (observer выключает).
+- Counter fetch: server publishable client (не admin — избежать JWT-issue), `head: true, count: 'exact'`.
 
-## 4. Shareable Story Card (9:16)
-
-New component `src/components/ShareCard.tsx` + button "Share to Stories" on both preview and full report:
-- Renders a 1080×1920 card in a hidden div using existing tokens: gradient bg, Vibe Award badge, overall score (average of the 7), Pop-Culture Match line, VibeCheck logo/URL.
-- Uses `html-to-image` (or `dom-to-image-more`) to export PNG → triggers native share sheet on mobile (`navigator.share` with file), fallback download on desktop.
-- Requires `bun add html-to-image`.
-
-## 5. Non-goals (untouched this turn)
-
-- Payment / Stripe / webhook logic
-- Supabase schema (JSON blob absorbs all new fields, no migration needed)
-- Analyzing overlay
-- Auth, RLS
-
-## Technical details
-
-- All new fields optional in Zod at first (`.optional()`) so old analyses in DB don't 500. Preview/report UI guards with `report.viral?.…`.
-- `buildPreview` re-derives from full report at read time (already the pattern), so re-runs on existing rows work.
-- Model stays `claude-sonnet-4-5`, `temperature: 0`. Prompt gets ~600 extra tokens; well within limits.
-- Story card export: lazy-load `html-to-image` only when Share is clicked to avoid bundle bloat.
-
-## Deliverable order when built
-
-1. Schema + prompt (backend truth first)
-2. Preview UI
-3. Full report UI
-4. ShareCard component + button wiring
-5. Manual test with a real re-run to verify JSON validates and renders
-
-Approve to build, or tell me what to cut/add.
+## Открытые вопросы (можно решить в процессе)
+- Точная цена/anchor в sticky bar — беру текущую из `paywall.$id.tsx`, если там нет — «Unlock Full Report» без цены.
+- Формулировка счётчика — «12,847 people unlocked their receipts» либо аналог; финал в имплементации.
