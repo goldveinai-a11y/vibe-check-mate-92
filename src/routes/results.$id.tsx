@@ -1,17 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Activity, BarChart3, Award, Film, Share2, Quote } from "lucide-react";
-import { getAnalysisPreview } from "@/lib/vibecheck.functions";
+import { getAnalysisPreview, getUnlockedCount } from "@/lib/vibecheck.functions";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
+import { InterestDonut } from "@/components/InterestDonut";
+import { StickyUnlockBar } from "@/components/StickyUnlockBar";
 
 const previewQuery = (id: string) =>
   queryOptions({
     queryKey: ["analysis-preview", id],
     queryFn: () => getAnalysisPreview({ data: { id } }),
   });
+
+const unlockedCountQuery = queryOptions({
+  queryKey: ["unlocked-count"],
+  queryFn: () => getUnlockedCount(),
+  staleTime: 60_000,
+});
 
 export const Route = createFileRoute("/results/$id")({
   head: () => ({
@@ -21,7 +29,10 @@ export const Route = createFileRoute("/results/$id")({
       { name: "robots", content: "noindex" },
     ],
   }),
-  loader: ({ params, context }) => context.queryClient.ensureQueryData(previewQuery(params.id)),
+  loader: ({ params, context }) => {
+    context.queryClient.prefetchQuery(unlockedCountQuery);
+    return context.queryClient.ensureQueryData(previewQuery(params.id));
+  },
   component: ResultsPage,
   errorComponent: ({ error }) => (
     <main className="flex min-h-screen items-center justify-center bg-cream px-6 text-center">
