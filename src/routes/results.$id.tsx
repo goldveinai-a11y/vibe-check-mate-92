@@ -390,15 +390,15 @@ function ResultsPage() {
 
 function LockedCard({ title, items }: { title: string; items: string[] }) {
   const [peek, setPeek] = useState(false);
-  const triggerPeek = () => {
-    if (peek) return;
-    setPeek(true);
-    window.setTimeout(() => setPeek(false), 550);
-  };
+  // toggle instead of an auto-hide timeout — reveals on tap and stays
+  // revealed until tapped again, so there's actually time to read it.
+  const togglePeek = () => setPeek((p) => !p);
   return (
     <button
       type="button"
-      onPointerDown={triggerPeek}
+      onClick={togglePeek}
+      aria-pressed={peek}
+      aria-label={peek ? `Hide ${title} preview` : `Tap to peek at ${title}`}
       className="group relative block w-full overflow-hidden rounded-3xl border border-border/60 bg-card p-5 text-left shadow-sm transition-transform hover:scale-[1.02]"
     >
       <div className="flex items-center gap-3">
@@ -412,9 +412,15 @@ function LockedCard({ title, items }: { title: string; items: string[] }) {
           <li key={it} className="truncate">{it}</li>
         ))}
       </ul>
+      {/* Always visible (no hover-only state) so it reads as tappable on mobile too */}
       {!peek && (
-        <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-ink/70 px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest text-white opacity-0 transition-opacity group-hover:opacity-100">
-          tap to peek
+        <div className="pointer-events-none absolute right-3 top-3 animate-pulse rounded-full bg-ink/70 px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest text-white">
+          tap to peek 👀
+        </div>
+      )}
+      {peek && (
+        <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-ink/70 px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest text-white">
+          tap to hide
         </div>
       )}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card via-card/85 to-transparent" />
