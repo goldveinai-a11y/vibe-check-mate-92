@@ -525,6 +525,11 @@ const MyReportsResultSchema = z.object({
       paid: z.boolean(),
       interestScore: z.number().nullable(),
       headline: z.string().nullable(),
+      // Most recent of: report creation, or latest check-in. Drives the
+      // "come back and check in" nudge on /account — a paid report that's
+      // gone quiet for a while surfaces a soft reminder instead of relying
+      // on push/email, which this product doesn't send yet.
+      lastActivityAt: z.string(),
     }),
   ),
   subscription: z
@@ -565,6 +570,23 @@ export const getMyReports = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(1);
 
+    // Latest check-in per report, so the account list can nudge "it's been
+    // a while" instead of treating every paid report as equally fresh.
+    const analysisIds = (analyses ?? []).map((a) => a.id as string);
+    const lastCheckinByAnalysis = new Map<string, string>();
+    if (analysisIds.length > 0) {
+      const { data: checkins } = await supabaseAdmin
+        .from("report_checkins")
+        .select("analysis_id, created_at")
+        .in("analysis_id", analysisIds);
+      for (const c of checkins ?? []) {
+        const id = c.analysis_id as string;
+        const createdAt = c.created_at as string;
+        const cur = lastCheckinByAnalysis.get(id);
+        if (!cur || new Date(createdAt) > new Date(cur)) lastCheckinByAnalysis.set(id, createdAt);
+      }
+    }
+
     return {
       email,
       reports: (analyses ?? []).map((a) => {
@@ -572,14 +594,16 @@ export const getMyReports = createServerFn({ method: "GET" })
           scores?: { interest_score?: number };
           viral_preview?: { pop_culture_match?: { couple?: string }; vibe_award?: { title?: string } };
         } | null;
+        const id = a.id as string;
         return {
-          id: a.id as string,
+          id,
           createdAt: a.created_at as string,
           status: a.status as string,
           plan: (a.plan as string | null) ?? null,
           paid: a.paid as boolean,
           interestScore: preview?.scores?.interest_score ?? null,
           headline: preview?.viral_preview?.vibe_award?.title ?? preview?.viral_preview?.pop_culture_match?.couple ?? null,
+          lastActivityAt: lastCheckinByAnalysis.get(id) ?? (a.created_at as string),
         };
       }),
       subscription: subs?.[0]
