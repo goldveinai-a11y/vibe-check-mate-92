@@ -52,6 +52,11 @@ export const VibeDecaySchema = z.object({
   verdict: z.string().min(1).max(280),
 });
 
+export const SuggestedRepliesSchema = z.object({
+  warm: z.string().min(1).max(300),
+  neutral: z.string().min(1).max(300),
+});
+
 export const ViralSchema = z.object({
   vibe_award: VibeAwardSchema,
   pop_culture_match: PopCultureMatchSchema,
@@ -67,14 +72,52 @@ export const ReportSchema = z.object({
   green_flags: z.array(FlagSchema).min(1).max(6),
   red_flags: z.array(FlagSchema).min(1).max(6),
   future_outlook: z.string(),
+  suggested_replies: SuggestedRepliesSchema.optional(),
   viral: ViralSchema.optional(),
 });
+
+// Shape of `analyses.preview_json` as built by buildPreview() below — the
+// free, pre-paywall preview payload. Shared between results.$id.tsx (free
+// preview page) and compare.$id.tsx (Compare Vibes) so both read the exact
+// same public data contract without duplicating the type.
+export type PreviewJson = {
+  scores: Scores;
+  initiative_stat: string;
+  green_flag_preview: { title: string; quote: string; explanation: string } | null;
+  red_flag_preview: { title: string } | null;
+  green_flags_count: number;
+  red_flags_count: number;
+  viral_preview?: {
+    vibe_award: { title: string; subtitle: string };
+    pop_culture_match: { couple: string; source: string; explanation: string };
+    first_keyword: { word: string; type: "red_flag" | "green_flag" | "beige_flag"; impact: string } | null;
+    keywords_count: number;
+  } | null;
+};
 
 export type Report = z.infer<typeof ReportSchema>;
 export type Flag = z.infer<typeof FlagSchema>;
 export type Scores = z.infer<typeof ScoresSchema>;
 export type Viral = z.infer<typeof ViralSchema>;
 export type ViralKeyword = z.infer<typeof ViralKeywordSchema>;
+export type SuggestedReplies = z.infer<typeof SuggestedRepliesSchema>;
+
+// "Delusion Level" — NOT a new AI judgment, just arithmetic on scores the
+// model already produced. It's the gap between how exciting a conversation
+// FEELS (flirting + warmth) and how much of that is actually reciprocated
+// and consistent (reciprocity + response consistency + conversation health).
+// A big gap means the vibe is running ahead of the substance backing it up.
+// Framed as "for fun" like vibe_award — no false precision claimed.
+export function computeDelusionLevel(scores: Scores): { score: number; label: string; blurb: string } {
+  const feeling = (scores.flirting_signals + scores.emotional_warmth) / 2;
+  const substance = (scores.reciprocity_score + scores.response_consistency + scores.conversation_health) / 3;
+  const score = Math.max(0, Math.min(100, Math.round(feeling - substance)));
+
+  if (score <= 15) return { score, label: "Grounded", blurb: "You're reading this one accurately — the vibe matches the substance." };
+  if (score <= 35) return { score, label: "Rose-Tint", blurb: "A little wishful thinking creeping in, but nothing wild." };
+  if (score <= 55) return { score, label: "Delulu Era", blurb: "The vibe is outrunning the receipts. Feelings ahead of the facts." };
+  return { score, label: "Certified Delusional", blurb: "Big gap between how this feels and what's actually being reciprocated." };
+}
 
 export function buildPreview(report: Report) {
   return {

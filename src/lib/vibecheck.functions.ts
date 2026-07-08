@@ -394,6 +394,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
 const PlanEnum = z.enum(["single", "monthly", "yearly"]);
 
+// Wingman referral V1 — one shared coupon, "give 20% off" to whoever
+// clicked a friend's link. The coupon itself (id WINGMAN20, 20% off,
+// duration "once") has to exist in the Stripe account already; this code
+// only applies it, it doesn't create Stripe objects.
+const WINGMAN_COUPON_ID = "WINGMAN20";
+
 const CheckoutInputSchema = z.object({
   analysisId: z.string().uuid(),
   ownerAnonId: z.string().min(8).max(128),
@@ -404,6 +410,7 @@ const CheckoutInputSchema = z.object({
   // a buyer find their report(s) again from any device via magic link,
   // instead of relying solely on a localStorage anon id.
   email: z.string().email(),
+  refCode: z.string().min(4).max(16).optional(),
 });
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
@@ -431,11 +438,27 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         trialFeePriceId = feePrices.data[0].id;
       }
 
+      // Wingman referral: only honor a ref code that (a) actually exists and
+      // (b) doesn't belong to the same anon id — no self-referring for a
+      // discount. Silently ignored if invalid, never blocks checkout.
+      let referralApplied = false;
+      if (data.refCode) {
+        const { data: referral } = await supabaseAdmin
+          .from("referrals")
+          .select("owner_anon_id")
+          .eq("code", data.refCode.toLowerCase())
+          .maybeSingle();
+        if (referral && referral.owner_anon_id !== data.ownerAnonId) {
+          referralApplied = true;
+        }
+      }
+
       const metadata = {
         analysisId: data.analysisId,
         ownerAnonId: data.ownerAnonId,
         plan: data.plan,
         email: data.email,
+        ...(referralApplied ? { refCode: data.refCode!.toLowerCase() } : {}),
       };
 
       const isSubscription = data.plan !== "single";
@@ -459,6 +482,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         automatic_tax: { enabled: true },
         customer_email: data.email,
         metadata,
+        ...(referralApplied ? { discounts: [{ coupon: WINGMAN_COUPON_ID }] } : {}),
         ...(isSubscription
           ? {
               subscription_data: {
@@ -657,4 +681,45 @@ export const createBillingPortalSession = createServerFn({ method: "POST" })
     } catch (err) {
       return { error: getStripeErrorMessage(err) };
     }
+  });
+
+// --- Wingman referral V1 ("give a friend 20% off"). Gated behind
+// requireSupabaseAuth (same as My Reports / Billing Portal) — practically
+// this means only someone who has already unlocked at least one report
+// (that's how a Supabase session gets created here) can generate a
+// referral link, which keeps this from being farmable by anonymous drive-by
+// visitors. See supabase/migrations/20260708150000_add_referrals.sql for
+// why redemption_count is the only thing tracked in V1 — no reward code
+// back to the referrer yet, that needs live Stripe Promotion Code creation
+// which is a V2 once redemption volume justifies building it.
+
+const ReferralCodeInputSchema = z.object({
+  ownerAnonId: z.string().min(8).max(128),
+});
+
+export const getOrCreateReferralCode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ReferralCodeInputSchema.parse(input))
+  .handler(async ({ data, context }): Promise<{ code: string; redemptionCount: number }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const email = (context.claims as { email?: string }).email?.toLowerCase();
+    if (!email) throw new Error("No verified email on this session");
+
+    const { data: existing } = await supabaseAdmin
+      .from("referrals")
+      .select("code, redemption_count")
+      .eq("owner_email", email)
+      .maybeSingle();
+    if (existing) {
+      return { code: existing.code as string, redemptionCount: existing.redemption_count as number };
+    }
+
+    const code = Math.random().toString(36).slice(2, 10);
+    const { error } = await supabaseAdmin.from("referrals").insert({
+      code,
+      owner_anon_id: data.ownerAnonId,
+      owner_email: email,
+    });
+    if (error) throw new Error(error.message);
+    return { code, redemptionCount: 0 };
   });
