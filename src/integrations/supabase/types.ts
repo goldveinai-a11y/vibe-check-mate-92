@@ -129,6 +129,33 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          owner_anon_id: string
+          owner_email: string | null
+          redemption_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          owner_anon_id: string
+          owner_email?: string | null
+          redemption_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          owner_anon_id?: string
+          owner_email?: string | null
+          redemption_count?: number
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
