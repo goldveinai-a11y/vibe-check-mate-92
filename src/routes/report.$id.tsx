@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useRef, useState } from "react";
-import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, CheckCircle, AlertCircle, Sparkles, Award, Film, Quote, TrendingDown, TrendingUp, Minus, Share2, Send, Copy, Check } from "lucide-react";
-import { getAnalysisFull } from "@/lib/vibecheck.functions";
+import { useMemo, useRef, useState } from "react";
+import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, CheckCircle, AlertCircle, Sparkles, Award, Film, Quote, TrendingDown, TrendingUp, Minus, Share2, Send, Copy, Check, History } from "lucide-react";
+import { getAnalysisFull, getCheckins } from "@/lib/vibecheck.functions";
 import { getAnonId } from "@/lib/anon-id";
 import type { Report, Flag } from "@/lib/vibecheck-schema";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -53,7 +53,7 @@ function ReportPage() {
     );
   }
 
-  const report = (data as { locked: false; report: Report }).report;
+  const { report, createdAt } = data as { locked: false; report: Report; createdAt: string };
   const viral = report.viral;
   const s = report.scores;
   const overallScore = Math.round(
@@ -69,6 +69,25 @@ function ReportPage() {
   const handleShare = async () => {
     if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
   };
+
+  const checkinsQuery = useQuery({
+    queryKey: ["checkins", id, ownerAnonId],
+    queryFn: () => getCheckins({ data: { id, ownerAnonId } }),
+    enabled: !!ownerAnonId,
+  });
+
+  // Real trend: the original report is data point #1, every check-in adds
+  // another. Two or more real points is what makes the trend real instead
+  // of the seeded, AI-predicted one-shot narrative.
+  const realTrend = useMemo(() => {
+    const checkins = checkinsQuery.data?.checkins ?? [];
+    if (checkins.length < 1) return null;
+    const points = [
+      { t: new Date(createdAt).getTime(), score: overallScore },
+      ...checkins.map((c) => ({ t: new Date(c.createdAt).getTime(), score: c.overallScore })),
+    ].sort((a, b) => a.t - b.t);
+    return computeRealTrend(points);
+  }, [checkinsQuery.data, createdAt, overallScore]);
 
   return (
     <main className="min-h-screen bg-cream pb-20 text-ink">
@@ -129,7 +148,13 @@ function ReportPage() {
               </ReportSection>
             )}
 
-            {viral?.vibe_decay && <VibeDecayCard decay={viral.vibe_decay} />}
+            {(viral?.vibe_decay || realTrend) && (
+              <VibeDecayCard
+                reportId={id}
+                predicted={viral?.vibe_decay ?? null}
+                real={realTrend}
+              />
+            )}
 
             {viral?.viral_keywords && viral.viral_keywords.length > 0 && (
               <ReportSection Icon={Quote} title="Words That Moved the Needle">
@@ -453,45 +478,184 @@ function FlagRow({ tone, flag }: { tone: "green" | "red"; flag: Flag }) {
   );
 }
 
-function VibeDecayCard({ decay }: { decay: NonNullable<Report["viral"]>["vibe_decay"] }) {
-  const Icon = decay.trajectory === "rising" ? TrendingUp : decay.trajectory === "steady" ? Minus : TrendingDown;
-  const tone = decay.trajectory === "rising" ? "text-mint" : decay.trajectory === "steady" ? "text-ink/70" : "text-destructive";
-  const sign = decay.weekly_delta_pct > 0 ? "+" : "";
+type TrendKind = "rising" | "steady" | "cooling" | "nose-diving";
+
+type RealTrend = {
+  trajectory: TrendKind;
+  weeklyDeltaPct: number;
+  range: string;
+  verdict: string;
+  points: number[];
+  checkinsCount: number;
+};
+
+function formatElapsed(days: number): string {
+  if (days < 1) return "the same day";
+  if (days < 14) return `${Math.max(1, Math.round(days))} day${Math.round(days) === 1 ? "" : "s"}`;
+  if (days < 60) return `${Math.round(days / 7)} week${Math.round(days / 7) === 1 ? "" : "s"}`;
+  return `${Math.round(days / 30)} month${Math.round(days / 30) === 1 ? "" : "s"}`;
+}
+
+// Turns real (time, score) pairs into the same shape the old AI-predicted
+// narrative used, so the same card UI can render either — but every number
+// here is computed from actual check-ins, not generated.
+function computeRealTrend(points: { t: number; score: number }[]): RealTrend | null {
+  if (points.length < 2) return null;
+  const first = points[0];
+  const last = points[points.length - 1];
+  const totalDays = Math.max(0, (last.t - first.t) / 86_400_000);
+  const totalWeeks = totalDays / 7;
+  const pctChange = ((last.score - first.score) / Math.max(first.score, 1)) * 100;
+  const weeklyDeltaPctRaw = totalWeeks >= 0.5 ? pctChange / totalWeeks : pctChange;
+  const weeklyDeltaPct = Math.max(-100, Math.min(100, Math.round(weeklyDeltaPctRaw)));
+
+  const trajectory: TrendKind =
+    weeklyDeltaPct > 5 ? "rising" : weeklyDeltaPct >= -5 ? "steady" : weeklyDeltaPct >= -25 ? "cooling" : "nose-diving";
+
+  const range = `over ${formatElapsed(totalDays)}`;
+  const checkinsCount = points.length - 1;
+  const verdict = `Your vibe score moved from ${first.score} to ${last.score} ${range} — ${checkinsCount} real check-in${checkinsCount === 1 ? "" : "s"}, not a prediction.`;
+
+  return {
+    trajectory,
+    weeklyDeltaPct,
+    range,
+    verdict,
+    points: points.map((p) => p.score),
+    checkinsCount,
+  };
+}
+
+function RealDecaySparkline({ points }: { points: number[] }) {
+  const w = 600;
+  const h = 120;
+  const pad = 8;
+  const n = points.length;
+
+  const xs = points.map((_, i) => (n === 1 ? w / 2 : pad + (i * (w - pad * 2)) / (n - 1)));
+  const ys = points.map((score) => pad + (1 - Math.max(0, Math.min(100, score)) / 100) * (h - pad * 2));
+  const linePath = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L ${xs[n - 1].toFixed(1)} ${h - pad} L ${xs[0].toFixed(1)} ${h - pad} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" style={{ height: 100 }}>
+      <defs>
+        <linearGradient id="real-spark-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--mint)" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="var(--mint)" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <motion.path
+        d={areaPath}
+        fill="url(#real-spark-fill)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.3 }}
+      />
+      <motion.path
+        d={linePath}
+        fill="none"
+        stroke="var(--mint)"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 1.1, ease: "easeOut" }}
+      />
+      {xs.map((x, i) => (
+        <circle key={i} cx={x} cy={ys[i]} r={4} fill="var(--mint)" />
+      ))}
+    </svg>
+  );
+}
+
+function VibeDecayCard({
+  reportId,
+  predicted,
+  real,
+}: {
+  reportId: string;
+  predicted: NonNullable<Report["viral"]>["vibe_decay"] | null;
+  real: RealTrend | null;
+}) {
+  const trajectory = real?.trajectory ?? predicted?.trajectory ?? "steady";
+  const weeklyDeltaPct = real?.weeklyDeltaPct ?? predicted?.weekly_delta_pct ?? 0;
+  const range = real?.range ?? predicted?.range ?? "";
+  const verdict = real?.verdict ?? predicted?.verdict ?? "";
+
+  const Icon = trajectory === "rising" ? TrendingUp : trajectory === "steady" ? Minus : TrendingDown;
+  const tone = trajectory === "rising" ? "text-mint" : trajectory === "steady" ? "text-ink/70" : "text-destructive";
+  const sign = weeklyDeltaPct > 0 ? "+" : "";
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6"
     >
-      <div className="flex items-center gap-3">
-        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted ${tone}`}>
-          <Icon className="h-5 w-5" />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted ${tone}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <h2 className="font-serif text-xl sm:text-2xl">Vibe Decay Trajectory</h2>
         </div>
-        <h2 className="font-serif text-xl sm:text-2xl">Vibe Decay Trajectory</h2>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest ${
+            real ? "bg-mint-soft text-mint" : "bg-muted text-ink/50"
+          }`}
+        >
+          {real ? "Real" : "AI-predicted"}
+        </span>
       </div>
+
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl bg-muted/40 p-4">
           <p className="text-xs uppercase tracking-widest text-ink/60">Weekly change</p>
-          <p className={`font-serif mt-2 text-5xl ${tone}`}>{sign}{decay.weekly_delta_pct}%</p>
-          <p className="mt-1 text-xs text-ink/50 capitalize">{decay.trajectory}</p>
+          <p className={`font-serif mt-2 text-5xl ${tone}`}>{sign}{weeklyDeltaPct}%</p>
+          <p className="mt-1 text-xs text-ink/50 capitalize">{trajectory}</p>
         </div>
         <div className="rounded-2xl bg-muted/40 p-4">
           <p className="text-xs uppercase tracking-widest text-ink/60">Window</p>
-          <p className="font-serif mt-2 text-3xl">{decay.range}</p>
+          <p className="font-serif mt-2 text-3xl">{range}</p>
         </div>
       </div>
+
       <div className="mt-5 rounded-2xl bg-muted/30 px-4 pt-4 pb-2">
         <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-ink/50">
           <span>Trend</span>
-          <span>{decay.range}</span>
+          <span>{range}</span>
         </div>
-        <DecaySparkline
-          trajectory={decay.trajectory}
-          delta={decay.weekly_delta_pct}
-          seed={`${decay.range}|${decay.trajectory}|${decay.weekly_delta_pct}`}
-        />
+        {real ? (
+          <RealDecaySparkline points={real.points} />
+        ) : (
+          predicted && (
+            <DecaySparkline
+              trajectory={predicted.trajectory}
+              delta={predicted.weekly_delta_pct}
+              seed={`${predicted.range}|${predicted.trajectory}|${predicted.weekly_delta_pct}`}
+            />
+          )
+        )}
       </div>
-      <p className="mt-4 font-serif text-lg leading-snug text-ink/90">{decay.verdict}</p>
+
+      <p className="mt-4 font-serif text-lg leading-snug text-ink/90">{verdict}</p>
+
+      {!real && (
+        <p className="mt-2 text-xs text-ink/50">
+          This is an AI estimate from a single snapshot — no repeat data yet.
+        </p>
+      )}
+
+      <Link
+        to="/checkin/$id"
+        params={{ id: reportId }}
+        className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-ink shadow-sm transition hover:bg-muted"
+      >
+        <History className="h-4 w-4" />
+        Track this conversation
+      </Link>
     </motion.section>
   );
 }
