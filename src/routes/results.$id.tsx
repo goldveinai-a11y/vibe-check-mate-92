@@ -99,11 +99,19 @@ function ResultsPage() {
   const footerCtaRef = useRef<HTMLDivElement>(null);
 
   if (data.status === "failed") {
+    // Never render data.error_message directly — it's the raw internal
+    // exception string (stack traces, JSON validation errors, API error
+    // bodies) saved for our own debugging in Supabase, not user-facing copy.
+    // A real one leaked to production once already: a Zod validation error
+    // rendered verbatim as "[ { origin: 'string', code: 'too_big', ... } ]"
+    // right on this page. Always show a fixed, friendly message instead.
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream px-6 text-center">
         <div>
           <h1 className="font-serif text-3xl">The AI couldn't read it</h1>
-          <p className="mt-2 text-sm text-ink/60">{data.error_message ?? "Try clearer screenshots."}</p>
+          <p className="mt-2 text-sm text-ink/60">
+            Something went sideways on our end — not your screenshots. Give it another go.
+          </p>
           <Link to="/upload" className="mt-6 inline-block rounded-full bg-pink px-6 py-3 text-white">Try again</Link>
         </div>
       </main>

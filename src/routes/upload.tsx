@@ -115,6 +115,9 @@ function UploadPage() {
             <p className="mt-4 max-w-lg text-base text-ink/70">
               Drop in a few screenshots of your conversation and we'll read the vibe. The more context, the better the insights.
             </p>
+            <p className="mt-1 max-w-lg text-xs text-ink/50">
+              2-5 screenshots is the sweet spot — enough context for a sharp read, up to 6 max per upload.
+            </p>
           </div>
 
           <div className="mt-10 rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-8">
@@ -181,7 +184,13 @@ function UploadPage() {
             </div>
 
             {mutation.isError && (
-              <p className="mt-4 text-sm text-destructive">{(mutation.error as Error).message}</p>
+              // Never render mutation.error's raw message — it's whatever
+              // internal exception string createAnalysis threw (a Zod
+              // validation error once rendered here verbatim, as literal
+              // JSON, in production). Fixed, friendly copy only.
+              <p className="mt-4 text-sm text-destructive">
+                Something went sideways reading that one. Try again — if it keeps happening, swap in a clearer screenshot.
+              </p>
             )}
 
             <button
