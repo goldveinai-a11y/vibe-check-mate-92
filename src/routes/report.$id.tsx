@@ -89,7 +89,7 @@ function ReportPage() {
 
           <div className="mt-10 space-y-5">
             {viral?.vibe_award && (
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pink via-purple to-ink p-6 text-white shadow-lg sm:p-8">
+              <div className="shimmer relative overflow-hidden rounded-3xl bg-gradient-to-br from-pink via-purple to-ink p-6 text-white shadow-lg sm:p-8">
                 <div className="absolute right-4 top-4 text-[10px] uppercase tracking-widest text-white/60">VibeCheck</div>
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/80">
                   <Award className="h-4 w-4" /> Vibe Award
