@@ -1,6 +1,59 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Report } from "./vibecheck-schema";
+
+// Shared entitlement check — same logic getAnalysisFull uses (paid on this
+// exact analysis, OR an active/trialing subscription matched by anon id or
+// verified email). Factored out so the chat endpoints below gate access
+// identically instead of re-implementing (and potentially drifting from)
+// this logic.
+type Entitlement = { entitled: boolean; plan: string | null };
+
+async function checkEntitlement(row: {
+  paid: boolean | null;
+  owner_anon_id?: string | null;
+  email?: string | null;
+  plan?: string | null;
+}, ownerAnonId: string): Promise<Entitlement> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { getVerifiedEmail } = await import("./optional-auth.server");
+
+  // "plan" here means the plan that GRANTED access, not just whatever is
+  // stored on this row — a subscriber can view a report they never
+  // personally paid for (e.g. after a device switch) purely on the
+  // strength of their active subscription, so the plan attached to that
+  // path should win over a stale/absent value on the row itself.
+  if (row.paid === true) return { entitled: true, plan: row.plan ?? "single" };
+
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("plan")
+    .eq("owner_anon_id", ownerAnonId)
+    .in("status", ["active", "trialing"])
+    .limit(1)
+    .maybeSingle();
+  if (sub) return { entitled: true, plan: sub.plan as string };
+
+  const verifiedEmail = await getVerifiedEmail();
+  if (verifiedEmail) {
+    // Note: a "this exact analysis is paid AND its stored email matches"
+    // branch is intentionally not repeated here — the `row.paid === true`
+    // check above already returns unconditionally for any paid analysis
+    // (paid analyses are addressed by unguessable UUID), so re-checking it
+    // here would always be unreachable dead code (TS correctly flags this
+    // as a type error once written as an early-return chain).
+    const { data: subByEmail } = await supabaseAdmin
+      .from("subscriptions")
+      .select("plan")
+      .eq("email", verifiedEmail)
+      .in("status", ["active", "trialing"])
+      .limit(1)
+      .maybeSingle();
+    if (subByEmail) return { entitled: true, plan: subByEmail.plan as string };
+  }
+  return { entitled: false, plan: null };
+}
 
 const ImageInputSchema = z.object({
   mediaType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
@@ -83,10 +136,9 @@ export const getAnalysisFull = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => FullInputSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { getVerifiedEmail } = await import("./optional-auth.server");
     const { data: row, error } = await supabaseAdmin
       .from("analyses")
-      .select("id, status, report_json, paid, owner_anon_id, email")
+      .select("id, status, report_json, paid, owner_anon_id, email, plan")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -101,42 +153,128 @@ export const getAnalysisFull = createServerFn({ method: "POST" })
     //    matches this analysis's owner email, or matches an active/trialing
     //    subscription. This is what makes access survive a new device or a
     //    cleared browser — the anon id alone never would.
-    let entitled = row.paid === true;
-
-    if (!entitled) {
-      const { data: sub } = await supabaseAdmin
-        .from("subscriptions")
-        .select("id")
-        .eq("owner_anon_id", data.ownerAnonId)
-        .in("status", ["active", "trialing"])
-        .limit(1)
-        .maybeSingle();
-      if (sub) entitled = true;
-    }
-
-    if (!entitled) {
-      const verifiedEmail = await getVerifiedEmail();
-      if (verifiedEmail) {
-        if (row.paid === true && row.email?.toLowerCase() === verifiedEmail) {
-          entitled = true;
-        }
-        if (!entitled) {
-          const { data: subByEmail } = await supabaseAdmin
-            .from("subscriptions")
-            .select("id")
-            .eq("email", verifiedEmail)
-            .in("status", ["active", "trialing"])
-            .limit(1)
-            .maybeSingle();
-          if (subByEmail) entitled = true;
-        }
-      }
-    }
+    const { entitled } = await checkEntitlement(row, data.ownerAnonId);
 
     if (!entitled || !row.report_json) {
       return { locked: true as const, paid: row.paid === true };
     }
     return { locked: false as const, report: JSON.parse(JSON.stringify(row.report_json)) };
+  });
+
+// --- AI-chat over the report (Reply Help's neighbor feature: "ask why your
+// Interest Score dropped"). Same entitlement gate as the report itself —
+// only unlocked once the user has paid. Messages persist in
+// report_chat_messages (see migration 20260709090000) so the rate limit
+// below can't be reset by refreshing the page, and so the questions people
+// actually ask become a real VOC data source.
+
+const ChatIdInputSchema = z.object({
+  id: z.string().uuid(),
+  ownerAnonId: z.string().min(8).max(128),
+});
+
+export type ChatMessage = { role: "user" | "assistant"; content: string; createdAt: string };
+
+export const getChatMessages = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => ChatIdInputSchema.parse(input))
+  .handler(async ({ data }): Promise<{ messages: ChatMessage[]; limit: number; locked: boolean }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { chatLimitForPlan } = await import("./vibecheck-chat.server");
+
+    const { data: row, error } = await supabaseAdmin
+      .from("analyses")
+      .select("paid, owner_anon_id, email, plan")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Not found");
+
+    const { entitled, plan } = await checkEntitlement(row, data.ownerAnonId);
+    const limit = chatLimitForPlan(plan);
+    if (!entitled) return { messages: [], limit, locked: true };
+
+    const { data: msgs, error: msgErr } = await supabaseAdmin
+      .from("report_chat_messages")
+      .select("role, content, created_at")
+      .eq("analysis_id", data.id)
+      .order("created_at", { ascending: true });
+    if (msgErr) throw new Error(msgErr.message);
+
+    return {
+      messages: (msgs ?? []).map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content as string,
+        createdAt: m.created_at as string,
+      })),
+      limit,
+      locked: false,
+    };
+  });
+
+const SendChatInputSchema = z.object({
+  id: z.string().uuid(),
+  ownerAnonId: z.string().min(8).max(128),
+  message: z.string().min(1).max(400),
+});
+
+export const sendChatMessage = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => SendChatInputSchema.parse(input))
+  .handler(async ({ data }): Promise<{ reply: string; remaining: number } | { error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { answerReportQuestion, chatLimitForPlan } = await import("./vibecheck-chat.server");
+    type ChatTurn = { role: "user" | "assistant"; content: string };
+
+    const { data: row, error } = await supabaseAdmin
+      .from("analyses")
+      .select("report_json, paid, owner_anon_id, email, plan")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) return { error: error.message };
+    if (!row || !row.report_json) return { error: "Report not found" };
+
+    const { entitled, plan } = await checkEntitlement(row, data.ownerAnonId);
+    if (!entitled) return { error: "locked" };
+    const limit = chatLimitForPlan(plan);
+
+    const { count } = await supabaseAdmin
+      .from("report_chat_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("analysis_id", data.id);
+    const existingRows = count ?? 0;
+    // Each exchange writes 2 rows (user + assistant); gate on the user's
+    // half of the budget so "remaining" reads as "questions left", not rows.
+    const questionsUsed = Math.ceil(existingRows / 2);
+    if (questionsUsed >= limit) {
+      return { error: "limit_reached" };
+    }
+
+    const { data: historyRows, error: histErr } = await supabaseAdmin
+      .from("report_chat_messages")
+      .select("role, content")
+      .eq("analysis_id", data.id)
+      .order("created_at", { ascending: true });
+    if (histErr) return { error: histErr.message };
+
+    const turns: ChatTurn[] = (historyRows ?? []).map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content as string,
+    }));
+    const report = JSON.parse(JSON.stringify(row.report_json)) as Report;
+
+    let reply: string;
+    try {
+      reply = await answerReportQuestion(report, turns, data.message);
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Chat failed" };
+    }
+
+    const { error: insErr } = await supabaseAdmin.from("report_chat_messages").insert([
+      { analysis_id: data.id, role: "user", content: data.message },
+      { analysis_id: data.id, role: "assistant", content: reply },
+    ]);
+    if (insErr) return { error: insErr.message };
+
+    return { reply, remaining: limit - (questionsUsed + 1) };
   });
 
 const PlanEnum = z.enum(["single", "monthly", "yearly"]);
