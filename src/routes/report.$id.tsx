@@ -281,20 +281,117 @@ function ReportSection({ Icon, title, children }: { Icon: typeof Heart; title: s
   );
 }
 
-function StatLine({ label, value, invert }: { label: string; value: number; invert?: boolean }) {
-  const color = invert
-    ? value >= 60 ? "bg-destructive" : "bg-mint"
-    : value >= 70 ? "bg-mint" : value >= 40 ? "bg-pink" : "bg-destructive";
+function PullQuoteBlock({
+  label,
+  text,
+  accent,
+  bare,
+  className,
+}: {
+  label?: string;
+  text: string;
+  accent: "purple" | "pink" | "ink";
+  bare?: boolean;
+  className?: string;
+}) {
+  const sentences = text.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
+  const lead = sentences[0] ?? text;
+  const rest = sentences.slice(1).join(" ").trim();
+
+  const accentText =
+    accent === "purple" ? "text-purple-deep" : accent === "pink" ? "text-pink" : "text-ink";
+  const accentBar =
+    accent === "purple" ? "bg-purple" : accent === "pink" ? "bg-pink" : "bg-ink";
+  const accentBg =
+    accent === "purple" ? "bg-purple-soft/60" : accent === "pink" ? "bg-pink-soft" : "";
+
   return (
-    <div className="rounded-2xl bg-muted/40 p-4">
-      <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3">
-        <span className="min-w-0 truncate text-sm text-ink/80">{label}</span>
-        <span className="font-serif text-2xl">{value}</span>
+    <div className={`${bare ? "" : `rounded-2xl p-4 ${accentBg}`} ${className ?? ""}`.trim()}>
+      {label && (
+        <p className={`text-xs uppercase tracking-widest ${accentText}`}>{label}</p>
+      )}
+      <div className={`${label ? "mt-3" : ""} flex gap-3`}>
+        <span className={`w-1 shrink-0 rounded-full ${accentBar}`} aria-hidden />
+        <p className="font-serif text-xl leading-snug text-ink/90 sm:text-2xl">{lead}</p>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.8 }} className={`h-full ${color}`} />
-      </div>
+      {rest && <p className="mt-3 text-sm leading-relaxed text-ink/75">{rest}</p>}
     </div>
+  );
+}
+
+function DecaySparkline({
+  trajectory,
+  delta,
+  seed,
+}: {
+  trajectory: NonNullable<Report["viral"]>["vibe_decay"]["trajectory"];
+  delta: number;
+  seed: string;
+}) {
+  const w = 600;
+  const h = 120;
+  const pad = 8;
+  const n = 8;
+
+  // Deterministic pseudo-random from seed string.
+  let s = 0;
+  for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+  const rand = () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return (s & 0xffff) / 0xffff;
+  };
+
+  const slope =
+    trajectory === "rising" ? 0.35 :
+    trajectory === "steady" ? 0 :
+    trajectory === "cooling" ? -0.3 : -0.55;
+
+  const start = trajectory === "nose-diving" ? 0.85 : trajectory === "cooling" ? 0.78 : trajectory === "steady" ? 0.55 : 0.35;
+  const points: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const noise = (rand() - 0.5) * 0.12;
+    const y = Math.max(0.05, Math.min(0.95, start + slope * t + noise));
+    points.push(y);
+  }
+  // Nudge final point in the direction of delta for visual truth.
+  const last = Math.max(0.05, Math.min(0.95, points[n - 1] + (delta / 100) * 0.15));
+  points[n - 1] = last;
+
+  const xs = points.map((_, i) => pad + (i * (w - pad * 2)) / (n - 1));
+  const ys = points.map((y) => pad + (1 - y) * (h - pad * 2));
+  const linePath = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L ${xs[n - 1].toFixed(1)} ${h - pad} L ${xs[0].toFixed(1)} ${h - pad} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" style={{ height: 100 }}>
+      <defs>
+        <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--pink)" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="var(--pink)" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <motion.path
+        d={areaPath}
+        fill="url(#spark-fill)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.3 }}
+      />
+      <motion.path
+        d={linePath}
+        fill="none"
+        stroke="var(--purple)"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 1.1, ease: "easeOut" }}
+      />
+      <circle cx={xs[n - 1]} cy={ys[n - 1]} r={5} fill="var(--purple)" />
+      <circle cx={xs[n - 1]} cy={ys[n - 1]} r={9} fill="var(--purple)" opacity={0.25} />
+    </svg>
   );
 }
 
