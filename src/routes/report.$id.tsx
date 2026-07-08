@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
-import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, CheckCircle, AlertCircle, Sparkles, Award, Film, Quote, TrendingDown, TrendingUp, Minus, Share2, Send, Copy, Check, History } from "lucide-react";
+import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, CheckCircle, AlertCircle, Sparkles, Award, Film, Quote, TrendingDown, TrendingUp, Minus, Share2, Send, Copy, Check, History, Wind } from "lucide-react";
 import { getAnalysisFull, getCheckins } from "@/lib/vibecheck.functions";
 import { getAnonId } from "@/lib/anon-id";
 import type { Report, Flag } from "@/lib/vibecheck-schema";
@@ -306,6 +306,8 @@ function ReportPage() {
                 className="mt-4"
               />
             </div>
+
+            <CloseTheLoop report={report} overallScore={overallScore} />
           </div>
 
           <div className="mt-10 text-center">
@@ -501,6 +503,71 @@ function ReplyCard({ label, text, accent }: { label: string; text: string; accen
         </button>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-ink/85">"{text}"</p>
+    </div>
+  );
+}
+
+// "Close the Gestalt" — the Zeigarnik effect (unfinished situations loop in
+// memory harder than resolved ones) says the report itself already gives
+// closure; this just gives that moment a physical, interactive beat instead
+// of the report silently ending. No new data, no invented percentages —
+// just a framed pause on what's already been said (vibe_award / overallScore
+// / future_outlook), reusing values already in scope on the report page.
+function CloseTheLoop({ report, overallScore }: { report: Report; overallScore: number }) {
+  const [closed, setClosed] = useState(false);
+  const label = report.viral?.vibe_award?.title
+    ? `your read: ${report.viral.vibe_award.title.toLowerCase()}`
+    : `a clear ${overallScore}% read`;
+
+  return (
+    <div className="relative mt-2 overflow-hidden rounded-3xl border border-border/60 bg-card p-6 text-center shadow-sm sm:p-8">
+      <AnimatePresence mode="wait">
+        {!closed ? (
+          <motion.div
+            key="button"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="mx-auto max-w-md text-sm text-ink/60">
+              Still replaying their last message in your head? That looping feeling has a name — the Zeigarnik effect. Unfinished things stick. You've got your answer now.
+            </p>
+            <button
+              onClick={() => setClosed(true)}
+              className="mt-5 inline-flex items-center gap-2 rounded-full bg-ink px-7 py-4 text-sm font-medium text-white transition duration-500 hover:shadow-[0_0_30px_6px_rgba(236,72,153,0.35)]"
+            >
+              <Wind className="h-4 w-4" />
+              Close the loop and exhale
+            </button>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="closed"
+            className="relative"
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 grid place-items-center"
+              initial={{ opacity: 0.55, scale: 0.6 }}
+              animate={{ opacity: 0, scale: 2.4 }}
+              transition={{ duration: 1.2, ease: "easeOut" }}
+            >
+              <div className="h-24 w-24 rounded-full bg-purple-soft blur-2xl" />
+            </motion.div>
+            <div className="relative mx-auto grid h-12 w-12 place-items-center rounded-full bg-mint text-white">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <h3 className="font-serif relative mt-4 text-2xl">Loop closed.</h3>
+            <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink/75">
+              You have {label} — whatever happens next, you're not walking in blind anymore.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

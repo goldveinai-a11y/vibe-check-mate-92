@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   CheckCircle2,
   Info,
+  Compass,
+  Anchor,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -59,6 +61,43 @@ function Landing() {
           </div>
 
           <div className="mt-10 h-px w-full max-w-md bg-border/70" />
+        </div>
+      </section>
+
+      {/* Why it works — the psychology of why ambiguity is exhausting and
+          closure is a relief. Deliberately two real, citable theories with
+          honest framing — no invented percentages or fake "confidence
+          scores." Sits before "How it works" so it answers *why you'd want
+          this* before explaining the mechanics. */}
+      <section className="px-5 pb-16 sm:pb-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl">Why your brain wants this</h2>
+            <p className="mt-4 text-base text-ink/70">
+              Two well-documented ideas from communication psychology explain why mixed signals feel so draining — and why a clear answer is such a relief.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 sm:grid-cols-2">
+            <div className="rounded-3xl border border-border/50 bg-card p-6 shadow-sm sm:p-8">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-purple-soft">
+                <Compass className="h-5 w-5 text-purple-deep" />
+              </div>
+              <h3 className="font-serif mt-5 text-xl">Uncertainty Reduction Theory</h3>
+              <p className="mt-3 text-sm text-ink/70">
+                Berger &amp; Calabrese's research found that not knowing where you stand with someone is itself stressful — our brains are wired to seek predictability in relationships. Reading the same texts over and over doesn't resolve that; an outside, structured read of the actual patterns does.
+              </p>
+            </div>
+            <div className="rounded-3xl border border-border/50 bg-card p-6 shadow-sm sm:p-8">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pink-soft">
+                <Anchor className="h-5 w-5 text-pink" />
+              </div>
+              <h3 className="font-serif mt-5 text-xl">The Zeigarnik Effect</h3>
+              <p className="mt-3 text-sm text-ink/70">
+                Psychologist Bluma Zeigarnik found that unfinished situations stick in memory far more than resolved ones — which is exactly why an unanswered "where do we stand" keeps looping in your head. A clear read gives that loop somewhere to land.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
