@@ -20,6 +20,24 @@ async function markAnalysisPaid(session: Record<string, unknown>) {
       email: metadata.email ? metadata.email.toLowerCase() : null,
     })
     .eq("id", analysisId);
+
+  // Wingman referral V1: only bump the redemption counter once the payment
+  // has actually gone through (verified webhook, not just "checkout was
+  // opened with a ref param") — read-then-write since Supabase JS has no
+  // atomic increment helper, acceptable at this volume.
+  if (metadata.refCode) {
+    const { data: referral } = await supabaseAdmin
+      .from("referrals")
+      .select("id, redemption_count")
+      .eq("code", metadata.refCode)
+      .maybeSingle();
+    if (referral) {
+      await supabaseAdmin
+        .from("referrals")
+        .update({ redemption_count: (referral.redemption_count as number) + 1 })
+        .eq("id", referral.id as string);
+    }
+  }
 }
 
 async function upsertSubscription(sub: Record<string, unknown>, env: StripeEnv) {
