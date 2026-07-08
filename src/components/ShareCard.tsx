@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { Sparkles } from "lucide-react";
 import type { ViralKeyword } from "@/lib/vibecheck-schema";
 
-export type ShareCardVariant = "hero" | "wordcloud" | "threewords";
+export type ShareCardVariant = "hero" | "wordcloud" | "threewords" | "badge";
 
 export type ShareCardData = {
   award: { title: string; subtitle: string } | null;
@@ -14,8 +14,13 @@ export type ShareCardData = {
 };
 
 const FOOTER = (
-  <div className="text-center text-2xl text-white/80">
-    get your own read → <span className="font-semibold text-white">vibecheck.app</span>
+  <div className="text-center">
+    <div className="text-2xl text-white/80">
+      get your own read → <span className="font-semibold text-white">vibecheck.app</span>
+    </div>
+    <div className="mt-3 text-base text-white/50">
+      AI-generated read · no screenshots included or ever stored
+    </div>
   </div>
 );
 
@@ -62,6 +67,38 @@ export const ShareCard = forwardRef<HTMLDivElement, { data: ShareCardData; varia
             </div>
           </div>
           {FOOTER}
+        </div>
+      );
+    }
+
+    if (variant === "badge") {
+      // Square format (not the 1080x1920 story canvas) — sized for a
+      // Tinder/Hinge profile photo slot or Instagram grid post, not Stories.
+      // Meant to be posted/added as a "certified" sticker, not read as a report.
+      return (
+        <div
+          ref={ref}
+          style={{ width: 1080, height: 1080 }}
+          className="relative flex flex-col items-center justify-between overflow-hidden bg-gradient-to-br from-pink via-purple to-ink p-16 text-white"
+        >
+          {LOGO}
+          <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
+            <div className="grid place-items-center rounded-full bg-white text-ink" style={{ width: 280, height: 280 }}>
+              <div className="text-center">
+                <div className="font-serif text-8xl leading-none">{data.overallScore}%</div>
+                <div className="mt-1 text-sm uppercase tracking-[0.25em] text-ink/60">Vibe Score</div>
+              </div>
+            </div>
+            {data.award && (
+              <div className="rounded-[32px] bg-white/10 px-10 py-6 backdrop-blur-sm">
+                <div className="text-xs uppercase tracking-[0.3em] text-white/70">VibeCheck Certified</div>
+                <div className="font-serif mt-2 text-4xl leading-tight">{data.award.title}</div>
+              </div>
+            )}
+          </div>
+          <div className="text-center text-xl text-white/60">
+            get your read → <span className="font-semibold text-white/90">vibecheck.app</span>
+          </div>
         </div>
       );
     }

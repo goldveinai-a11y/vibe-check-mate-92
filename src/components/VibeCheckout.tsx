@@ -11,12 +11,16 @@ interface Props {
   // any future) report again from any device via magic link, instead of
   // relying solely on a localStorage anon id.
   email: string;
+  // Wingman referral V1 — set if the visitor arrived via a friend's
+  // ?ref= link. Server re-validates it's real and not self-referred;
+  // silently ignored if not.
+  refCode?: string | null;
 }
 
-export function VibeCheckout({ analysisId, ownerAnonId, plan, returnUrl, email }: Props) {
+export function VibeCheckout({ analysisId, ownerAnonId, plan, returnUrl, email, refCode }: Props) {
   const fetchClientSecret = async () => {
     const result = await createCheckoutSession({
-      data: { analysisId, ownerAnonId, plan, returnUrl, environment: getStripeEnvironment(), email },
+      data: { analysisId, ownerAnonId, plan, returnUrl, environment: getStripeEnvironment(), email, ...(refCode ? { refCode } : {}) },
     });
     if ("error" in result) throw new Error(result.error);
     if (!result.clientSecret) throw new Error("No client secret returned");
