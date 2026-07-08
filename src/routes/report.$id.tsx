@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { useRef } from "react";
+import { animate, motion, useMotionValue } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, CheckCircle, AlertCircle, Sparkles, Award, Film, Quote, TrendingDown, TrendingUp, Minus, Share2 } from "lucide-react";
 import { getAnalysisFull } from "@/lib/vibecheck.functions";
 import { getAnonId } from "@/lib/anon-id";
 import type { Report, Flag } from "@/lib/vibecheck-schema";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
+import { CompatibilityRadar } from "@/components/CompatibilityRadar";
 
 const fullQuery = (id: string, ownerAnonId: string) =>
   queryOptions({
