@@ -65,37 +65,32 @@ export type Database = {
         }
         Relationships: []
       }
-      report_checkins: {
+      referrals: {
         Row: {
-          analysis_id: string
+          code: string
           created_at: string
           id: string
-          overall_score: number
-          scores: Json
+          owner_anon_id: string
+          owner_email: string | null
+          redemption_count: number
         }
         Insert: {
-          analysis_id: string
+          code: string
           created_at?: string
           id?: string
-          overall_score: number
-          scores: Json
+          owner_anon_id: string
+          owner_email?: string | null
+          redemption_count?: number
         }
         Update: {
-          analysis_id?: string
+          code?: string
           created_at?: string
           id?: string
-          overall_score?: number
-          scores?: Json
+          owner_anon_id?: string
+          owner_email?: string | null
+          redemption_count?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "report_checkins_analysis_id_fkey"
-            columns: ["analysis_id"]
-            isOneToOne: false
-            referencedRelation: "analyses"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       report_chat_messages: {
         Row: {
@@ -129,32 +124,37 @@ export type Database = {
           },
         ]
       }
-      referrals: {
+      report_checkins: {
         Row: {
-          code: string
+          analysis_id: string
           created_at: string
           id: string
-          owner_anon_id: string
-          owner_email: string | null
-          redemption_count: number
+          overall_score: number
+          scores: Json
         }
         Insert: {
-          code: string
+          analysis_id: string
           created_at?: string
           id?: string
-          owner_anon_id: string
-          owner_email?: string | null
-          redemption_count?: number
+          overall_score: number
+          scores: Json
         }
         Update: {
-          code?: string
+          analysis_id?: string
           created_at?: string
           id?: string
-          owner_anon_id?: string
-          owner_email?: string | null
-          redemption_count?: number
+          overall_score?: number
+          scores?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "report_checkins_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
