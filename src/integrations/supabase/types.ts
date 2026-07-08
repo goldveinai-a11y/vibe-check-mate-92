@@ -65,6 +65,70 @@ export type Database = {
         }
         Relationships: []
       }
+      report_checkins: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          id: string
+          overall_score: number
+          scores: Json
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          id?: string
+          overall_score: number
+          scores: Json
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          id?: string
+          overall_score?: number
+          scores?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_checkins_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_chat_messages: {
+        Row: {
+          analysis_id: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          analysis_id: string
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          analysis_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_chat_messages_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
