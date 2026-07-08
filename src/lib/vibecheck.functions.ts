@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ImageInputSchema = z.object({
   mediaType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
@@ -82,16 +83,26 @@ export const getAnalysisFull = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => FullInputSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getVerifiedEmail } = await import("./optional-auth.server");
     const { data: row, error } = await supabaseAdmin
       .from("analyses")
-      .select("id, status, report_json, paid, owner_anon_id")
+      .select("id, status, report_json, paid, owner_anon_id, email")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Not found");
 
-    // Check entitlement: paid on this analysis OR active subscription for this owner.
+    // Entitlement, checked in order:
+    // 1. This exact analysis was paid for.
+    // 2. An active/trialing subscription matches the anonymous device id —
+    //    fast path right after purchase, same browser, no login needed.
+    // 3. The signed-in user's verified email (from a Supabase magic-link
+    //    session, attached automatically to this request if one exists)
+    //    matches this analysis's owner email, or matches an active/trialing
+    //    subscription. This is what makes access survive a new device or a
+    //    cleared browser — the anon id alone never would.
     let entitled = row.paid === true;
+
     if (!entitled) {
       const { data: sub } = await supabaseAdmin
         .from("subscriptions")
@@ -101,6 +112,25 @@ export const getAnalysisFull = createServerFn({ method: "POST" })
         .limit(1)
         .maybeSingle();
       if (sub) entitled = true;
+    }
+
+    if (!entitled) {
+      const verifiedEmail = await getVerifiedEmail();
+      if (verifiedEmail) {
+        if (row.paid === true && row.email?.toLowerCase() === verifiedEmail) {
+          entitled = true;
+        }
+        if (!entitled) {
+          const { data: subByEmail } = await supabaseAdmin
+            .from("subscriptions")
+            .select("id")
+            .eq("email", verifiedEmail)
+            .in("status", ["active", "trialing"])
+            .limit(1)
+            .maybeSingle();
+          if (subByEmail) entitled = true;
+        }
+      }
     }
 
     if (!entitled || !row.report_json) {
@@ -117,7 +147,10 @@ const CheckoutInputSchema = z.object({
   plan: PlanEnum,
   environment: z.enum(["sandbox", "live"]),
   returnUrl: z.string().url(),
-  email: z.string().email().optional(),
+  // Required, not optional: email is now the durable identity key that lets
+  // a buyer find their report(s) again from any device via magic link,
+  // instead of relying solely on a localStorage anon id.
+  email: z.string().email(),
 });
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
@@ -149,6 +182,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         analysisId: data.analysisId,
         ownerAnonId: data.ownerAnonId,
         plan: data.plan,
+        email: data.email,
       };
 
       const isSubscription = data.plan !== "single";
@@ -170,7 +204,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         ui_mode: "embedded_page",
         return_url: data.returnUrl,
         automatic_tax: { enabled: true },
-        ...(data.email ? { customer_email: data.email } : {}),
+        customer_email: data.email,
         metadata,
         ...(isSubscription
           ? {
@@ -189,7 +223,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 
       await supabaseAdmin
         .from("analyses")
-        .update({ stripe_session_id: session.id, plan: data.plan, email: data.email ?? null })
+        .update({ stripe_session_id: session.id, plan: data.plan, email: data.email })
         .eq("id", data.analysisId);
 
       return { clientSecret: session.client_secret ?? "" };
@@ -213,13 +247,12 @@ export const saveEmail = createServerFn({ method: "POST" })
   });
 
 export const getUnlockedCount = createServerFn({ method: "GET" }).handler(async () => {
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-  );
-  const { count } = await supabase
+  // Uses supabaseAdmin (service role) rather than a raw anon-key client —
+  // the analyses table no longer grants anon/authenticated any direct
+  // access (see the RLS lockdown migration), so this was the last caller
+  // that needed fixing to match.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { count } = await supabaseAdmin
     .from("analyses")
     .select("id", { count: "exact", head: true })
     .eq("paid", true);
@@ -227,3 +260,124 @@ export const getUnlockedCount = createServerFn({ method: "GET" }).handler(async 
   const baseline = 12_478;
   return { count: baseline + (count ?? 0) };
 });
+
+const MyReportsResultSchema = z.object({
+  email: z.string(),
+  reports: z.array(
+    z.object({
+      id: z.string(),
+      createdAt: z.string(),
+      status: z.string(),
+      plan: z.string().nullable(),
+      paid: z.boolean(),
+      interestScore: z.number().nullable(),
+      headline: z.string().nullable(),
+    }),
+  ),
+  subscription: z
+    .object({
+      plan: z.string(),
+      status: z.string(),
+      currentPeriodEnd: z.string().nullable(),
+    })
+    .nullable(),
+});
+export type MyReportsResult = z.infer<typeof MyReportsResultSchema>;
+
+// Protected by requireSupabaseAuth — only returns data for the email address
+// verified on the caller's own Supabase magic-link session. This is the
+// "My Reports" account page: it's what makes a purchase (or subscription)
+// findable again from a brand-new device, instead of being stranded behind
+// a localStorage id that only ever lived in one browser.
+export const getMyReports = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<MyReportsResult> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const email = (context.claims as { email?: string }).email?.toLowerCase();
+    if (!email) throw new Error("No verified email on this session");
+
+    const { data: analyses, error } = await supabaseAdmin
+      .from("analyses")
+      .select("id, created_at, status, plan, paid, preview_json")
+      .eq("email", email)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+
+    const { data: subs } = await supabaseAdmin
+      .from("subscriptions")
+      .select("plan, status, current_period_end")
+      .eq("email", email)
+      .in("status", ["active", "trialing", "past_due"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    return {
+      email,
+      reports: (analyses ?? []).map((a) => {
+        const preview = a.preview_json as {
+          scores?: { interest_score?: number };
+          viral_preview?: { pop_culture_match?: { couple?: string }; vibe_award?: { title?: string } };
+        } | null;
+        return {
+          id: a.id as string,
+          createdAt: a.created_at as string,
+          status: a.status as string,
+          plan: (a.plan as string | null) ?? null,
+          paid: a.paid as boolean,
+          interestScore: preview?.scores?.interest_score ?? null,
+          headline: preview?.viral_preview?.vibe_award?.title ?? preview?.viral_preview?.pop_culture_match?.couple ?? null,
+        };
+      }),
+      subscription: subs?.[0]
+        ? {
+            plan: subs[0].plan as string,
+            status: subs[0].status as string,
+            currentPeriodEnd: (subs[0].current_period_end as string | null) ?? null,
+          }
+        : null,
+    };
+  });
+
+const BillingPortalInputSchema = z.object({
+  returnUrl: z.string().url(),
+  environment: z.enum(["sandbox", "live"]),
+});
+
+// Protected by requireSupabaseAuth. Hands off subscription management to
+// Stripe's own hosted Billing Portal instead of building cancel/upgrade UI —
+// cheaper to build and maintain, and Stripe already handles the compliance
+// details (clear cancellation, proration, receipts).
+export const createBillingPortalSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => BillingPortalInputSchema.parse(input))
+  .handler(async ({ data, context }): Promise<{ url: string } | { error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { createStripeClient, getStripeErrorMessage } = await import("./stripe.server");
+    const email = (context.claims as { email?: string }).email?.toLowerCase();
+    if (!email) return { error: "No verified email on this session" };
+
+    const { data: sub } = await supabaseAdmin
+      .from("subscriptions")
+      .select("stripe_customer_id")
+      .eq("email", email)
+      .not("stripe_customer_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!sub?.stripe_customer_id) {
+      return { error: "No subscription found for this account" };
+    }
+
+    try {
+      const stripe = createStripeClient(data.environment);
+      const session = await stripe.billingPortal.sessions.create({
+        customer: sub.stripe_customer_id as string,
+        return_url: data.returnUrl,
+      });
+      return { url: session.url };
+    } catch (err) {
+      return { error: getStripeErrorMessage(err) };
+    }
+  });
