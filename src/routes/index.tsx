@@ -41,6 +41,10 @@ function Landing() {
             Upload your chat screenshots and let VibeCheck decode the vibe. Get an instant compatibility score and honest insights into where things really stand.
           </p>
 
+          <p className="mt-3 max-w-xl text-sm italic text-ink/50 sm:text-base">
+            No more re-reading the thread at 1am. No more asking three friends for four different opinions.
+          </p>
+
           <Link
             to="/upload"
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-pink px-8 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"

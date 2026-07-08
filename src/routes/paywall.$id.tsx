@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail } from "lucide-react";
+import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock } from "lucide-react";
 import { VibeCheckout } from "@/components/VibeCheckout";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { getAnonId } from "@/lib/anon-id";
@@ -127,8 +127,12 @@ function PaywallPage() {
                   Unlock the full story of your vibe
                 </h1>
                 <p className="mt-4 max-w-2xl text-base text-ink/70">
-                  You've seen the surface. Go deeper with a detailed, AI-powered breakdown of everything happening between the lines of your conversation.
+                  You've seen the surface. Go deeper with a detailed, AI-powered breakdown of everything happening between the lines of your conversation — so you can stop wondering and know where you actually stand.
                 </p>
+                <div className="mt-4 flex items-center gap-2 text-sm text-ink/60">
+                  <Lock className="h-4 w-4 text-mint" />
+                  Your screenshots are never stored — read once, then permanently deleted.
+                </div>
               </div>
 
               <div className="mt-12 grid gap-8 lg:grid-cols-2">
