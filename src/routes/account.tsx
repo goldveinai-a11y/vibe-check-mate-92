@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Heart, Loader2, LogOut, CreditCard, Sparkles, ExternalLink } from "lucide-react";
+import { Heart, Loader2, LogOut, CreditCard, Sparkles, ExternalLink, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyReports, createBillingPortalSession, type MyReportsResult } from "@/lib/vibecheck.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
@@ -173,30 +173,48 @@ function AccountPage() {
             <p className="mt-3 text-sm text-ink/60">No reports yet on this email.</p>
           ) : (
             <div className="mt-4 space-y-3">
-              {data.reports.map((r) => (
-                <Link
-                  key={r.id}
-                  to={r.paid ? "/report/$id" : "/results/$id"}
-                  params={{ id: r.id }}
-                  className="flex items-center justify-between rounded-3xl border border-border/60 bg-card p-4 shadow-sm transition hover:scale-[1.01] sm:p-5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{r.headline ?? "VibeCheck report"}</p>
-                    <p className="mt-1 text-xs text-ink/60">
-                      {new Date(r.createdAt).toLocaleDateString()}
-                      {r.interestScore != null && <> · {r.interestScore}% interest</>}
-                      {!r.paid && <> · preview only</>}
-                    </p>
-                  </div>
-                  <span
-                    className={`ml-3 shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                      r.paid ? "bg-mint-soft text-ink/80" : "bg-pink-soft text-pink"
-                    }`}
+              {data.reports.map((r) => {
+                const daysSinceActivity = (Date.now() - new Date(r.lastActivityAt).getTime()) / 86_400_000;
+                const showNudge = r.paid && daysSinceActivity >= 7;
+                return (
+                  <div
+                    key={r.id}
+                    className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm transition hover:scale-[1.01] sm:p-5"
                   >
-                    {r.paid ? "Unlocked" : "Preview"}
-                  </span>
-                </Link>
-              ))}
+                    <Link
+                      to={r.paid ? "/report/$id" : "/results/$id"}
+                      params={{ id: r.id }}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{r.headline ?? "VibeCheck report"}</p>
+                        <p className="mt-1 text-xs text-ink/60">
+                          {new Date(r.createdAt).toLocaleDateString()}
+                          {r.interestScore != null && <> · {r.interestScore}% interest</>}
+                          {!r.paid && <> · preview only</>}
+                        </p>
+                      </div>
+                      <span
+                        className={`ml-3 shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                          r.paid ? "bg-mint-soft text-ink/80" : "bg-pink-soft text-pink"
+                        }`}
+                      >
+                        {r.paid ? "Unlocked" : "Preview"}
+                      </span>
+                    </Link>
+                    {showNudge && (
+                      <Link
+                        to="/checkin/$id"
+                        params={{ id: r.id }}
+                        className="mt-3 flex items-center gap-2 rounded-2xl bg-purple-soft/60 px-3.5 py-2.5 text-xs font-medium text-purple-deep transition hover:bg-purple-soft"
+                      >
+                        <History className="h-3.5 w-3.5 shrink-0" />
+                        {Math.round(daysSinceActivity)} days since your last check-in — see if the vibe shifted →
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

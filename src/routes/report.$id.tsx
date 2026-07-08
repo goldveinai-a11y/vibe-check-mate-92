@@ -10,6 +10,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 import { CompatibilityRadar } from "@/components/CompatibilityRadar";
 import { ReportChat } from "@/components/ReportChat";
+import { WordCloud } from "@/components/WordCloud";
 
 const fullQuery = (id: string, ownerAnonId: string) =>
   queryOptions({
@@ -68,6 +69,16 @@ function ReportPage() {
   const shareRef = useRef<HTMLDivElement>(null);
   const handleShare = async () => {
     if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
+  };
+
+  const wordCloudShareRef = useRef<HTMLDivElement>(null);
+  const handleShareWordCloud = async () => {
+    if (wordCloudShareRef.current) await exportShareCard(wordCloudShareRef.current, "vibecheck-words.png");
+  };
+
+  const threeWordsShareRef = useRef<HTMLDivElement>(null);
+  const handleShareThreeWords = async () => {
+    if (threeWordsShareRef.current) await exportShareCard(threeWordsShareRef.current, "vibecheck-type.png");
   };
 
   const checkinsQuery = useQuery({
@@ -145,6 +156,12 @@ function ReportPage() {
                     </span>
                   ))}
                 </div>
+                <button
+                  onClick={handleShareThreeWords}
+                  className="mx-auto mt-5 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-ink shadow-sm transition hover:bg-muted"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> Share to Stories
+                </button>
               </ReportSection>
             )}
 
@@ -158,6 +175,13 @@ function ReportPage() {
 
             {viral?.viral_keywords && viral.viral_keywords.length > 0 && (
               <ReportSection Icon={Quote} title="Words That Moved the Needle">
+                <WordCloud keywords={viral.viral_keywords} />
+                <button
+                  onClick={handleShareWordCloud}
+                  className="mx-auto mb-5 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-ink shadow-sm transition hover:bg-muted"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> Share to Stories
+                </button>
                 <div className="space-y-3">
                   {viral.viral_keywords.map((k, i) => {
                     const color = k.type === "green_flag" ? "bg-mint-soft text-mint" : k.type === "beige_flag" ? "bg-muted text-ink/70" : "bg-destructive/10 text-destructive";
@@ -298,6 +322,20 @@ function ReportPage() {
 
       <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
         <ShareCard ref={shareRef} data={shareData} />
+        {viral?.viral_keywords && (
+          <ShareCard
+            ref={wordCloudShareRef}
+            variant="wordcloud"
+            data={{ ...shareData, keywords: viral.viral_keywords }}
+          />
+        )}
+        {viral?.their_type_in_3_words && (
+          <ShareCard
+            ref={threeWordsShareRef}
+            variant="threewords"
+            data={{ ...shareData, threeWords: viral.their_type_in_3_words }}
+          />
+        )}
       </div>
     </main>
   );
