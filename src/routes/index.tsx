@@ -14,7 +14,6 @@ import {
   Brain,
   ShieldCheck,
   CheckCircle2,
-  Info,
   Compass,
   Anchor,
 } from "lucide-react";
@@ -79,7 +78,11 @@ function Landing() {
       <section className="px-5 pb-16 sm:pb-24">
         <div className="mx-auto max-w-5xl">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl">Why your brain wants this</h2>
+            <span className="inline-flex items-center gap-2 rounded-full bg-purple-soft px-4 py-2 text-xs font-medium text-purple-deep sm:text-sm">
+              <Brain className="h-3.5 w-3.5" />
+              Yes, we read the textbooks too
+            </span>
+            <h2 className="font-serif mt-6 text-3xl sm:text-4xl md:text-5xl">Why your brain wants this</h2>
             <p className="mt-4 text-base text-ink/70">
               Two well-documented ideas from communication psychology explain why mixed signals feel so draining — and why a clear answer is such a relief.
             </p>
@@ -207,11 +210,6 @@ function Landing() {
               </li>
             ))}
           </ul>
-
-          <div className="mt-6 flex items-start gap-3 rounded-2xl bg-muted/60 p-4 text-xs text-ink/60">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>VibeCheck is designed for fun and reflection. Insights are AI-generated estimates and should not replace real conversations or professional advice.</p>
-          </div>
         </div>
       </section>
 

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
-import { Upload as UploadIcon, Sparkles, ShieldCheck, Lock } from "lucide-react";
+import { Upload as UploadIcon, Sparkles, ShieldCheck } from "lucide-react";
 import { createAnalysis } from "@/lib/vibecheck.functions";
 import { getAnonId, rememberOwnedAnalysis, captureRefCode } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -176,16 +176,7 @@ function UploadPage() {
                 <ShieldCheck className="h-4 w-4" />
               </div>
               <p className="min-w-0">
-                Your screenshots are analyzed privately and are never stored or shared. They're deleted the moment your report is generated.
-              </p>
-            </div>
-
-            <div className="mt-4 flex items-start gap-3 rounded-2xl bg-muted/50 p-4 text-xs text-ink/60">
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink/80 text-white">
-                <Lock className="h-4 w-4" />
-              </div>
-              <p className="min-w-0">
-                Your privacy is protected. Screenshots are heavily encrypted, analyzed instantly, and permanently deleted from our system immediately after processing.
+                Zero receipts kept: encrypted in transit, read once, deleted the second your report's ready. Never stored, never shared, never used to train anything.
               </p>
             </div>
 

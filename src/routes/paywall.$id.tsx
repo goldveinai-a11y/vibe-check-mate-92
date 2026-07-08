@@ -138,7 +138,7 @@ function PaywallPage() {
                 </p>
                 <div className="mt-4 flex items-center gap-2 text-sm text-ink/60">
                   <Lock className="h-4 w-4 text-mint" />
-                  Your screenshots are never stored — read once, then permanently deleted.
+                  No receipts kept — read once, deleted for good.
                 </div>
               </div>
 

@@ -379,7 +379,7 @@ function ResultsPage() {
               Unlock Full Report
             </Link>
             <p className="mt-3 text-center text-xs text-ink/60">
-              One-time payment · Instant access · Your screenshots are never stored.
+              One-time payment · Instant access · No receipts kept
             </p>
           </div>
         </div>
