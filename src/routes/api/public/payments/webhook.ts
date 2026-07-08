@@ -13,6 +13,11 @@ async function markAnalysisPaid(session: Record<string, unknown>) {
       plan: metadata.plan as "single" | "monthly" | "yearly",
       stripe_session_id: (session.id as string) ?? null,
       stripe_subscription_id: (session.subscription as string) ?? null,
+      // Belt-and-suspenders: createCheckoutSession already writes this at
+      // session-creation time, but re-affirming it here from the verified
+      // webhook payload means the durable email key is set even if that
+      // earlier write ever failed.
+      email: metadata.email ? metadata.email.toLowerCase() : null,
     })
     .eq("id", analysisId);
 }
@@ -27,12 +32,14 @@ async function upsertSubscription(sub: Record<string, unknown>, env: StripeEnv) 
   const item = items[0];
   const periodEnd = item?.current_period_end ?? (sub as { current_period_end?: number }).current_period_end;
 
+  const email = metadata.email ? metadata.email.toLowerCase() : null;
+
   await supabaseAdmin
     .from("subscriptions")
     .upsert(
       {
         owner_anon_id: ownerAnonId,
-        email: null,
+        email,
         plan,
         status: (["trialing", "active", "canceled", "past_due", "incomplete"].includes(status)
           ? status
