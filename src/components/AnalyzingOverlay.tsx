@@ -43,8 +43,12 @@ const QUIPS = [
 
 export function AnalyzingOverlay({ thumbs }: { thumbs: Thumb[] }) {
   const [progress, setProgress] = useState(6);
-  const [stageIdx, setStageIdx] = useState(0);
   const [quipIdx, setQuipIdx] = useState(0);
+
+  // stage checklist is derived directly from progress — it advances once,
+  // in lockstep with the bar, and holds on the last stage. no separate
+  // timer means no risk of it looping back to the start mid-analysis.
+  const stageIdx = Math.min(STAGES.length - 1, Math.floor((progress / 100) * STAGES.length));
 
   useEffect(() => {
     const iv = setInterval(
@@ -56,11 +60,6 @@ export function AnalyzingOverlay({ thumbs }: { thumbs: Thumb[] }) {
         }),
       380,
     );
-    return () => clearInterval(iv);
-  }, []);
-
-  useEffect(() => {
-    const iv = setInterval(() => setStageIdx((i) => (i + 1) % STAGES.length), 2200);
     return () => clearInterval(iv);
   }, []);
 
