@@ -1,44 +1,33 @@
-## Цель
-Усилить визуал полного отчёта (`/report/$id`) — убрать «стены текста» в платной части, добавить графики и микро-анимации без изменений схемы, промпта и старых отчётов.
+## Проблема
+Превью не собирается: build падает из-за отсутствующего файла `src/components/ReportChat.tsx`. Он импортируется в `src/routes/report.$id.tsx` (строка 13), но никогда не был создан. TypeScript: `TS2307: Cannot find module '@/components/ReportChat'`. Статический превью → «Preview has not been built yet».
+
+Бэкенд для чата уже готов: `getChatMessages` и `sendChatMessage` в `src/lib/vibecheck.functions.ts`, промпт/лимиты в `src/lib/vibecheck-chat.server.ts`, таблица `report_chat_messages` (миграция 20260709090000). Не хватает только UI-компонента.
 
 ## Что делаем
 
-### 1. Sparkline в Vibe Decay
-- В `VibeDecayCard` (файл `src/routes/report.$id.tsx`) добавляем декоративный SVG-sparkline на 8 точек.
-- Точки синтезируются детерминированно из `trajectory` + `weekly_delta_pct` (например: rising = восходящая с шумом, nose-diving = крутая нисходящая). Стабильный seed от `range`, чтобы график не «дёргался» при ре-рендере.
-- Градиентная заливка под линией (pink → transparent), сама линия — purple. Высота ~80px, во всю ширину карточки.
-- Подписи слева/справа диапазона (`range`).
+**Создать `src/components/ReportChat.tsx`** — компонент чата по отчёту, вызывается в `report.$id.tsx` как `<ReportChat analysisId={id} ownerAnonId={ownerAnonId} />`.
 
-### 2. Радар-чарт в Compatibility Breakdown
-- Новый компонент `src/components/CompatibilityRadar.tsx`: чистый SVG, 7 осей, polygon с заливкой `pink/purple` градиентом.
-- Оси: Interest, Reciprocity, Warmth, Consistency, Flirting, Health, Non-toxicity (100 − toxicity_score).
-- Подписи по вершинам, лёгкая сетка (3 концентрических 7-угольника).
-- `framer-motion`: polygon анимируется от центра к финальной форме за 0.8s.
-- Ниже радара оставляем компактный список тех же 7 метрик мелким шрифтом (сохраняем читаемость чисел), но без прогресс-баров — они дублировали радар.
+Функционал:
+- `useQuery` → `getChatMessages({ data: { id, ownerAnonId } })` — грузит историю + `limit` + `locked`.
+- Если `locked` — просто ничего не рендерим (страница отчёта уже видна только при оплате, но подстрахуемся).
+- Список сообщений в стиле бренда (bubble для user справа розовый, для assistant слева карточка на cream/purple-soft, шрифт как в остальном отчёте).
+- Инпут снизу + кнопка Send (Lucide `Send`), enter = отправить, `maxLength=400`, disabled когда `sending` или `remaining === 0`.
+- Мутация: `sendChatMessage` → оптимистично добавляем user-turn, показываем «typing…» индикатор, по ответу добавляем assistant-turn и обновляем `remaining`. При `error === "limit_reached"` — показать спокойную плашку «you've used all N questions for this report». При `error === "locked"` — плашка «unlock to chat». Прочие ошибки — тост-строка ниже инпута.
+- Счётчик «X of N questions left» справа сверху карточки.
+- 2-3 предложенных стартовых вопроса-чипа (client-side константы: «why is my interest score X?», «what should I do next?», «are the red flags dealbreakers?») — кликом подставляются в инпут; показываем только когда история пустая.
+- Заголовок блока: `Ask the report` + иконка `MessageCircle`, короткий подзаголовок «Follow-up questions, grounded in your data».
 
-### 3. Визуальное усиление Psych / Gottman / Verdict / Future Outlook
-- В каждом из этих блоков (`report.$id.tsx`) первое предложение выносим в **pull-quote**: `font-serif`, крупный кегль, цветной акцент, тонкая вертикальная планка слева.
-- Остальной текст — обычным весом ниже.
-- Иконка блока увеличивается и получает мягкий цветной фон-«медальон» (уже частично сделано, приводим к единому стилю).
-- Не плодим микрокарточки — усиливаем существующие.
+Технически:
+- `useMutation` от `@tanstack/react-query`, invalidate `["chat", id]` после успеха ИЛИ ручной setQueryData для мгновенного апдейта.
+- Ключ `queryOptions(["chat", id, ownerAnonId], () => getChatMessages(...))`.
+- Auto-scroll к последнему сообщению через `ref` + `useEffect`.
+- Тон копий — как весь остальной отчёт (лёгкий, разговорный, не корпоративный).
 
-### 4. Микро-анимации
-- **Count-up** на числе внутри `InterestDonut` и на overall score (0 → N за 0.9s, `framer-motion` `useMotionValue` + `animate`).
-- **Shimmer** на карточке Vibe Award: тонкий диагональный градиентный блик, проходящий раз в 6s (чистый CSS keyframe в `styles.css`).
-
-## Что НЕ трогаем
-- JSON-схема (`vibecheck-schema.ts`), промпт (`vibecheck.server.ts`), payload старых отчётов.
-- Превью/платёж/шеринг-карточка.
-- Мем-генератор, Lottie, You/Her split — отложено.
+**Ничего больше не трогаем**: схема, промпты, серверные функции, платёж, старые отчёты, остальной визуал `report.$id.tsx`.
 
 ## Файлы
-- edit `src/routes/report.$id.tsx` — sparkline в `VibeDecayCard`, замена баров на радар, pull-quotes в Psych/Gottman/Verdict/Future Outlook, shimmer на Vibe Award, count-up на overall score.
-- new `src/components/CompatibilityRadar.tsx` — SVG-радар.
-- edit `src/components/InterestDonut.tsx` — count-up числа.
-- edit `src/styles.css` — `@keyframes shimmer` и утилита `.shimmer`.
+- new `src/components/ReportChat.tsx`
 
-## Технические детали
-- Sparkline генератор: чистая функция `buildDecayPoints(trajectory, delta) → number[8]`, значения 0..1, path строится через `M x0 y0 L x1 y1 ...` + замыкающий path для gradient fill.
-- Радар: полярные координаты `cx + r*cos(θ)`, `cy + r*sin(θ)`, θ = `-π/2 + i*2π/7`. Радиус метрики = `maxR * value/100`.
-- Count-up: `const mv = useMotionValue(0); useEffect(() => animate(mv, target, {duration: 0.9})); mv.on("change", v => setDisplay(Math.round(v)))`.
-- Всё SSR-safe, никаких `window` в рендере.
+## Проверка
+- `bunx tsgo --noEmit` должен пройти без TS2307.
+- Статический превью соберётся, `/report/$id` рендерит блок чата под остальным контентом отчёта.
