@@ -210,20 +210,22 @@ function ReportPage() {
             </ReportSection>
 
             <ReportSection Icon={Sparkles} title="Psychological Analysis">
-              <div className="space-y-3">
-                <div className="rounded-2xl bg-purple-soft/60 p-4">
-                  <p className="text-xs uppercase tracking-widest text-purple-deep">Attachment style prediction</p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink/85">{report.psychological_analysis.attachment_style_prediction}</p>
-                </div>
-                <div className="rounded-2xl bg-pink-soft p-4">
-                  <p className="text-xs uppercase tracking-widest text-pink">Gottman patterns</p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink/85">{report.psychological_analysis.gottman_patterns}</p>
-                </div>
+              <div className="space-y-4">
+                <PullQuoteBlock
+                  label="Attachment style prediction"
+                  text={report.psychological_analysis.attachment_style_prediction}
+                  accent="purple"
+                />
+                <PullQuoteBlock
+                  label="Gottman patterns"
+                  text={report.psychological_analysis.gottman_patterns}
+                  accent="pink"
+                />
               </div>
             </ReportSection>
 
             <ReportSection Icon={Bell} title="Future Outlook">
-              <p className="font-serif text-lg leading-snug text-ink/90">{report.future_outlook}</p>
+              <PullQuoteBlock text={report.future_outlook} accent="purple" bare />
             </ReportSection>
 
             <div className="rounded-3xl bg-pink p-6 shadow-md sm:p-8">
@@ -233,7 +235,12 @@ function ReportPage() {
                 </div>
                 <h3 className="font-serif text-2xl">The Verdict</h3>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-ink/90">{report.hardcore_analytics.communication_style}</p>
+              <PullQuoteBlock
+                text={report.hardcore_analytics.communication_style}
+                accent="ink"
+                bare
+                className="mt-4"
+              />
             </div>
           </div>
 
