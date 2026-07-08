@@ -121,6 +121,7 @@ function Landing() {
               { Icon: MessageCircleHeart, title: "Empathy & Conflict Patterns", body: "Based on Nonviolent Communication (Rosenberg). Detects hidden tension, passive-aggressive tones, and genuine emotional warmth." },
               { Icon: Sparkles, title: "Hidden Emotional Signals", body: "Rooted in Paul Ekman's Emotion Research. Decodes micro-expressions in text, flirting signals, and changes in response consistency over time." },
               { Icon: Brain, title: "Dynamic Personality Profiling", body: "Leveraging the Big Five Model (Costa & McCrae). Understands your communication styles, behavioral tendencies, and conversational compatibility." },
+              { Icon: Heart, title: "Love Language Signals", body: "Based on Chapman's Five Love Languages. Detects which language shows up in their texts — words of affirmation, acts of service, quality time, and more." },
             ].map((s) => (
               <div key={s.title} className="rounded-3xl border border-border/50 bg-card p-6 shadow-sm">
                 <s.Icon className="h-6 w-6 text-ink/80" />
