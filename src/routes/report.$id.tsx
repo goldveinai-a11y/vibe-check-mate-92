@@ -150,15 +150,20 @@ function ReportPage() {
             )}
 
             <ReportSection Icon={Heart} title="Compatibility Breakdown">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <StatLine label="Interest" value={report.scores.interest_score} />
-                <StatLine label="Reciprocity" value={report.scores.reciprocity_score} />
-                <StatLine label="Emotional warmth" value={report.scores.emotional_warmth} />
-                <StatLine label="Response consistency" value={report.scores.response_consistency} />
-                <StatLine label="Flirting signals" value={report.scores.flirting_signals} />
-                <StatLine label="Toxicity" value={report.scores.toxicity_score} invert />
-                <StatLine label="Conversation health" value={report.scores.conversation_health} />
-              </div>
+              <CompatibilityRadar
+                metrics={[
+                  { label: "Interest", value: report.scores.interest_score },
+                  { label: "Reciprocity", value: report.scores.reciprocity_score },
+                  { label: "Warmth", value: report.scores.emotional_warmth },
+                  { label: "Consistency", value: report.scores.response_consistency },
+                  { label: "Flirting", value: report.scores.flirting_signals },
+                  { label: "Health", value: report.scores.conversation_health },
+                  { label: "Non-toxic", value: 100 - report.scores.toxicity_score },
+                ]}
+              />
+              <p className="mt-4 text-center text-xs text-ink/50">
+                Higher is better across all seven axes.
+              </p>
             </ReportSection>
 
             <ReportSection Icon={MessageCircle} title="Hardcore Analytics">
