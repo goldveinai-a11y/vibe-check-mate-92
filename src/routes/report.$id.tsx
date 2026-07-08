@@ -11,6 +11,7 @@ import { ShareCard, exportShareCard, type ShareCardData } from "@/components/Sha
 import { CompatibilityRadar } from "@/components/CompatibilityRadar";
 import { ReportChat } from "@/components/ReportChat";
 import { WordCloud } from "@/components/WordCloud";
+import { SiteFooter } from "@/components/SiteFooter";
 
 const fullQuery = (id: string, ownerAnonId: string) =>
   queryOptions({
@@ -175,27 +176,16 @@ function ReportPage() {
 
             {viral?.viral_keywords && viral.viral_keywords.length > 0 && (
               <ReportSection Icon={Quote} title="Words That Moved the Needle">
+                <p className="mb-1 text-center text-xs text-ink/50">
+                  The full story behind each flag is below, in Red &amp; Green Flags — this is just the highlight reel.
+                </p>
                 <WordCloud keywords={viral.viral_keywords} />
                 <button
                   onClick={handleShareWordCloud}
-                  className="mx-auto mb-5 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-ink shadow-sm transition hover:bg-muted"
+                  className="mx-auto flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-ink shadow-sm transition hover:bg-muted"
                 >
                   <Share2 className="h-3.5 w-3.5" /> Share to Stories
                 </button>
-                <div className="space-y-3">
-                  {viral.viral_keywords.map((k, i) => {
-                    const color = k.type === "green_flag" ? "bg-mint-soft text-mint" : k.type === "beige_flag" ? "bg-muted text-ink/70" : "bg-destructive/10 text-destructive";
-                    return (
-                      <div key={i} className="rounded-2xl border border-border/50 bg-card p-4">
-                        <div className="flex items-center gap-3">
-                          <span className={`inline-block rounded-full px-3 py-1 font-serif text-lg ${color}`}>"{k.word}"</span>
-                          <span className="text-[10px] uppercase tracking-widest text-ink/50">{k.type.replace("_", " ")}</span>
-                        </div>
-                        <p className="mt-2 text-sm text-ink/80">{k.impact}</p>
-                      </div>
-                    );
-                  })}
-                </div>
               </ReportSection>
             )}
 
@@ -223,12 +213,18 @@ function ReportPage() {
                   ["Engagement", report.hardcore_analytics.engagement_stat],
                   ["Timeline shifts", report.hardcore_analytics.timeline_changes],
                   ["Communication style", report.hardcore_analytics.communication_style],
-                ] as const).map(([label, val]) => (
-                  <div key={label} className="rounded-2xl bg-muted/50 p-4">
-                    <p className="text-xs uppercase tracking-widest text-purple">{label}</p>
-                    <p className="mt-2 text-sm leading-relaxed text-ink/85">{val}</p>
-                  </div>
-                ))}
+                ] as const).map(([label, val]) => {
+                  const stat = extractLeadStat(val);
+                  return (
+                    <div key={label} className="rounded-2xl bg-muted/50 p-4">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="text-xs uppercase tracking-widest text-purple">{label}</p>
+                        {stat && <span className="shrink-0 text-2xl font-bold text-ink">{stat}</span>}
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-ink/85">{val}</p>
+                    </div>
+                  );
+                })}
               </div>
             </ReportSection>
 
@@ -339,6 +335,8 @@ function ReportPage() {
           />
         )}
       </div>
+
+      <SiteFooter />
     </main>
   );
 }
@@ -376,7 +374,14 @@ function PullQuoteBlock({
 }) {
   const sentences = text.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
   const lead = sentences[0] ?? text;
-  const rest = sentences.slice(1).join(" ").trim();
+  // Group the remaining sentences into short 1-2 sentence paragraphs instead
+  // of one merged wall of text — same words, but broken into something a
+  // phone screen can actually be skimmed at instead of read start to finish.
+  const restSentences = sentences.slice(1);
+  const restParagraphs: string[] = [];
+  for (let i = 0; i < restSentences.length; i += 2) {
+    restParagraphs.push(restSentences.slice(i, i + 2).join(" ").trim());
+  }
 
   const accentText =
     accent === "purple" ? "text-purple-deep" : accent === "pink" ? "text-pink" : "text-ink";
@@ -394,7 +399,13 @@ function PullQuoteBlock({
         <span className={`w-1 shrink-0 rounded-full ${accentBar}`} aria-hidden />
         <p className="font-serif text-xl leading-snug text-ink/90 sm:text-2xl">{lead}</p>
       </div>
-      {rest && <p className="mt-3 text-sm leading-relaxed text-ink/75">{rest}</p>}
+      {restParagraphs.length > 0 && (
+        <div className="mt-3 space-y-2.5">
+          {restParagraphs.map((p, i) => (
+            <p key={i} className="text-sm leading-relaxed text-ink/75">{p}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -593,6 +604,15 @@ type RealTrend = {
   points: number[];
   checkinsCount: number;
 };
+
+// Pulls the first hard number out of a hardcore_analytics sentence (e.g.
+// "They initiate 73% of conversations…" -> "73%") so it can be rendered
+// large, data-panel style, ahead of the sentence — instead of the number
+// being buried mid-paragraph in body text.
+function extractLeadStat(text: string): string | null {
+  const match = text.match(/-?\d+(\.\d+)?%|\b\d+(\.\d+)?x\b|\b\d+\/\d+\b/i);
+  return match ? match[0] : null;
+}
 
 function formatElapsed(days: number): string {
   if (days < 1) return "the same day";

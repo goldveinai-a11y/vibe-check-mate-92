@@ -17,6 +17,7 @@ import {
   Anchor,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -224,6 +225,8 @@ function Landing() {
           </Link>
         </div>
       </section>
+
+      <SiteFooter />
     </main>
   );
 }
