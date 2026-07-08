@@ -433,6 +433,17 @@ function VibeDecayCard({ decay }: { decay: NonNullable<Report["viral"]>["vibe_de
           <p className="font-serif mt-2 text-3xl">{decay.range}</p>
         </div>
       </div>
+      <div className="mt-5 rounded-2xl bg-muted/30 px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-ink/50">
+          <span>Trend</span>
+          <span>{decay.range}</span>
+        </div>
+        <DecaySparkline
+          trajectory={decay.trajectory}
+          delta={decay.weekly_delta_pct}
+          seed={`${decay.range}|${decay.trajectory}|${decay.weekly_delta_pct}`}
+        />
+      </div>
       <p className="mt-4 font-serif text-lg leading-snug text-ink/90">{decay.verdict}</p>
     </motion.section>
   );
