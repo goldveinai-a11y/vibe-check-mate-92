@@ -144,7 +144,7 @@ export function AnalyzingOverlay({ thumbs, done = false }: { thumbs: Thumb[]; do
         <p className="mt-2 text-sm text-ink/60">
           {done
             ? "screenshots incinerated — nothing was ever stored 🔥"
-            : "takes ~30 seconds. don't close the tab — we're cooking 🔥"}
+            : "usually done in under a minute. don't close the tab — we're cooking 🔥"}
         </p>
 
         {/* Rotating quip — freezes on a final line once done */}
