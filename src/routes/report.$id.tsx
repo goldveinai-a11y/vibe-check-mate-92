@@ -8,6 +8,7 @@ import { getAnonId } from "@/lib/anon-id";
 import type { Report, Flag } from "@/lib/vibecheck-schema";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
+import { CompatibilityRadar } from "@/components/CompatibilityRadar";
 
 const fullQuery = (id: string, ownerAnonId: string) =>
   queryOptions({
@@ -88,7 +89,7 @@ function ReportPage() {
 
           <div className="mt-10 space-y-5">
             {viral?.vibe_award && (
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pink via-purple to-ink p-6 text-white shadow-lg sm:p-8">
+              <div className="shimmer relative overflow-hidden rounded-3xl bg-gradient-to-br from-pink via-purple to-ink p-6 text-white shadow-lg sm:p-8">
                 <div className="absolute right-4 top-4 text-[10px] uppercase tracking-widest text-white/60">VibeCheck</div>
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/80">
                   <Award className="h-4 w-4" /> Vibe Award
@@ -149,15 +150,20 @@ function ReportPage() {
             )}
 
             <ReportSection Icon={Heart} title="Compatibility Breakdown">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <StatLine label="Interest" value={report.scores.interest_score} />
-                <StatLine label="Reciprocity" value={report.scores.reciprocity_score} />
-                <StatLine label="Emotional warmth" value={report.scores.emotional_warmth} />
-                <StatLine label="Response consistency" value={report.scores.response_consistency} />
-                <StatLine label="Flirting signals" value={report.scores.flirting_signals} />
-                <StatLine label="Toxicity" value={report.scores.toxicity_score} invert />
-                <StatLine label="Conversation health" value={report.scores.conversation_health} />
-              </div>
+              <CompatibilityRadar
+                metrics={[
+                  { label: "Interest", value: report.scores.interest_score },
+                  { label: "Reciprocity", value: report.scores.reciprocity_score },
+                  { label: "Warmth", value: report.scores.emotional_warmth },
+                  { label: "Consistency", value: report.scores.response_consistency },
+                  { label: "Flirting", value: report.scores.flirting_signals },
+                  { label: "Health", value: report.scores.conversation_health },
+                  { label: "Non-toxic", value: 100 - report.scores.toxicity_score },
+                ]}
+              />
+              <p className="mt-4 text-center text-xs text-ink/50">
+                Higher is better across all seven axes.
+              </p>
             </ReportSection>
 
             <ReportSection Icon={MessageCircle} title="Hardcore Analytics">
@@ -204,20 +210,22 @@ function ReportPage() {
             </ReportSection>
 
             <ReportSection Icon={Sparkles} title="Psychological Analysis">
-              <div className="space-y-3">
-                <div className="rounded-2xl bg-purple-soft/60 p-4">
-                  <p className="text-xs uppercase tracking-widest text-purple-deep">Attachment style prediction</p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink/85">{report.psychological_analysis.attachment_style_prediction}</p>
-                </div>
-                <div className="rounded-2xl bg-pink-soft p-4">
-                  <p className="text-xs uppercase tracking-widest text-pink">Gottman patterns</p>
-                  <p className="mt-2 text-sm leading-relaxed text-ink/85">{report.psychological_analysis.gottman_patterns}</p>
-                </div>
+              <div className="space-y-4">
+                <PullQuoteBlock
+                  label="Attachment style prediction"
+                  text={report.psychological_analysis.attachment_style_prediction}
+                  accent="purple"
+                />
+                <PullQuoteBlock
+                  label="Gottman patterns"
+                  text={report.psychological_analysis.gottman_patterns}
+                  accent="pink"
+                />
               </div>
             </ReportSection>
 
             <ReportSection Icon={Bell} title="Future Outlook">
-              <p className="font-serif text-lg leading-snug text-ink/90">{report.future_outlook}</p>
+              <PullQuoteBlock text={report.future_outlook} accent="purple" bare />
             </ReportSection>
 
             <div className="rounded-3xl bg-pink p-6 shadow-md sm:p-8">
@@ -227,7 +235,12 @@ function ReportPage() {
                 </div>
                 <h3 className="font-serif text-2xl">The Verdict</h3>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-ink/90">{report.hardcore_analytics.communication_style}</p>
+              <PullQuoteBlock
+                text={report.hardcore_analytics.communication_style}
+                accent="ink"
+                bare
+                className="mt-4"
+              />
             </div>
           </div>
 
@@ -268,20 +281,117 @@ function ReportSection({ Icon, title, children }: { Icon: typeof Heart; title: s
   );
 }
 
-function StatLine({ label, value, invert }: { label: string; value: number; invert?: boolean }) {
-  const color = invert
-    ? value >= 60 ? "bg-destructive" : "bg-mint"
-    : value >= 70 ? "bg-mint" : value >= 40 ? "bg-pink" : "bg-destructive";
+function PullQuoteBlock({
+  label,
+  text,
+  accent,
+  bare,
+  className,
+}: {
+  label?: string;
+  text: string;
+  accent: "purple" | "pink" | "ink";
+  bare?: boolean;
+  className?: string;
+}) {
+  const sentences = text.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
+  const lead = sentences[0] ?? text;
+  const rest = sentences.slice(1).join(" ").trim();
+
+  const accentText =
+    accent === "purple" ? "text-purple-deep" : accent === "pink" ? "text-pink" : "text-ink";
+  const accentBar =
+    accent === "purple" ? "bg-purple" : accent === "pink" ? "bg-pink" : "bg-ink";
+  const accentBg =
+    accent === "purple" ? "bg-purple-soft/60" : accent === "pink" ? "bg-pink-soft" : "";
+
   return (
-    <div className="rounded-2xl bg-muted/40 p-4">
-      <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3">
-        <span className="min-w-0 truncate text-sm text-ink/80">{label}</span>
-        <span className="font-serif text-2xl">{value}</span>
+    <div className={`${bare ? "" : `rounded-2xl p-4 ${accentBg}`} ${className ?? ""}`.trim()}>
+      {label && (
+        <p className={`text-xs uppercase tracking-widest ${accentText}`}>{label}</p>
+      )}
+      <div className={`${label ? "mt-3" : ""} flex gap-3`}>
+        <span className={`w-1 shrink-0 rounded-full ${accentBar}`} aria-hidden />
+        <p className="font-serif text-xl leading-snug text-ink/90 sm:text-2xl">{lead}</p>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
-        <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.8 }} className={`h-full ${color}`} />
-      </div>
+      {rest && <p className="mt-3 text-sm leading-relaxed text-ink/75">{rest}</p>}
     </div>
+  );
+}
+
+function DecaySparkline({
+  trajectory,
+  delta,
+  seed,
+}: {
+  trajectory: NonNullable<Report["viral"]>["vibe_decay"]["trajectory"];
+  delta: number;
+  seed: string;
+}) {
+  const w = 600;
+  const h = 120;
+  const pad = 8;
+  const n = 8;
+
+  // Deterministic pseudo-random from seed string.
+  let s = 0;
+  for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+  const rand = () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return (s & 0xffff) / 0xffff;
+  };
+
+  const slope =
+    trajectory === "rising" ? 0.35 :
+    trajectory === "steady" ? 0 :
+    trajectory === "cooling" ? -0.3 : -0.55;
+
+  const start = trajectory === "nose-diving" ? 0.85 : trajectory === "cooling" ? 0.78 : trajectory === "steady" ? 0.55 : 0.35;
+  const points: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const noise = (rand() - 0.5) * 0.12;
+    const y = Math.max(0.05, Math.min(0.95, start + slope * t + noise));
+    points.push(y);
+  }
+  // Nudge final point in the direction of delta for visual truth.
+  const last = Math.max(0.05, Math.min(0.95, points[n - 1] + (delta / 100) * 0.15));
+  points[n - 1] = last;
+
+  const xs = points.map((_, i) => pad + (i * (w - pad * 2)) / (n - 1));
+  const ys = points.map((y) => pad + (1 - y) * (h - pad * 2));
+  const linePath = xs.map((x, i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${ys[i].toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L ${xs[n - 1].toFixed(1)} ${h - pad} L ${xs[0].toFixed(1)} ${h - pad} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" style={{ height: 100 }}>
+      <defs>
+        <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--pink)" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="var(--pink)" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <motion.path
+        d={areaPath}
+        fill="url(#spark-fill)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.3 }}
+      />
+      <motion.path
+        d={linePath}
+        fill="none"
+        stroke="var(--purple)"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 1.1, ease: "easeOut" }}
+      />
+      <circle cx={xs[n - 1]} cy={ys[n - 1]} r={5} fill="var(--purple)" />
+      <circle cx={xs[n - 1]} cy={ys[n - 1]} r={9} fill="var(--purple)" opacity={0.25} />
+    </svg>
   );
 }
 
@@ -322,6 +432,17 @@ function VibeDecayCard({ decay }: { decay: NonNullable<Report["viral"]>["vibe_de
           <p className="text-xs uppercase tracking-widest text-ink/60">Window</p>
           <p className="font-serif mt-2 text-3xl">{decay.range}</p>
         </div>
+      </div>
+      <div className="mt-5 rounded-2xl bg-muted/30 px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-ink/50">
+          <span>Trend</span>
+          <span>{decay.range}</span>
+        </div>
+        <DecaySparkline
+          trajectory={decay.trajectory}
+          delta={decay.weekly_delta_pct}
+          seed={`${decay.range}|${decay.trajectory}|${decay.weekly_delta_pct}`}
+        />
       </div>
       <p className="mt-4 font-serif text-lg leading-snug text-ink/90">{decay.verdict}</p>
     </motion.section>

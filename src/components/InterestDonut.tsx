@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { animate, motion, useMotionValue } from "framer-motion";
+import { useEffect, useState } from "react";
 
 export function InterestDonut({ value, size = 208 }: { value: number; size?: number }) {
   const stroke = 18;
@@ -6,6 +7,16 @@ export function InterestDonut({ value, size = 208 }: { value: number; size?: num
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, value));
   const offset = c * (1 - clamped / 100);
+  const mv = useMotionValue(0);
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const controls = animate(mv, clamped, { duration: 1.2, ease: "easeOut" });
+    const unsub = mv.on("change", (v) => setDisplay(Math.round(v)));
+    return () => {
+      controls.stop();
+      unsub();
+    };
+  }, [clamped, mv]);
 
   return (
     <div className="relative mx-auto" style={{ width: size, height: size }}>
@@ -41,14 +52,9 @@ export function InterestDonut({ value, size = 208 }: { value: number; size?: num
       </svg>
       <div className="absolute inset-0 grid place-items-center">
         <div className="text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
-            className="font-serif text-6xl leading-none text-ink sm:text-7xl"
-          >
-            {clamped}%
-          </motion.div>
+          <div className="font-serif text-6xl leading-none text-ink sm:text-7xl tabular-nums">
+            {display}%
+          </div>
           <div className="mt-2 text-[10px] uppercase tracking-[0.28em] text-ink/60">
             their interest in you
           </div>
