@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
-import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Activity, BarChart3, Award, Film, Share2, Quote } from "lucide-react";
+import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Activity, BarChart3, Award, Film, Share2, Quote, Copy, Check } from "lucide-react";
 import { getAnalysisPreview, getUnlockedCount } from "@/lib/vibecheck.functions";
 import { computeDelusionLevel, type PreviewJson } from "@/lib/vibecheck-schema";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -58,13 +58,21 @@ function computeVerdict(p: PreviewJson) {
   return { title: "Steady Vibes", tag: "Low-key promising", tone: "neutral" as const, blurb: "Nothing electric yet, nothing broken. There's a slow-burn possibility here worth reading closer." };
 }
 
+// Every tone's card (V.bg) is a solid, saturated color with the whole card
+// set to text-white — chip badges used to override that with a same-hue
+// "soft" background + matching-hue text (e.g. bg-pink-soft text-pink on a
+// bg-pink card), which is a near-invisible same-color-on-itself combo. Fixed
+// live: a translucent white pill for every tone, with NO text-color override,
+// so it inherits the card's text-white and reads correctly against any of
+// the six background colors instead of just accidentally working for
+// "neutral"/"cold" (the only two that happened to use text-ink already).
 const VERDICT_STYLES = {
-  hot: { bg: "bg-pink", chip: "bg-pink-soft text-pink", icon: Flame },
-  warm: { bg: "bg-pink", chip: "bg-pink-soft text-pink", icon: Heart },
-  caution: { bg: "bg-purple", chip: "bg-purple-soft text-purple", icon: Sparkles },
-  neutral: { bg: "bg-mint", chip: "bg-mint-soft text-ink/80", icon: Sparkles },
-  cold: { bg: "bg-ink/70", chip: "bg-muted text-ink/70", icon: MessageCircle },
-  danger: { bg: "bg-destructive", chip: "bg-destructive/10 text-destructive", icon: AlertTriangle },
+  hot: { bg: "bg-pink", chip: "bg-white/15", icon: Flame },
+  warm: { bg: "bg-pink", chip: "bg-white/15", icon: Heart },
+  caution: { bg: "bg-purple", chip: "bg-white/15", icon: Sparkles },
+  neutral: { bg: "bg-mint", chip: "bg-white/15", icon: Sparkles },
+  cold: { bg: "bg-ink/70", chip: "bg-white/15", icon: MessageCircle },
+  danger: { bg: "bg-destructive", chip: "bg-white/15", icon: AlertTriangle },
 };
 
 function ScoreBar({ label, value, Icon, tone = "pink" }: { label: string; value: number; Icon: typeof Heart; tone?: "pink" | "mint" | "purple" | "danger" }) {
@@ -145,6 +153,23 @@ function ResultsPage() {
     if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
   };
 
+  // Sharing the exported PNG is a dead end — it's a static image with no way
+  // back into the funnel. This page itself is already safely public (read
+  // by UUID, same as Compare Vibes relies on), so copying the live URL turns
+  // a share into an actual acquisition path: whoever opens it sees the real
+  // result AND the "Start Your VibeCheck" CTA in the header/footer, not just
+  // a screenshot. No auth or backend call needed — Wingman's 20%-off referral
+  // codes are a separate, auth-gated mechanic (lives on /account) and aren't
+  // wired up here; see conversation for the open question on whether to
+  // extend that to signed-out visitors.
+  const [linkCopied, setLinkCopied] = useState(false);
+  const handleCopyLink = async () => {
+    if (typeof window === "undefined") return;
+    await navigator.clipboard.writeText(window.location.href);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
   return (
     <main className="min-h-screen bg-cream pb-20 text-ink">
       <SiteHeader unlockHref="/paywall/$id" unlockParams={{ id }} />
@@ -175,7 +200,11 @@ function ResultsPage() {
               {verdict.tag}
             </span>
             <h2 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{verdict.title}</h2>
-            <p className="mt-4 text-base leading-relaxed text-white/90">{verdict.blurb}</p>
+            {/* pr-20 reserves room for the absolutely-positioned Share button
+                below so a longer blurb can never run underneath and get
+                clipped by it — happened live with the pop-culture-match card
+                (see same fix there) before this was caught. */}
+            <p className="mt-4 pr-20 text-base leading-relaxed text-white/90">{verdict.blurb}</p>
             <button
               onClick={handleShare}
               aria-label="Share to stories"
@@ -225,7 +254,10 @@ function ResultsPage() {
               </div>
               <h3 className="font-serif mt-3 text-3xl leading-tight">{viral.pop_culture_match.couple}</h3>
               <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
-              <p className="mt-4 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
+              {/* pr-20: this exact paragraph was the one that broke live —
+                  the Share button (absolute bottom-4 right-4 below) clipped
+                  the last word of the explanation whenever it ran long. */}
+              <p className="mt-4 pr-20 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
               <button
                 onClick={handleShare}
                 aria-label="Share to stories"
@@ -354,8 +386,8 @@ function ResultsPage() {
             <LockedCard title="Vibe Decay Trajectory" items={["Weekly % interest change", "Cooling / rising / nose-diving", "Realistic window if nothing changes"]} />
           </div>
 
-          {/* Compare Vibes entry point */}
-          <div className="mt-8 flex justify-center">
+          {/* Compare Vibes + send-to-a-friend entry points */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/compare/$id"
               params={{ id }}
@@ -363,6 +395,13 @@ function ResultsPage() {
             >
               <Users className="h-4 w-4" /> Compare Vibes with a friend
             </Link>
+            <button
+              onClick={handleCopyLink}
+              className="inline-flex items-center gap-2 rounded-full border border-mint/40 bg-mint-soft/50 px-5 py-2.5 text-sm font-medium text-ink/80 shadow-sm transition hover:bg-mint-soft"
+            >
+              {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {linkCopied ? "Link copied!" : "Send this to a friend"}
+            </button>
           </div>
 
           {/* Social proof — live counter */}
