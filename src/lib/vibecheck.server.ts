@@ -38,7 +38,7 @@ You MUST include a "viral" object with these five fields. They exist to make the
   * source = the show/film name only.
   * explanation = 1-2 sentences on WHY this pairing fits, tying to actual observed behavior.
 - their_type_in_3_words: exactly 3 lowercase adjectives/short phrases describing the partner ("them"). Meme-friendly. Examples: ["charming", "avoidant", "chronically online"] or ["hot", "emotionally constipated", "reply-in-4-days coded"].
-- viral_keywords: 3-5 items. Each { word, type, impact }. word MUST be an exact verbatim token or short phrase from the screenshots. type is one of "red_flag" | "green_flag" | "beige_flag". impact = one punchy line (max 25 words) explaining why this specific word/phrase moves the needle. If fewer than 3 clean verbatim tokens exist, return only what you can defend — never invent.
+- viral_keywords: 3-5 items. Each { word, type, impact }. word MUST be an exact verbatim token or short phrase from the screenshots. type is one of "red_flag" | "green_flag" | "beige_flag". impact = one punchy line (max 25 words) explaining why this specific word/phrase moves the needle. If fewer than 3 clean verbatim tokens exist, return only what you can defend — never invent. IMPORTANT: word must NOT be the same phrase already used as a quote in green_flags or red_flags — pick different standout moments so the two sections (read back to back) don't repeat the same line.
 - vibe_decay: { trajectory, weekly_delta_pct, range, verdict }
   * trajectory = "rising" | "steady" | "cooling" | "nose-diving" (choose the closest).
   * weekly_delta_pct = an integer between -40 and +20 representing estimated weekly change in engagement/interest if current patterns continue. Negative = decline.
