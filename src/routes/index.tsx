@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { captureRefCode } from "@/lib/anon-id";
 import {
   Sparkles,
   Heart,
@@ -24,6 +26,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+  useEffect(() => {
+    captureRefCode();
+  }, []);
+
   return (
     <main className="min-h-screen bg-cream text-ink">
       <SiteHeader />

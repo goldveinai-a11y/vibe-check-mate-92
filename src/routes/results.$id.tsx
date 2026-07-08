@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Activity, BarChart3, Award, Film, Share2, Quote } from "lucide-react";
 import { getAnalysisPreview, getUnlockedCount } from "@/lib/vibecheck.functions";
+import { computeDelusionLevel, type PreviewJson } from "@/lib/vibecheck-schema";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 import { InterestDonut } from "@/components/InterestDonut";
@@ -46,28 +47,6 @@ export const Route = createFileRoute("/results/$id")({
   notFoundComponent: () => <div className="p-8 text-center">Not found</div>,
 });
 
-type PreviewJson = {
-  scores: {
-    interest_score: number;
-    reciprocity_score: number;
-    emotional_warmth: number;
-    response_consistency: number;
-    flirting_signals: number;
-    toxicity_score: number;
-    conversation_health: number;
-  };
-  initiative_stat: string;
-  green_flag_preview: { title: string; quote: string; explanation: string } | null;
-  red_flag_preview: { title: string } | null;
-  green_flags_count: number;
-  red_flags_count: number;
-  viral_preview?: {
-    vibe_award: { title: string; subtitle: string };
-    pop_culture_match: { couple: string; source: string; explanation: string };
-    first_keyword: { word: string; type: "red_flag" | "green_flag" | "beige_flag"; impact: string } | null;
-    keywords_count: number;
-  } | null;
-};
 
 function computeVerdict(p: PreviewJson) {
   const { interest_score: i, flirting_signals: f, toxicity_score: t, conversation_health: h } = p.scores;
@@ -172,7 +151,7 @@ function ResultsPage() {
               Your Vibe Results Are In
             </h1>
             <p className="mt-4 max-w-lg text-base text-ink/70">
-              Here's a taste of what we found. The full report goes way deeper — with exact quotes, red flags, and a forecast.
+              Here's the appetizer. The full report has the receipts — every red flag, exact quote, and forecast, zero sugarcoating.
             </p>
           </div>
 
@@ -271,6 +250,23 @@ function ResultsPage() {
             <ScoreBar label="Toxicity Level" value={s.toxicity_score} Icon={AlertTriangle} tone="danger" />
           </div>
 
+          {/* Delusion Level teaser — same free scores above, just reframed.
+              Full breakdown + trend lives behind the paywall. */}
+          <div className="mt-5 rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
+              <Sparkles className="h-4 w-4" /> Delusion Level (just for fun)
+            </div>
+            <div className="mt-4 flex items-center gap-5">
+              <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-white">
+                <span className="font-serif text-lg text-purple-deep">{computeDelusionLevel(s).score}%</span>
+              </div>
+              <div>
+                <h3 className="font-serif text-xl leading-tight">{computeDelusionLevel(s).label}</h3>
+                <p className="mt-1 text-sm text-ink/70">{computeDelusionLevel(s).blurb}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Hard statistic hook */}
           <div className="mt-5 rounded-3xl bg-ink p-6 text-white shadow-lg">
             <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-white/60">
@@ -337,7 +333,7 @@ function ResultsPage() {
             </span>
             <h2 className="font-serif mt-4 text-3xl sm:text-4xl">Unlock the Full Story</h2>
             <p className="mt-3 max-w-md text-sm text-ink/70">
-              Every red flag with verbatim receipts, full timeline dynamics, attachment style + Gottman pattern breakdown, and an uncompromising forecast.
+              Every red flag with verbatim receipts, full timeline dynamics, attachment style + Gottman pattern breakdown, and a forecast that doesn't flinch.
             </p>
           </div>
 
@@ -348,6 +344,17 @@ function ResultsPage() {
             <LockedCard title="Future Outlook" items={["3–5 sentence forecast", "What happens if nothing changes", "The one move that flips it"]} />
             <LockedCard title="Their Type in 3 Words" items={["The 3 words that define them", "Why they land that way", "How to work with (or around) it"]} />
             <LockedCard title="Vibe Decay Trajectory" items={["Weekly % interest change", "Cooling / rising / nose-diving", "Realistic window if nothing changes"]} />
+          </div>
+
+          {/* Compare Vibes entry point */}
+          <div className="mt-8 flex justify-center">
+            <Link
+              to="/compare/$id"
+              params={{ id }}
+              className="inline-flex items-center gap-2 rounded-full border border-purple/30 bg-purple-soft/40 px-5 py-2.5 text-sm font-medium text-purple-deep shadow-sm transition hover:bg-purple-soft/60"
+            >
+              <Users className="h-4 w-4" /> Compare Vibes with a friend
+            </Link>
           </div>
 
           {/* Social proof — live counter */}

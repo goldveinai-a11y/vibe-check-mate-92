@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
 import { Upload as UploadIcon, Sparkles, ShieldCheck, Lock } from "lucide-react";
 import { createAnalysis } from "@/lib/vibecheck.functions";
-import { getAnonId, rememberOwnedAnalysis } from "@/lib/anon-id";
+import { getAnonId, rememberOwnedAnalysis, captureRefCode } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
 import { AnalyzingOverlay } from "@/components/AnalyzingOverlay";
 
@@ -44,6 +44,17 @@ function UploadPage() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<Prepared[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // holds the analysis id once the API call resolves, but we don't navigate
+  // immediately — we let AnalyzingOverlay play its "burn to ash" beat first
+  // so the (true) claim that screenshots are deleted actually lands visually.
+  const [readyId, setReadyId] = useState<string | null>(null);
+
+  // Safety net for Wingman referral links that point straight at /upload
+  // instead of the landing page — captureRefCode() is a no-op if a code
+  // was already stored.
+  useEffect(() => {
+    captureRefCode();
+  }, []);
 
   const onDrop = useCallback(async (accepted: File[]) => {
     setError(null);
@@ -76,9 +87,17 @@ function UploadPage() {
       return result.id;
     },
     onSuccess: (id) => {
-      navigate({ to: "/analyzing/$id", params: { id } });
+      setReadyId(id);
     },
   });
+
+  useEffect(() => {
+    if (!readyId) return;
+    const t = setTimeout(() => {
+      navigate({ to: "/analyzing/$id", params: { id: readyId } });
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [readyId, navigate]);
 
   return (
     <main className="min-h-screen bg-cream text-ink">
@@ -186,9 +205,10 @@ function UploadPage() {
         </div>
       </section>
       <AnimatePresence>
-        {mutation.isPending && (
+        {(mutation.isPending || readyId) && (
           <AnalyzingOverlay
             thumbs={files.map((f) => ({ previewUrl: f.previewUrl, name: f.name }))}
+            done={!!readyId}
           />
         )}
       </AnimatePresence>

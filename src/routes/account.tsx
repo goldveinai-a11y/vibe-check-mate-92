@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Heart, Loader2, LogOut, CreditCard, Sparkles, ExternalLink, History } from "lucide-react";
+import { Heart, Loader2, LogOut, CreditCard, Sparkles, ExternalLink, History, Gift, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getMyReports, createBillingPortalSession, type MyReportsResult } from "@/lib/vibecheck.functions";
+import { getMyReports, createBillingPortalSession, getOrCreateReferralCode, type MyReportsResult } from "@/lib/vibecheck.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
+import { getAnonId } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const Route = createFileRoute("/account")({
@@ -23,6 +24,8 @@ function AccountPage() {
   const [state, setState] = useState<LoadState>("checking");
   const [data, setData] = useState<MyReportsResult | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [referral, setReferral] = useState<{ code: string; redemptionCount: number } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +43,11 @@ function AccountPage() {
         if (cancelled) return;
         setData(result);
         setState("ready");
+        // Referral code fetch is best-effort — if it fails, the rest of the
+        // account page still works, so it's isolated from the main load path.
+        getOrCreateReferralCode({ data: { ownerAnonId: getAnonId() } })
+          .then((r) => { if (!cancelled) setReferral(r); })
+          .catch(() => {});
       } catch {
         if (!cancelled) setState("error");
       }
@@ -155,6 +163,35 @@ function AccountPage() {
           ) : (
             <div className="mt-6 rounded-3xl border border-border/60 bg-card p-5 text-sm text-ink/70 shadow-sm">
               No active subscription — you're on single-report access.
+            </div>
+          )}
+
+          {/* Wingman referral V1 */}
+          {referral && (
+            <div className="mt-6 rounded-3xl border border-purple/20 bg-purple-soft p-5 shadow-sm sm:p-6">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
+                <Gift className="h-4 w-4" /> Give a Friend 20% Off
+              </div>
+              <p className="mt-2 text-sm text-ink/80">
+                Share your link — whoever uses it gets 20% off their report.
+              </p>
+              <button
+                onClick={async () => {
+                  const link = `${window.location.origin}/upload?ref=${referral.code}`;
+                  await navigator.clipboard.writeText(link);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-medium text-purple-deep shadow-sm transition hover:bg-purple-soft/60"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? "Copied!" : "Copy my referral link"}
+              </button>
+              {referral.redemptionCount > 0 && (
+                <p className="mt-3 text-center text-xs text-ink/60">
+                  {referral.redemptionCount} {referral.redemptionCount === 1 ? "friend has" : "friends have"} unlocked a report via your link 🎉
+                </p>
+              )}
             </div>
           )}
 

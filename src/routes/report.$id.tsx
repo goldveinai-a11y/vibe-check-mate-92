@@ -6,6 +6,7 @@ import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, Check
 import { getAnalysisFull, getCheckins } from "@/lib/vibecheck.functions";
 import { getAnonId } from "@/lib/anon-id";
 import type { Report, Flag } from "@/lib/vibecheck-schema";
+import { computeDelusionLevel } from "@/lib/vibecheck-schema";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 import { CompatibilityRadar } from "@/components/CompatibilityRadar";
@@ -61,6 +62,7 @@ function ReportPage() {
   const overallScore = Math.round(
     (s.interest_score + s.reciprocity_score + s.emotional_warmth + s.response_consistency + s.flirting_signals + (100 - s.toxicity_score) + s.conversation_health) / 7,
   );
+  const delusion = computeDelusionLevel(s);
   const shareData: ShareCardData = {
     award: viral?.vibe_award ?? null,
     popCulture: viral?.pop_culture_match ?? null,
@@ -80,6 +82,11 @@ function ReportPage() {
   const threeWordsShareRef = useRef<HTMLDivElement>(null);
   const handleShareThreeWords = async () => {
     if (threeWordsShareRef.current) await exportShareCard(threeWordsShareRef.current, "vibecheck-type.png");
+  };
+
+  const badgeShareRef = useRef<HTMLDivElement>(null);
+  const handleShareBadge = async () => {
+    if (badgeShareRef.current) await exportShareCard(badgeShareRef.current, "vibecheck-badge.png");
   };
 
   const checkinsQuery = useQuery({
@@ -128,14 +135,43 @@ function ReportPage() {
                 </div>
                 <h3 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{viral.vibe_award.title}</h3>
                 <p className="mt-3 text-base text-white/90">{viral.vibe_award.subtitle}</p>
-                <button
-                  onClick={handleShare}
-                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-medium text-white backdrop-blur transition hover:bg-white/25"
-                >
-                  <Share2 className="h-3.5 w-3.5" /> Share to Stories
-                </button>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button
+                    onClick={handleShare}
+                    className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-medium text-white backdrop-blur transition hover:bg-white/25"
+                  >
+                    <Share2 className="h-3.5 w-3.5" /> Share to Stories
+                  </button>
+                  <button
+                    onClick={handleShareBadge}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2 text-xs font-medium text-white backdrop-blur transition hover:bg-white/10"
+                  >
+                    <Award className="h-3.5 w-3.5" /> Save as Profile Badge
+                  </button>
+                </div>
               </div>
             )}
+
+            {/* Delusion Level — pure arithmetic on the 7 scores above, not a
+                new AI judgment. Gap between "feels exciting" and "actually
+                reciprocated", framed as a for-fun read like Vibe Award. */}
+            <div className="rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm sm:p-8">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
+                <Sparkles className="h-4 w-4" /> Delusion Level (just for fun)
+              </div>
+              <div className="mt-4 flex items-center gap-5">
+                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-white">
+                  <span className="font-serif text-2xl text-purple-deep">{delusion.score}%</span>
+                </div>
+                <div>
+                  <h3 className="font-serif text-2xl leading-tight">{delusion.label}</h3>
+                  <p className="mt-1 text-sm text-ink/70">{delusion.blurb}</p>
+                </div>
+              </div>
+              <p className="mt-4 text-xs text-ink/50">
+                Calculated from the same scores below — the gap between how exciting this feels (flirting + warmth) and how much of that is actually reciprocated (consistency + reciprocity + health).
+              </p>
+            </div>
 
             {viral?.pop_culture_match && (
               <ReportSection Icon={Film} title="You're Giving…">
@@ -306,7 +342,14 @@ function ReportPage() {
             <CloseTheLoop report={report} overallScore={overallScore} />
           </div>
 
-          <div className="mt-10 text-center">
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3 text-center">
+            <Link
+              to="/compare/$id"
+              params={{ id }}
+              className="inline-flex items-center gap-2 rounded-full border border-purple/30 bg-purple-soft/40 px-6 py-3 text-sm font-medium text-purple-deep shadow-sm transition hover:bg-purple-soft/60"
+            >
+              <Heart className="h-4 w-4" /> Compare Vibes with a friend
+            </Link>
             <Link
               to="/upload"
               className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-ink shadow-sm transition hover:bg-muted"
@@ -333,6 +376,9 @@ function ReportPage() {
             variant="threewords"
             data={{ ...shareData, threeWords: viral.their_type_in_3_words }}
           />
+        )}
+        {viral?.vibe_award && (
+          <ShareCard ref={badgeShareRef} variant="badge" data={shareData} />
         )}
       </div>
 
@@ -587,7 +633,10 @@ function FlagRow({ tone, flag }: { tone: "green" | "red"; flag: Flag }) {
   const isGreen = tone === "green";
   return (
     <div className={`rounded-2xl p-4 ${isGreen ? "bg-mint-soft" : "bg-destructive/10"}`}>
-      <h4 className="font-serif text-lg leading-tight">{flag.title}</h4>
+      <h4 className="font-serif text-lg leading-tight">
+        <span aria-hidden="true" className="mr-1.5">{isGreen ? "💚" : "🚩"}</span>
+        {flag.title}
+      </h4>
       <blockquote className="mt-2 border-l-2 border-current pl-3 text-sm italic opacity-80">"{flag.quote}"</blockquote>
       <p className="mt-2 text-sm text-ink/80">{flag.explanation}</p>
     </div>

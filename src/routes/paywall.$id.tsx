@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock } from "lucide-react";
+import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock, Gift } from "lucide-react";
 import { VibeCheckout } from "@/components/VibeCheckout";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
-import { getAnonId } from "@/lib/anon-id";
+import { getAnonId, getStoredRefCode } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -76,6 +76,7 @@ function PaywallPage() {
   const [email, setEmail] = useState("");
   const [emailTouched, setEmailTouched] = useState(false);
   const ownerAnonId = typeof window !== "undefined" ? getAnonId() : "";
+  const refCode = typeof window !== "undefined" ? getStoredRefCode() : null;
   const emailValid = EMAIL_RE.test(email.trim());
   const returnUrl = typeof window !== "undefined"
     ? `${window.location.origin}/checkout/return?id=${id}&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email.trim())}`
@@ -110,8 +111,14 @@ function PaywallPage() {
               <button onClick={() => setSelected(null)} className="text-sm text-ink/60 hover:text-ink">
                 ← Change plan
               </button>
+              {refCode && (
+                <div className="mt-4 flex items-center gap-2 rounded-2xl bg-mint-soft/60 px-4 py-3 text-sm text-ink/80">
+                  <Gift className="h-4 w-4 shrink-0 text-mint" />
+                  Referral code applied — 20% off if it checks out.
+                </div>
+              )}
               <div className="mt-4 rounded-3xl border border-border/60 bg-card p-2 shadow-sm">
-                <VibeCheckout analysisId={id} ownerAnonId={ownerAnonId} plan={selected} returnUrl={returnUrl} email={email.trim()} />
+                <VibeCheckout analysisId={id} ownerAnonId={ownerAnonId} plan={selected} returnUrl={returnUrl} email={email.trim()} refCode={refCode} />
               </div>
             </div>
           </motion.section>
