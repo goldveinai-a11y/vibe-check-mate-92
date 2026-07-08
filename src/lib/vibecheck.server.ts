@@ -1,4 +1,4 @@
-import { ReportSchema, ScoresSchema, type Report, type Scores } from "./vibecheck-schema";
+import { ReportSchema, ScoresSchema, sanitizeReportShape, type Report, type Scores } from "./vibecheck-schema";
 
 const SYSTEM_PROMPT = `You are VibeCheck — a brutally perceptive AI analyst for Gen Z and Millennial daters (20-40, US/UK markets). You analyze chat conversation screenshots (dating apps, DMs, iMessage, WhatsApp) and produce a report that will be stored in the Report_JSON field of the VibeCheck table.
 
@@ -36,8 +36,8 @@ You MUST include a "viral" object with these five fields. They exist to make the
   * Pull ONLY from this curated US/UK Gen Z + Millennial pool: Euphoria, Normal People, Fleabag, Bridgerton, Friends, Sex and the City, After, Heartstopper, The Summer I Turned Pretty, Conversations With Friends, You, The White Lotus, How I Met Your Mother, New Girl, Emily in Paris. No older/regional references (no Twilight-only, no soap operas, no non-English shows).
   * couple = "Name & Name (specific era or arc)", e.g. "Ross & Rachel (post-break era)", "Rue & Jules (season 1)".
   * source = the show/film name only.
-  * explanation = 1-2 sentences on WHY this pairing fits, tying to actual observed behavior.
-- their_type_in_3_words: exactly 3 lowercase adjectives/short phrases describing the partner ("them"). Meme-friendly. Examples: ["charming", "avoidant", "chronically online"] or ["hot", "emotionally constipated", "reply-in-4-days coded"].
+  * explanation = 1-2 sentences on WHY this pairing fits, tying to actual observed behavior. HARD LIMIT: 220 characters — this is a strict cutoff, not a suggestion. Count as you write; if you're over, cut a clause rather than run long.
+- their_type_in_3_words: exactly 3 lowercase adjectives/short phrases describing the partner ("them"), each 4 words or fewer. Meme-friendly. Examples: ["charming", "avoidant", "chronically online"] or ["hot", "emotionally constipated", "reply-in-4-days coded"].
 - viral_keywords: 3-5 items. Each { word, type, impact }. word MUST be an exact verbatim token or short phrase from the screenshots. type is one of "red_flag" | "green_flag" | "beige_flag". impact = one punchy line (max 25 words) explaining why this specific word/phrase moves the needle. If fewer than 3 clean verbatim tokens exist, return only what you can defend — never invent. IMPORTANT: word must NOT be the same phrase already used as a quote in green_flags or red_flags — pick different standout moments so the two sections (read back to back) don't repeat the same line.
 - vibe_decay: { trajectory, weekly_delta_pct, range, verdict }
   * trajectory = "rising" | "steady" | "cooling" | "nose-diving" (choose the closest).
@@ -136,12 +136,16 @@ export async function analyzeConversation(images: ImageInput[]): Promise<Report>
 
   let raw = await doCall();
   try {
-    return ReportSchema.parse(JSON.parse(extractJson(raw)));
+    return ReportSchema.parse(sanitizeReportShape(JSON.parse(extractJson(raw))));
   } catch (err) {
-    // Retry once with a stricter reminder.
+    // Retry once. Note: at temperature 0 a pure length-overflow on a
+    // free-text field would reproduce identically on retry — sanitizeReportShape
+    // above already clamps those before this catch is ever reached, so a
+    // second failure here means something structurally different (bad JSON,
+    // wrong shape, missing required field), which retrying can genuinely fix.
     console.warn("First Claude parse failed, retrying:", err);
     raw = await doCall();
-    return ReportSchema.parse(JSON.parse(extractJson(raw)));
+    return ReportSchema.parse(sanitizeReportShape(JSON.parse(extractJson(raw))));
   }
 }
 

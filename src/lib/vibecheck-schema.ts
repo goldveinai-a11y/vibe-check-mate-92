@@ -95,6 +95,84 @@ export type PreviewJson = {
   } | null;
 };
 
+// Claude is instructed to keep these fields short ("1-2 sentences", "max 20
+// words", etc.) but that's a soft guideline, not a hard guarantee — at
+// temperature 0 a single overshoot is also fully reproducible, so the
+// existing "retry once" in analyzeConversation doesn't help: the retry sends
+// the exact same input and gets the exact same too-long field back. Without
+// this, ReportSchema.parse() throws on ANY oversized field and kills the
+// entire analysis over one slightly-too-long sentence (this is exactly what
+// happened live: pop_culture_match.explanation over the 280-char cap failed
+// the whole report and leaked a raw Zod error to the user).
+// Clamp every bounded free-text field to its schema max BEFORE validating,
+// so a verbose field gets trimmed instead of crashing the whole read.
+function clampStr(value: unknown, max: number): unknown {
+  if (typeof value !== "string" || value.length <= max) return value;
+  return value.slice(0, max - 1).trimEnd() + "…";
+}
+
+export function sanitizeReportShape(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const r: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+
+  const viral = r.viral as Record<string, unknown> | undefined;
+  if (viral && typeof viral === "object") {
+    const v: Record<string, unknown> = { ...viral };
+
+    const vibeAward = v.vibe_award as Record<string, unknown> | undefined;
+    if (vibeAward) {
+      v.vibe_award = {
+        ...vibeAward,
+        title: clampStr(vibeAward.title, 80),
+        subtitle: clampStr(vibeAward.subtitle, 200),
+      };
+    }
+
+    const popCulture = v.pop_culture_match as Record<string, unknown> | undefined;
+    if (popCulture) {
+      v.pop_culture_match = {
+        ...popCulture,
+        couple: clampStr(popCulture.couple, 100),
+        source: clampStr(popCulture.source, 80),
+        explanation: clampStr(popCulture.explanation, 280),
+      };
+    }
+
+    if (Array.isArray(v.their_type_in_3_words)) {
+      v.their_type_in_3_words = v.their_type_in_3_words.map((w) => clampStr(w, 30));
+    }
+
+    if (Array.isArray(v.viral_keywords)) {
+      v.viral_keywords = v.viral_keywords.map((k) => {
+        const kw = k as Record<string, unknown>;
+        return { ...kw, word: clampStr(kw.word, 60), impact: clampStr(kw.impact, 240) };
+      });
+    }
+
+    const vibeDecay = v.vibe_decay as Record<string, unknown> | undefined;
+    if (vibeDecay) {
+      v.vibe_decay = {
+        ...vibeDecay,
+        range: clampStr(vibeDecay.range, 60),
+        verdict: clampStr(vibeDecay.verdict, 280),
+      };
+    }
+
+    r.viral = v;
+  }
+
+  const suggestedReplies = r.suggested_replies as Record<string, unknown> | undefined;
+  if (suggestedReplies) {
+    r.suggested_replies = {
+      ...suggestedReplies,
+      warm: clampStr(suggestedReplies.warm, 300),
+      neutral: clampStr(suggestedReplies.neutral, 300),
+    };
+  }
+
+  return r;
+}
+
 export type Report = z.infer<typeof ReportSchema>;
 export type Flag = z.infer<typeof FlagSchema>;
 export type Scores = z.infer<typeof ScoresSchema>;
