@@ -1,26 +1,98 @@
 import { forwardRef } from "react";
 import { Sparkles } from "lucide-react";
+import type { ViralKeyword } from "@/lib/vibecheck-schema";
+
+export type ShareCardVariant = "hero" | "wordcloud" | "threewords";
 
 export type ShareCardData = {
   award: { title: string; subtitle: string } | null;
   popCulture: { couple: string; source: string } | null;
   overallScore: number;
   headline: string;
+  keywords?: ViralKeyword[];
+  threeWords?: string[];
 };
 
-// 1080x1920 canvas (rendered at that pixel size for export).
-export const ShareCard = forwardRef<HTMLDivElement, { data: ShareCardData }>(
-  function ShareCard({ data }, ref) {
+const FOOTER = (
+  <div className="text-center text-2xl text-white/80">
+    get your own read → <span className="font-semibold text-white">vibecheck.app</span>
+  </div>
+);
+
+const LOGO = (
+  <div className="flex items-center gap-3 text-white/80">
+    <Sparkles className="h-8 w-8" />
+    <span className="font-serif text-3xl tracking-tight">VibeCheck</span>
+  </div>
+);
+
+function keywordTone(type: ViralKeyword["type"]) {
+  if (type === "green_flag") return "text-emerald-200";
+  if (type === "red_flag") return "text-rose-200";
+  return "text-white/70";
+}
+
+// 1080x1920 canvas (rendered at that pixel size for export) — sized for
+// Instagram/TikTok Stories. Three variants share the same frame/footer so
+// a user can post whichever result landed hardest, not just the one
+// combined card the report originally shipped with.
+export const ShareCard = forwardRef<HTMLDivElement, { data: ShareCardData; variant?: ShareCardVariant }>(
+  function ShareCard({ data, variant = "hero" }, ref) {
+    if (variant === "wordcloud") {
+      const keywords = data.keywords ?? [];
+      return (
+        <div
+          ref={ref}
+          style={{ width: 1080, height: 1920 }}
+          className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-ink via-purple to-pink p-20 text-white"
+        >
+          {LOGO}
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+            <div className="mb-8 text-sm uppercase tracking-[0.35em] text-white/70">Words That Moved the Needle</div>
+            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-8 px-4">
+              {keywords.slice(0, 6).map((k, i) => (
+                <span
+                  key={i}
+                  className={`font-serif leading-none ${keywordTone(k.type)}`}
+                  style={{ fontSize: i < 2 ? 96 : i < 4 ? 68 : 48 }}
+                >
+                  "{k.word}"
+                </span>
+              ))}
+            </div>
+          </div>
+          {FOOTER}
+        </div>
+      );
+    }
+
+    if (variant === "threewords") {
+      const words = data.threeWords ?? [];
+      return (
+        <div
+          ref={ref}
+          style={{ width: 1080, height: 1920 }}
+          className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-purple via-pink to-ink p-20 text-white"
+        >
+          {LOGO}
+          <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
+            <div className="text-sm uppercase tracking-[0.35em] text-white/70">Their Type in 3 Words</div>
+            {words.map((w, i) => (
+              <div key={i} className="font-serif text-7xl leading-none">{w}</div>
+            ))}
+          </div>
+          {FOOTER}
+        </div>
+      );
+    }
+
     return (
       <div
         ref={ref}
         style={{ width: 1080, height: 1920 }}
         className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-pink via-purple to-ink p-20 text-white"
       >
-        <div className="flex items-center gap-3 text-white/80">
-          <Sparkles className="h-8 w-8" />
-          <span className="font-serif text-3xl tracking-tight">VibeCheck</span>
-        </div>
+        {LOGO}
 
         <div className="flex flex-col items-center gap-10 text-center">
           {data.award && (
@@ -47,9 +119,7 @@ export const ShareCard = forwardRef<HTMLDivElement, { data: ShareCardData }>(
           )}
         </div>
 
-        <div className="text-center text-2xl text-white/80">
-          get your own read → <span className="font-semibold text-white">vibecheck.app</span>
-        </div>
+        {FOOTER}
       </div>
     );
   },
