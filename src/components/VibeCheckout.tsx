@@ -7,7 +7,10 @@ interface Props {
   ownerAnonId: string;
   plan: "single" | "monthly" | "yearly";
   returnUrl: string;
-  email?: string;
+  // Required: the durable identity key that lets the buyer find this (and
+  // any future) report again from any device via magic link, instead of
+  // relying solely on a localStorage anon id.
+  email: string;
 }
 
 export function VibeCheckout({ analysisId, ownerAnonId, plan, returnUrl, email }: Props) {

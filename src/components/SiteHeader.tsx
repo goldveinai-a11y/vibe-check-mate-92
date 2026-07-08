@@ -21,7 +21,7 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
         <nav className="hidden items-center gap-8 md:flex">
           <Link to="/" className="text-sm text-ink/80 transition hover:text-ink">Home</Link>
           <Link to="/upload" className="text-sm text-ink/80 transition hover:text-ink">Upload</Link>
-          <Link to="/" className="text-sm text-ink/80 transition hover:text-ink">Results</Link>
+          <Link to="/my-reports" className="text-sm text-ink/80 transition hover:text-ink">My Reports</Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -59,7 +59,7 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-5 py-3">
             <Link to="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">Home</Link>
             <Link to="/upload" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">Upload</Link>
-            <Link to="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">Results</Link>
+            <Link to="/my-reports" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">My Reports</Link>
           </div>
         </div>
       )}
