@@ -1,4 +1,4 @@
-import { ReportSchema, type Report } from "./vibecheck-schema";
+import { ReportSchema, ScoresSchema, type Report, type Scores } from "./vibecheck-schema";
 
 const SYSTEM_PROMPT = `You are VibeCheck — a brutally perceptive AI analyst for Gen Z and Millennial daters (20-40, US/UK markets). You analyze chat conversation screenshots (dating apps, DMs, iMessage, WhatsApp) and produce a report that will be stored in the Report_JSON field of the VibeCheck table.
 
@@ -22,6 +22,10 @@ ANALYSIS RULES:
 - hardcore_analytics MUST contain hard numbers, percentages, ratios, and timeline observations, not vague statements.
 - psychological_analysis: attachment_style_prediction based on Bowlby & Ainsworth (Anxious / Avoidant / Secure / Disorganized) stated as a strong assumption from text patterns. gottman_patterns tracks the Four Horsemen (Criticism, Contempt, Defensiveness, Stonewalling) and Reciprocity.
 - future_outlook: 3-5 sentences. Uncompromising, actionable final verdict and forecast if nothing changes.
+- suggested_replies: two ready-to-send draft replies the USER (the uploader) could send back to "them" right now, grounded in the actual last message(s) from "them" in the screenshots. NEVER invent a scenario that isn't supported by the conversation.
+  * warm = a warm, genuinely interested reply. Shows effort and openness without being needy or over-explaining.
+  * neutral = a lower-investment, more reserved reply. Polite and normal, but noticeably lower emotional effort than "warm" — for when the read says "pull back a little."
+  * Both must sound like a real text a person would actually send — casual, short (1-3 sentences), no therapy-speak, no bullet points, matches the register of the conversation (emoji only if "them" or the user already use them in the screenshots).
 
 VIRAL BLOCK (MANDATORY — this is what makes the report shareable):
 You MUST include a "viral" object with these five fields. They exist to make the report screenshot-worthy for IG Stories, TikTok, and group chats. Rules:
@@ -66,6 +70,10 @@ type Report = {
   green_flags: Array<{ title: string; quote: string; explanation: string }>;  // quote MUST be verbatim
   red_flags:   Array<{ title: string; quote: string; explanation: string }>;  // quote MUST be verbatim
   future_outlook: string;  // uncompromising, actionable final verdict
+  suggested_replies: {
+    warm: string;     // ready-to-send warm/interested reply grounded in "them"'s actual last message
+    neutral: string;  // ready-to-send lower-investment/reserved reply, same grounding
+  };
   viral: {
     vibe_award: { title: string; subtitle: string };
     pop_culture_match: { couple: string; source: string; explanation: string };
@@ -134,5 +142,90 @@ export async function analyzeConversation(images: ImageInput[]): Promise<Report>
     console.warn("First Claude parse failed, retrying:", err);
     raw = await doCall();
     return ReportSchema.parse(JSON.parse(extractJson(raw)));
+  }
+}
+
+// --- Check-in scoring: the real half of "Vibe Decay Trajectory" ---
+// A check-in is a lighter-weight re-analysis of NEW screenshots of the same
+// conversation, taken later, so the trend line can be built from real
+// repeated observations instead of the one-shot seeded-random sparkline
+// that used to stand in for it. Deliberately Haiku, not Sonnet: this call
+// only needs to extract 7 calibrated numbers, not write flags/psych
+// analysis/viral copy — the vision judgment required is simpler than the
+// full report, and check-ins are meant to happen often (weekly), so
+// keeping the per-call cost low matters more here than on the one-time
+// full report.
+const CHECKIN_MODEL = "claude-haiku-4-5-20251001";
+
+const CHECKIN_SYSTEM_PROMPT = `You are VibeCheck's scoring engine. You are looking at a NEW batch of conversation screenshots — a later check-in on a conversation that was already analyzed once before. Identify who is "them" (the person being analyzed) vs "you" (the uploader), the same way a full analysis would.
+
+Output ONLY the calibrated numeric scores, nothing else. Scale 0-100, integers. Calibration: 60 = decent, 80+ = strong, 30- = concerning. conversation_health follows Gottman's research — high = healthy dynamic, low = toxic patterns.
+
+Return ONLY valid JSON matching this exact type, no prose, no markdown fences:
+type Scores = {
+  interest_score: number;
+  reciprocity_score: number;
+  emotional_warmth: number;
+  response_consistency: number;
+  flirting_signals: number;
+  toxicity_score: number;
+  conversation_health: number;
+};`;
+
+export async function analyzeCheckinScores(images: ImageInput[]): Promise<Scores> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+  const content: Array<Record<string, unknown>> = images.map((img) => ({
+    type: "image",
+    source: { type: "base64", media_type: img.mediaType, data: img.base64 },
+  }));
+  content.push({
+    type: "text",
+    text: "Score this check-in. Return the JSON scores object exactly as specified in the system prompt. No prose, no markdown, just JSON.",
+  });
+
+  const doCall = async () => {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: CHECKIN_MODEL,
+        max_tokens: 300,
+        temperature: 0,
+        system: CHECKIN_SYSTEM_PROMPT,
+        messages: [{ role: "user", content }],
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Claude API ${res.status}: ${errText.slice(0, 500)}`);
+    }
+    const data = (await res.json()) as { content: Array<{ type: string; text?: string }> };
+    return data.content.find((c) => c.type === "text")?.text ?? "";
+  };
+
+  const extractJson = (raw: string): string => {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("{")) return trimmed;
+    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenced) return fenced[1].trim();
+    const first = trimmed.indexOf("{");
+    const last = trimmed.lastIndexOf("}");
+    if (first >= 0 && last > first) return trimmed.slice(first, last + 1);
+    return trimmed;
+  };
+
+  let raw = await doCall();
+  try {
+    return ScoresSchema.parse(JSON.parse(extractJson(raw)));
+  } catch (err) {
+    console.warn("First check-in parse failed, retrying:", err);
+    raw = await doCall();
+    return ScoresSchema.parse(JSON.parse(extractJson(raw)));
   }
 }

@@ -130,7 +130,7 @@ const FullInputSchema = z.object({
 
 export type FullResult =
   | { locked: true; paid: boolean }
-  | { locked: false; report: unknown };
+  | { locked: false; report: unknown; createdAt: string };
 
 export const getAnalysisFull = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => FullInputSchema.parse(input))
@@ -138,7 +138,7 @@ export const getAnalysisFull = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("analyses")
-      .select("id, status, report_json, paid, owner_anon_id, email, plan")
+      .select("id, status, report_json, paid, owner_anon_id, email, plan, created_at")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -158,7 +158,122 @@ export const getAnalysisFull = createServerFn({ method: "POST" })
     if (!entitled || !row.report_json) {
       return { locked: true as const, paid: row.paid === true };
     }
-    return { locked: false as const, report: JSON.parse(JSON.stringify(row.report_json)) };
+    return {
+      locked: false as const,
+      report: JSON.parse(JSON.stringify(row.report_json)),
+      createdAt: row.created_at as string,
+    };
+  });
+
+// --- Real "Vibe Decay Trajectory": check-ins on an existing conversation.
+// A check-in re-scores NEW screenshots of the SAME conversation, taken
+// later, and stores just the 7 numbers (see report_checkins migration
+// 20260710090000). Once 2+ real data points exist (the original report +
+// at least one check-in), report.$id.tsx renders the trend from these real
+// scores instead of the seeded pseudo-random sparkline. Same entitlement
+// gate as the report itself, plus a rate limit purely as an abuse safety
+// net — unlike the Haiku chat, each check-in is a real vision call, so
+// cost per call isn't trivial even though Haiku keeps it far cheaper than
+// a full Sonnet report.
+
+const CHECKIN_LIMIT = 30;
+
+const CheckinIdInputSchema = z.object({
+  id: z.string().uuid(),
+  ownerAnonId: z.string().min(8).max(128),
+});
+
+export type Checkin = { overallScore: number; scores: Record<string, number>; createdAt: string };
+
+export const getCheckins = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => CheckinIdInputSchema.parse(input))
+  .handler(async ({ data }): Promise<{ checkins: Checkin[]; locked: boolean }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("analyses")
+      .select("paid, owner_anon_id, email, plan")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Not found");
+
+    const { entitled } = await checkEntitlement(row, data.ownerAnonId);
+    if (!entitled) return { checkins: [], locked: true };
+
+    const { data: rows, error: checkinErr } = await supabaseAdmin
+      .from("report_checkins")
+      .select("overall_score, scores, created_at")
+      .eq("analysis_id", data.id)
+      .order("created_at", { ascending: true });
+    if (checkinErr) throw new Error(checkinErr.message);
+
+    return {
+      checkins: (rows ?? []).map((r) => ({
+        overallScore: r.overall_score as number,
+        scores: r.scores as Record<string, number>,
+        createdAt: r.created_at as string,
+      })),
+      locked: false,
+    };
+  });
+
+const AddCheckinInputSchema = z.object({
+  id: z.string().uuid(),
+  ownerAnonId: z.string().min(8).max(128),
+  images: z.array(ImageInputSchema).min(1).max(6),
+});
+
+export const addCheckin = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => AddCheckinInputSchema.parse(input))
+  .handler(async ({ data }): Promise<{ overallScore: number } | { error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { analyzeCheckinScores } = await import("./vibecheck.server");
+
+    const { data: row, error } = await supabaseAdmin
+      .from("analyses")
+      .select("paid, owner_anon_id, email, plan")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) return { error: error.message };
+    if (!row) return { error: "Report not found" };
+
+    const { entitled } = await checkEntitlement(row, data.ownerAnonId);
+    if (!entitled) return { error: "locked" };
+
+    const { count } = await supabaseAdmin
+      .from("report_checkins")
+      .select("id", { count: "exact", head: true })
+      .eq("analysis_id", data.id);
+    if ((count ?? 0) >= CHECKIN_LIMIT) {
+      return { error: "limit_reached" };
+    }
+
+    let scores;
+    try {
+      scores = await analyzeCheckinScores(data.images);
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Check-in analysis failed" };
+    }
+
+    const overallScore = Math.round(
+      (scores.interest_score +
+        scores.reciprocity_score +
+        scores.emotional_warmth +
+        scores.response_consistency +
+        scores.flirting_signals +
+        (100 - scores.toxicity_score) +
+        scores.conversation_health) /
+        7,
+    );
+
+    const { error: insErr } = await supabaseAdmin.from("report_checkins").insert({
+      analysis_id: data.id,
+      overall_score: overallScore,
+      scores: scores as never,
+    });
+    if (insErr) return { error: insErr.message };
+
+    return { overallScore };
   });
 
 // --- AI-chat over the report (Reply Help's neighbor feature: "ask why your
