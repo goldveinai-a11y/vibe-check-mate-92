@@ -9,6 +9,7 @@ import type { Report, Flag } from "@/lib/vibecheck-schema";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 import { CompatibilityRadar } from "@/components/CompatibilityRadar";
+import { ReportChat } from "@/components/ReportChat";
 
 const fullQuery = (id: string, ownerAnonId: string) =>
   queryOptions({
@@ -208,6 +209,8 @@ function ReportPage() {
                 </div>
               </div>
             </ReportSection>
+
+            <ReportChat analysisId={id} ownerAnonId={ownerAnonId} />
 
             <ReportSection Icon={Sparkles} title="Psychological Analysis">
               <div className="space-y-4">
