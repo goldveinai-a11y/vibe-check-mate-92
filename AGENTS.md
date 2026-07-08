@@ -45,3 +45,28 @@
    function touching the new table throws confusing `SelectQueryError` /
    `argument of type 'x' is not assignable to parameter of type ...` TS
    errors that look like a schema bug rather than a missing type stub.
+
+5. **GitHub web-upload commit form: verify the commit-message field before
+   clicking Commit.** After a `file_upload`, the first click+type into the
+   commit-message textbox frequently lands on stale DOM (pre-re-render) and
+   produces an empty field even though the click/type calls succeeded — this
+   happened repeatedly across sessions. Always screenshot to confirm the
+   message text actually landed before clicking "Commit changes"; if empty,
+   re-click the (possibly vertically shifted, depending on how many files are
+   listed above the form) textbox and retype.
+
+6. **Never call `ReportSchema.parse()` (or any Zod `.parse()`) directly on
+   raw LLM JSON output.** A single oversized/invalid field throws and kills
+   the ENTIRE parsed object, not just that field — and a `temperature: 0`
+   retry is deterministic, so it fails identically the second time and only
+   doubles latency for nothing. Always run a `sanitizeReportShape()`-style
+   clamp/truncate pass over every bounded string field BEFORE `.parse()`.
+   Tightening the prompt's stated character limits is defense in depth, not
+   a substitute for this.
+
+7. **Auth-gated mechanics (e.g. Wingman referral codes via
+   `requireSupabaseAuth`) must never be silently extended to unauthenticated
+   surfaces** (like the free `/results/$id` preview) just because it would be
+   convenient or the UI calls for it. This is a real security/economics
+   decision — flag it explicitly and get sign-off before loosening the auth
+   requirement or building a parallel anon-friendly path.
