@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useRef } from "react";
-import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, CheckCircle, AlertCircle, Sparkles, Award, Film, Quote, TrendingDown, TrendingUp, Minus, Share2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, CheckCircle, AlertCircle, Sparkles, Award, Film, Quote, TrendingDown, TrendingUp, Minus, Share2, Send, Copy, Check } from "lucide-react";
 import { getAnalysisFull } from "@/lib/vibecheck.functions";
 import { getAnonId } from "@/lib/anon-id";
 import type { Report, Flag } from "@/lib/vibecheck-schema";
@@ -228,6 +228,18 @@ function ReportPage() {
               <PullQuoteBlock text={report.future_outlook} accent="purple" bare />
             </ReportSection>
 
+            {report.suggested_replies && (
+              <ReportSection Icon={Send} title="Reply Help">
+                <p className="mb-4 text-sm text-ink/60">
+                  Not sure what to say back? Two ready-to-send drafts, pick your energy.
+                </p>
+                <div className="space-y-3">
+                  <ReplyCard label="Warm & Interested" text={report.suggested_replies.warm} accent="pink" />
+                  <ReplyCard label="Neutral & Reserved" text={report.suggested_replies.neutral} accent="purple" />
+                </div>
+              </ReportSection>
+            )}
+
             <div className="rounded-3xl bg-pink p-6 shadow-md sm:p-8">
               <div className="flex items-center gap-3 text-ink">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-pink-soft">
@@ -392,6 +404,38 @@ function DecaySparkline({
       <circle cx={xs[n - 1]} cy={ys[n - 1]} r={5} fill="var(--purple)" />
       <circle cx={xs[n - 1]} cy={ys[n - 1]} r={9} fill="var(--purple)" opacity={0.25} />
     </svg>
+  );
+}
+
+function ReplyCard({ label, text, accent }: { label: string; text: string; accent: "pink" | "purple" }) {
+  const [copied, setCopied] = useState(false);
+  const bg = accent === "pink" ? "bg-pink-soft" : "bg-purple-soft";
+  const accentText = accent === "pink" ? "text-pink" : "text-purple-deep";
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // clipboard unavailable — no-op, button just won't confirm
+    }
+  };
+
+  return (
+    <div className={`rounded-2xl p-4 ${bg}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className={`text-xs font-semibold uppercase tracking-widest ${accentText}`}>{label}</p>
+        <button
+          onClick={handleCopy}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-xs font-medium text-ink shadow-sm transition hover:bg-white"
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-ink/85">"{text}"</p>
+    </div>
   );
 }
 
