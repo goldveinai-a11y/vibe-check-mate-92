@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, PieChart, Flag, MessageCircle, Bell } from "lucide-react";
+import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail } from "lucide-react";
 import { VibeCheckout } from "@/components/VibeCheckout";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { getAnonId } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const Route = createFileRoute("/paywall/$id")({
   head: () => ({
@@ -71,10 +73,24 @@ const TIERS: Tier[] = [
 function PaywallPage() {
   const { id } = Route.useParams();
   const [selected, setSelected] = useState<Plan | null>(null);
+  const [email, setEmail] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
   const ownerAnonId = typeof window !== "undefined" ? getAnonId() : "";
+  const emailValid = EMAIL_RE.test(email.trim());
   const returnUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/checkout/return?id=${id}&session_id={CHECKOUT_SESSION_ID}`
+    ? `${window.location.origin}/checkout/return?id=${id}&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email.trim())}`
     : "";
+
+  const handlePickPlan = (planId: Plan) => {
+    if (!emailValid) {
+      setEmailTouched(true);
+      if (typeof document !== "undefined") {
+        document.getElementById("vibecheck-email-input")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+    setSelected(planId);
+  };
 
   return (
     <main className="min-h-screen bg-cream pb-20 text-ink">
@@ -95,7 +111,7 @@ function PaywallPage() {
                 ← Change plan
               </button>
               <div className="mt-4 rounded-3xl border border-border/60 bg-card p-2 shadow-sm">
-                <VibeCheckout analysisId={id} ownerAnonId={ownerAnonId} plan={selected} returnUrl={returnUrl} />
+                <VibeCheckout analysisId={id} ownerAnonId={ownerAnonId} plan={selected} returnUrl={returnUrl} email={email.trim()} />
               </div>
             </div>
           </motion.section>
@@ -134,6 +150,32 @@ function PaywallPage() {
 
                 {/* Tiers */}
                 <div className="space-y-5">
+                  <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+                    <label htmlFor="vibecheck-email-input" className="flex items-center gap-2 text-sm font-medium text-ink">
+                      <Mail className="h-4 w-4 text-pink" />
+                      Your email
+                    </label>
+                    <p className="mt-1 text-xs text-ink/60">
+                      So you can find this report again from any device — we'll send a magic link, no password needed.
+                    </p>
+                    <input
+                      id="vibecheck-email-input"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={() => setEmailTouched(true)}
+                      placeholder="you@example.com"
+                      className={`mt-3 w-full rounded-full border bg-cream px-4 py-3 text-sm outline-none transition focus:border-pink ${
+                        emailTouched && !emailValid ? "border-destructive" : "border-border"
+                      }`}
+                    />
+                    {emailTouched && !emailValid && (
+                      <p className="mt-2 text-xs text-destructive">Enter a valid email to continue.</p>
+                    )}
+                  </div>
+
                   {TIERS.map((t) => (
                     <div
                       key={t.id}
@@ -160,8 +202,8 @@ function PaywallPage() {
                         </span>
                       )}
                       <button
-                        onClick={() => setSelected(t.id)}
-                        className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-pink px-6 py-3.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
+                        onClick={() => handlePickPlan(t.id)}
+                        className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-pink px-6 py-3.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
                       >
                         {t.cta}
                       </button>

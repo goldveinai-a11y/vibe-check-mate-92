@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Heart, CheckCircle2, Loader2 } from "lucide-react";
-import { saveEmail } from "@/lib/vibecheck.functions";
+import { Heart, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const Route = createFileRoute("/checkout/return")({
@@ -10,22 +10,51 @@ export const Route = createFileRoute("/checkout/return")({
   validateSearch: (s: Record<string, unknown>) => ({
     id: typeof s.id === "string" ? s.id : undefined,
     session_id: typeof s.session_id === "string" ? s.session_id : undefined,
+    email: typeof s.email === "string" ? s.email : undefined,
   }),
   component: ReturnPage,
 });
 
+type LinkState = "idle" | "sending" | "sent" | "error";
+
 function ReturnPage() {
-  const { id } = Route.useSearch();
+  const { id, email } = Route.useSearch();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [saved, setSaved] = useState(false);
   const [ready, setReady] = useState(false);
+  const [linkState, setLinkState] = useState<LinkState>("idle");
 
   useEffect(() => {
     if (!id) return;
     const t = setTimeout(() => setReady(true), 1500);
     return () => clearTimeout(t);
   }, [id]);
+
+  // Automatically send a magic link to the email captured at checkout —
+  // this is the account: no password, no separate "save my report" form to
+  // forget to fill in. One email gets them a login that finds this report
+  // (and every future one) from any device.
+  useEffect(() => {
+    if (!email) return;
+    let cancelled = false;
+    setLinkState("sending");
+    supabase.auth
+      .signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/account` : undefined,
+        },
+      })
+      .then(({ error }) => {
+        if (cancelled) return;
+        setLinkState(error ? "error" : "sent");
+      })
+      .catch(() => {
+        if (!cancelled) setLinkState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [email]);
 
   if (!id) {
     return (
@@ -74,37 +103,20 @@ function ReturnPage() {
             View Full Report
           </button>
 
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!email) return;
-              await saveEmail({ data: { id, email } });
-              setSaved(true);
-            }}
-            className="mt-8 rounded-3xl border border-border/60 bg-card p-5 text-left shadow-sm"
-          >
-            <p className="text-sm font-medium">Save access to this report</p>
-            <p className="mt-1 text-xs text-ink/60">
-              Optional. We'll email the link so you can come back later.
-            </p>
-            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="min-w-0 rounded-full border border-border bg-cream px-4 py-2 text-sm outline-none focus:border-pink"
-                disabled={saved}
-              />
-              <button
-                type="submit"
-                disabled={!email || saved}
-                className="shrink-0 rounded-full bg-ink px-4 py-2 text-sm text-white disabled:opacity-40"
-              >
-                {saved ? "Saved ✓" : "Save"}
-              </button>
+          {email && (
+            <div className="mt-8 rounded-3xl border border-border/60 bg-card p-5 text-left shadow-sm">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <Mail className="h-4 w-4 text-pink" />
+                Access saved to {email}
+              </p>
+              <p className="mt-1 text-xs text-ink/60">
+                {linkState === "sending" && "Sending your magic link…"}
+                {linkState === "sent" && "Check your inbox — tap the link any time to see this report (and any future ones) from any device, no password needed."}
+                {linkState === "error" && "Payment went through, but we couldn't send the login link right now. Your report is still safe — visit /my-reports later to request a new one."}
+                {linkState === "idle" && "Preparing your login link…"}
+              </p>
             </div>
-          </form>
+          )}
         </div>
       </section>
     </main>
