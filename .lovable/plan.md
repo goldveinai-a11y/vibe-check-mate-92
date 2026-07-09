@@ -1,33 +1,43 @@
 ## Проблема
-Превью не собирается: build падает из-за отсутствующего файла `src/components/ReportChat.tsx`. Он импортируется в `src/routes/report.$id.tsx` (строка 13), но никогда не был создан. TypeScript: `TS2307: Cannot find module '@/components/ReportChat'`. Статический превью → «Preview has not been built yet».
 
-Бэкенд для чата уже готов: `getChatMessages` и `sendChatMessage` в `src/lib/vibecheck.functions.ts`, промпт/лимиты в `src/lib/vibecheck-chat.server.ts`, таблица `report_chat_messages` (миграция 20260709090000). Не хватает только UI-компонента.
+Сейчас у нас Stripe **Embedded Checkout** (форма встроена в iframe на `/paywall/$id`). На нём показывается только поле карты — Apple Pay / Google Pay / Link / Amazon Pay в этом режиме не появляются в превью-домене, потому что для встроенного iframe нужна верификация домена Apple и других wallet'ов. Это и есть причина «страшного» вида и низкой конверсии.
 
-## Что делаем
+## Решение
 
-**Создать `src/components/ReportChat.tsx`** — компонент чата по отчёту, вызывается в `report.$id.tsx` как `<ReportChat analysisId={id} ownerAnonId={ownerAnonId} />`.
+Не тянуть Payment Links (они статичные и теряют нашу метадату — `analysisId`, `email`, `refCode`, `ownerAnonId` — от которой зависит вебхук, разблокировка отчёта и Wingman-рефералы).
 
-Функционал:
-- `useQuery` → `getChatMessages({ data: { id, ownerAnonId } })` — грузит историю + `limit` + `locked`.
-- Если `locked` — просто ничего не рендерим (страница отчёта уже видна только при оплате, но подстрахуемся).
-- Список сообщений в стиле бренда (bubble для user справа розовый, для assistant слева карточка на cream/purple-soft, шрифт как в остальном отчёте).
-- Инпут снизу + кнопка Send (Lucide `Send`), enter = отправить, `maxLength=400`, disabled когда `sending` или `remaining === 0`.
-- Мутация: `sendChatMessage` → оптимистично добавляем user-turn, показываем «typing…» индикатор, по ответу добавляем assistant-turn и обновляем `remaining`. При `error === "limit_reached"` — показать спокойную плашку «you've used all N questions for this report». При `error === "locked"` — плашка «unlock to chat». Прочие ошибки — тост-строка ниже инпута.
-- Счётчик «X of N questions left» справа сверху карточки.
-- 2-3 предложенных стартовых вопроса-чипа (client-side константы: «why is my interest score X?», «what should I do next?», «are the red flags dealbreakers?») — кликом подставляются в инпут; показываем только когда история пустая.
-- Заголовок блока: `Ask the report` + иконка `MessageCircle`, короткий подзаголовок «Follow-up questions, grounded in your data».
+Вместо этого переключить наш существующий `createCheckoutSession` с **Embedded** на **Hosted Stripe Checkout** — это та же самая страница, что открывается по Payment Link на твоём скриншоте (с Apple Pay, Google Pay, Link, Amazon Pay, промокодом и т.д.), но с сохранением всей нашей логики и метадаты.
 
-Технически:
-- `useMutation` от `@tanstack/react-query`, invalidate `["chat", id]` после успеха ИЛИ ручной setQueryData для мгновенного апдейта.
-- Ключ `queryOptions(["chat", id, ownerAnonId], () => getChatMessages(...))`.
-- Auto-scroll к последнему сообщению через `ref` + `useEffect`.
-- Тон копий — как весь остальной отчёт (лёгкий, разговорный, не корпоративный).
+Поток становится: пользователь жмёт тариф → редирект на `checkout.stripe.com/...` → после оплаты Stripe возвращает на наш `/checkout/return?...` → вебхук уже отрабатывает как сейчас.
 
-**Ничего больше не трогаем**: схема, промпты, серверные функции, платёж, старые отчёты, остальной визуал `report.$id.tsx`.
+## Что меняется
 
-## Файлы
-- new `src/components/ReportChat.tsx`
+**Backend — `src/lib/vibecheck.functions.ts` (`createCheckoutSession`)**
+- Убрать `ui_mode: "embedded_page"` и `return_url` (embedded-специфичный).
+- Добавить `success_url` (наш `/checkout/return?...&session_id={CHECKOUT_SESSION_ID}`) и `cancel_url` (обратно на `/paywall/$id`).
+- Явно включить wallets: `payment_method_types: ["card", "link"]` + `automatic_payment_methods: { enabled: true }` (Apple/Google Pay появляются автоматически по браузеру/устройству).
+- Разрешить промокод: `allow_promotion_codes: true` (пригодится для Wingman-скидки в будущем).
+- Возвращать `{ url: session.url }` вместо `{ clientSecret }`.
+- Метадата (`analysisId`, `plan`, `email`, `refCode`, `ownerAnonId`) — как есть, ничего не трогаем.
 
-## Проверка
-- `bunx tsgo --noEmit` должен пройти без TS2307.
-- Статический превью соберётся, `/report/$id` рендерит блок чата под остальным контентом отчёта.
+**Frontend — `src/routes/paywall.$id.tsx`**
+- Убрать состояние `selected` и блок с `<VibeCheckout .../>`.
+- По клику на тариф (после валидации email): вызвать `createCheckoutSession` и сделать `window.location.href = result.url`.
+- Показать лёгкий loading-state на выбранной карточке пока идёт запрос.
+
+**Удалить (больше не нужны)**
+- `src/components/VibeCheckout.tsx`
+- Импорты `@stripe/react-stripe-js` / `getStripe` / `EmbeddedCheckoutProvider` на этой странице. Пакеты `@stripe/stripe-js` и `@stripe/react-stripe-js` из `package.json` не трогаем на этом шаге (могут использоваться где-то ещё; удалим отдельно, если подтвердится).
+
+**Не трогаем**
+- `src/routes/api/public/payments/webhook.ts` — вся логика (`markAnalysisPaid`, `upsertSubscription`, Wingman `redemption_count`) продолжает работать: та же метадата, тот же `checkout.session.completed`.
+- `src/routes/checkout.return.tsx` — Stripe так же подставит `{CHECKOUT_SESSION_ID}` в `success_url`.
+- `src/lib/stripe.server.ts`, `stripe.ts`, тарифы, prices, компонент `PaymentTestModeBanner`.
+
+## Что получим
+
+Ровно та страница чекаута, что у тебя на скриншоте: Apple Pay, Google Pay, Link, Amazon Pay, карты, поле промокода, локализация (RU/USD), 3-day free trial для monthly — всё «из коробки» Stripe. Нашей логике разблокировки отчёта и рефералам от этого ничего не будет.
+
+## Известный компромисс
+
+Пользователь на 2–3 секунды уходит с нашего домена на `checkout.stripe.com` и возвращается обратно — стандартный трейд-офф за нативные wallet'ы. Конверсия от появления Apple/Google Pay это с большим запасом перекрывает.
