@@ -406,6 +406,11 @@ const CheckoutInputSchema = z.object({
   plan: PlanEnum,
   environment: z.enum(["sandbox", "live"]),
   returnUrl: z.string().url(),
+  // Where Stripe's hosted Checkout page sends the buyer back if they bail
+  // before paying (e.g. the paywall page itself). Required now that
+  // checkout is a redirect flow rather than an embedded iframe — see the
+  // success_url/cancel_url pair below.
+  cancelUrl: z.string().url(),
   // Required, not optional: email is now the durable identity key that lets
   // a buyer find their report(s) again from any device via magic link,
   // instead of relying solely on a localStorage anon id.
@@ -415,7 +420,7 @@ const CheckoutInputSchema = z.object({
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CheckoutInputSchema.parse(input))
-  .handler(async ({ data }): Promise<{ clientSecret: string } | { error: string }> => {
+  .handler(async ({ data }): Promise<{ url: string } | { error: string }> => {
     try {
       const { createStripeClient, getStripeErrorMessage } = await import("./stripe.server");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -477,8 +482,12 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       const session = await stripe.checkout.sessions.create({
         line_items: lineItems,
         mode: isSubscription ? "subscription" : "payment",
-        ui_mode: "embedded_page",
-        return_url: data.returnUrl,
+        // Hosted Checkout redirect flow (paywall.$id.tsx sends the buyer to
+        // session.url and relies on success_url/cancel_url), replacing the
+        // earlier embedded_page/return_url setup now that VibeCheckout.tsx
+        // (the embedded iframe wrapper) no longer exists.
+        success_url: data.returnUrl,
+        cancel_url: data.cancelUrl,
         automatic_tax: { enabled: true },
         customer_email: data.email,
         metadata,
@@ -503,7 +512,8 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         .update({ stripe_session_id: session.id, plan: data.plan, email: data.email })
         .eq("id", data.analysisId);
 
-      return { clientSecret: session.client_secret ?? "" };
+      if (!session.url) return { error: "Checkout session created but no redirect URL was returned" };
+      return { url: session.url };
     } catch (err) {
       const { getStripeErrorMessage } = await import("./stripe.server");
       return { error: getStripeErrorMessage(err) };
