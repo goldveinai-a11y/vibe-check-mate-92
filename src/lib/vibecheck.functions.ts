@@ -523,6 +523,51 @@ export const saveEmail = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const EstablishCheckoutSessionInputSchema = z.object({
+  id: z.string().uuid(),
+  sessionId: z.string().min(1),
+});
+
+export const establishCheckoutSession = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => EstablishCheckoutSessionInputSchema.parse(input))
+  .handler(async ({ data }): Promise<{ tokenHash: string; email: string } | { error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Auto-login right after Stripe checkout, in the SAME tab — skips the
+    // "check your email, click the magic link" step for the device that
+    // just paid (checkout.return.tsx calls this, then verifyOtp client-side).
+    // This is only safe because we require the analysis id AND its exact
+    // stripe_session_id (set on this row at checkout-creation time, see
+    // createCheckoutSession above) to match, AND paid to already be true —
+    // paid+stripe_session_id are only ever written together by the
+    // signature-verified Stripe webhook (api/public/payments/webhook.ts),
+    // never by any client call. The email itself is read from this row
+    // (set during checkout creation / reaffirmed by the webhook), never
+    // trusted from client input — so this cannot be used to mint a session
+    // for an arbitrary email address someone doesn't already own. The
+    // emailed magic link sent in parallel by checkout.return.tsx still
+    // works exactly as before, so access from a second device is unaffected.
+    const { data: row } = await supabaseAdmin
+      .from("analyses")
+      .select("email, paid, stripe_session_id")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (!row || row.paid !== true || row.stripe_session_id !== data.sessionId || !row.email) {
+      return { error: "not_ready" };
+    }
+
+    const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
+      email: row.email,
+    });
+    if (error || !link?.properties?.hashed_token) {
+      return { error: error?.message ?? "link_failed" };
+    }
+
+    return { tokenHash: link.properties.hashed_token, email: row.email };
+  });
+
 export const getUnlockedCount = createServerFn({ method: "GET" }).handler(async () => {
   // Uses supabaseAdmin (service role) rather than a raw anon-key client —
   // the analyses table no longer grants anon/authenticated any direct
