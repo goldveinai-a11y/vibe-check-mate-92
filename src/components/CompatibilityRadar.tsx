@@ -9,7 +9,16 @@ export function CompatibilityRadar({
   metrics: RadarMetric[];
   size?: number;
 }) {
-  const cx = size / 2;
+  // Axis labels (e.g. "RECIPROCITY", "NON-TOXIC") are drawn past the radius
+  // of the shape itself, and the longest ones don't fit between the last
+  // vertex and the edge of a viewBox sized to exactly `size` — they were
+  // getting silently clipped by the SVG's own bounds (e.g. "NON-TOXIC"
+  // rendering as "ON-TOXIC"). Widening the viewBox/canvas horizontally
+  // (labels only overflow sideways, not vertically) gives them breathing
+  // room without changing the plotted shape's actual size.
+  const labelPad = 72;
+  const width = size + labelPad * 2;
+  const cx = width / 2;
   const cy = size / 2;
   const maxR = size * 0.34;
   const n = metrics.length;
@@ -39,8 +48,8 @@ export function CompatibilityRadar({
   const centerPoly = metrics.map(() => `${cx},${cy}`).join(" ");
 
   return (
-    <div className="mx-auto" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <div className="mx-auto" style={{ width, height: size }}>
+      <svg width={width} height={size} viewBox={`0 0 ${width} ${size}`}>
         <defs>
           <linearGradient id="radar-fill" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="var(--pink)" stopOpacity={0.55} />
