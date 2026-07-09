@@ -337,9 +337,15 @@ function ReportPage() {
               </ReportSection>
             )}
 
-            <div className="rounded-3xl bg-pink p-6 shadow-md sm:p-8">
+            {/* Was a solid bg-pink block — reads as an alarm/warning color
+                at that size and saturation regardless of what the verdict
+                actually says, so a genuinely good read still looked like a
+                red-flag card. Softened to the same pink-soft-card language
+                used elsewhere (Delusion Level etc.), with the icon itself
+                carrying the pink accent instead of the whole card. */}
+            <div className="rounded-3xl border border-pink/20 bg-pink-soft p-6 shadow-sm sm:p-8">
               <div className="flex items-center gap-3 text-ink">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-pink-soft">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-pink text-white">
                   <Star className="h-5 w-5" />
                 </div>
                 <h3 className="font-serif text-2xl">The Verdict</h3>
@@ -629,8 +635,14 @@ function ReplyCard({ label, text, accent }: { label: string; text: string; accen
 // / future_outlook), reusing values already in scope on the report page.
 function CloseTheLoop({ report, overallScore }: { report: Report; overallScore: number }) {
   const [closed, setClosed] = useState(false);
+  // Was "You have your read: couch potato with potential —" which reads as
+  // a grammar error (label doesn't fit as the object of "have"), and just
+  // restated the pre-click line ("You've got your answer now") instead of
+  // adding anything. Rephrased as an appositive so the label slots in
+  // naturally, and kept Title Case for the vibe-award version since it's a
+  // named result, not lowercase filler.
   const label = report.viral?.vibe_award?.title
-    ? `your read: ${report.viral.vibe_award.title.toLowerCase()}`
+    ? report.viral.vibe_award.title
     : `a clear ${overallScore}% read`;
 
   return (
@@ -677,7 +689,7 @@ function CloseTheLoop({ report, overallScore }: { report: Report; overallScore: 
             </div>
             <h3 className="font-serif relative mt-4 text-2xl">Loop closed.</h3>
             <p className="relative mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink/75">
-              You have {label} — whatever happens next, you're not walking in blind anymore.
+              You know exactly where you stand: {label}. Whatever happens next, you're not walking in blind anymore.
             </p>
           </motion.div>
         )}
