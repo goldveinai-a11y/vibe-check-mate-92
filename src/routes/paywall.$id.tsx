@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock, Gift } from "lucide-react";
-import { VibeCheckout } from "@/components/VibeCheckout";
+import { motion } from "framer-motion";
+import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock, Gift, Loader2 } from "lucide-react";
+import { createCheckoutSession } from "@/lib/vibecheck.functions";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { getAnonId, getStoredRefCode } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -72,17 +73,15 @@ const TIERS: Tier[] = [
 
 function PaywallPage() {
   const { id } = Route.useParams();
-  const [selected, setSelected] = useState<Plan | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [emailTouched, setEmailTouched] = useState(false);
   const ownerAnonId = typeof window !== "undefined" ? getAnonId() : "";
   const refCode = typeof window !== "undefined" ? getStoredRefCode() : null;
   const emailValid = EMAIL_RE.test(email.trim());
-  const returnUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/checkout/return?id=${id}&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email.trim())}`
-    : "";
 
-  const handlePickPlan = (planId: Plan) => {
+  const handlePickPlan = async (planId: Plan) => {
     if (!emailValid) {
       setEmailTouched(true);
       if (typeof document !== "undefined") {
@@ -90,7 +89,31 @@ function PaywallPage() {
       }
       return;
     }
-    setSelected(planId);
+    if (loadingPlan) return;
+    setCheckoutError(null);
+    setLoadingPlan(planId);
+    try {
+      const origin = window.location.origin;
+      const successUrl = `${origin}/checkout/return?id=${id}&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email.trim())}`;
+      const cancelUrl = `${origin}/paywall/${id}`;
+      const result = await createCheckoutSession({
+        data: {
+          analysisId: id,
+          ownerAnonId,
+          plan: planId,
+          environment: getStripeEnvironment(),
+          returnUrl: successUrl,
+          cancelUrl,
+          email: email.trim(),
+          ...(refCode ? { refCode } : {}),
+        },
+      });
+      if ("error" in result) throw new Error(result.error);
+      window.location.href = result.url;
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setLoadingPlan(null);
+    }
   };
 
   return (
@@ -98,32 +121,7 @@ function PaywallPage() {
       <PaymentTestModeBanner />
       <SiteHeader unlockHref="/paywall/$id" unlockParams={{ id }} />
 
-      <AnimatePresence mode="wait">
-        {selected ? (
-          <motion.section
-            key="checkout"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="px-5 pt-4"
-          >
-            <div className="mx-auto max-w-2xl">
-              <button onClick={() => setSelected(null)} className="text-sm text-ink/60 hover:text-ink">
-                ← Change plan
-              </button>
-              {refCode && (
-                <div className="mt-4 flex items-center gap-2 rounded-2xl bg-mint-soft/60 px-4 py-3 text-sm text-ink/80">
-                  <Gift className="h-4 w-4 shrink-0 text-mint" />
-                  Referral code applied — 20% off if it checks out.
-                </div>
-              )}
-              <div className="mt-4 rounded-3xl border border-border/60 bg-card p-2 shadow-sm">
-                <VibeCheckout analysisId={id} ownerAnonId={ownerAnonId} plan={selected} returnUrl={returnUrl} email={email.trim()} refCode={refCode} />
-              </div>
-            </div>
-          </motion.section>
-        ) : (
-          <motion.section key="plans" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-5 pt-4">
+      <motion.section key="plans" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 pt-4">
             <div className="mx-auto max-w-6xl">
               <div className="flex flex-col items-center text-center">
                 <span className="inline-flex items-center gap-2 rounded-full bg-purple-soft px-4 py-2 text-xs font-medium text-purple-deep sm:text-sm">
@@ -140,6 +138,12 @@ function PaywallPage() {
                   <Lock className="h-4 w-4 text-mint" />
                   No receipts kept — read once, deleted for good.
                 </div>
+                {refCode && (
+                  <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-mint-soft/60 px-4 py-2 text-sm text-ink/80">
+                    <Gift className="h-4 w-4 shrink-0 text-mint" />
+                    Referral code applied — 20% off if it checks out.
+                  </div>
+                )}
               </div>
 
               <div className="mt-12 grid gap-8 lg:grid-cols-2">
@@ -214,14 +218,25 @@ function PaywallPage() {
                       )}
                       <button
                         onClick={() => handlePickPlan(t.id)}
-                        className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-pink px-6 py-3.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
+                        disabled={loadingPlan !== null}
+                        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-3.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
                       >
-                        {t.cta}
+                        {loadingPlan === t.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Redirecting to secure checkout…
+                          </>
+                        ) : (
+                          t.cta
+                        )}
                       </button>
                     </div>
                   ))}
+                  {checkoutError && (
+                    <p className="text-center text-xs text-destructive">{checkoutError}</p>
+                  )}
                   <p className="text-center text-xs text-ink/60">
-                    Secure payment · Cancel anytime · Instant access
+                    Apple Pay · Google Pay · Card · Link — secure checkout by Stripe
                   </p>
                   <Link to="/results/$id" params={{ id }} className="block text-center text-xs text-ink/50 hover:text-ink">
                     ← Back to preview
@@ -229,9 +244,7 @@ function PaywallPage() {
                 </div>
               </div>
             </div>
-          </motion.section>
-        )}
-      </AnimatePresence>
+      </motion.section>
     </main>
   );
 }
