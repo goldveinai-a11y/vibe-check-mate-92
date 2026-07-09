@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Heart, Loader2, LogOut, CreditCard, Sparkles, ExternalLink, History, Gift, Copy, Check } from "lucide-react";
+import { Heart, Loader2, LogOut, CreditCard, Sparkles, ExternalLink, History, Gift, Copy, Check, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getMyReports, createBillingPortalSession, getOrCreateReferralCode, type MyReportsResult } from "@/lib/vibecheck.functions";
+import { getMyReports, createBillingPortalSession, getOrCreateReferralCode, renameReport, type MyReportsResult } from "@/lib/vibecheck.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { getAnonId } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -26,6 +26,13 @@ function AccountPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [referral, setReferral] = useState<{ code: string; redemptionCount: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  // Renaming state — deliberately refetches getMyReports() after a
+  // successful save rather than patching local state optimistically, since
+  // clearing a custom_label needs the server's recomputed auto-headline
+  // (title/pop-culture couple), which isn't available client-side.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +88,31 @@ function AccountPage() {
   async function handleSignOut() {
     await supabase.auth.signOut();
     navigate({ to: "/" });
+  }
+
+  function startEdit(r: MyReportsResult["reports"][number]) {
+    setEditingId(r.id);
+    setEditValue(r.isCustomLabel ? (r.headline ?? "") : "");
+  }
+  function cancelEdit() {
+    setEditingId(null);
+    setEditValue("");
+  }
+  async function saveEdit(id: string) {
+    setSavingId(id);
+    try {
+      const result = await renameReport({ data: { id, label: editValue } });
+      if ("error" in result) {
+        alert("Couldn't rename that report — try refreshing the page.");
+        return;
+      }
+      const refreshed = await getMyReports();
+      setData(refreshed);
+      setEditingId(null);
+      setEditValue("");
+    } finally {
+      setSavingId(null);
+    }
   }
 
   if (state === "checking" || state === "loading") {
@@ -213,33 +245,80 @@ function AccountPage() {
               {data.reports.map((r) => {
                 const daysSinceActivity = (Date.now() - new Date(r.lastActivityAt).getTime()) / 86_400_000;
                 const showNudge = r.paid && daysSinceActivity >= 7;
+                const isEditing = editingId === r.id;
                 return (
                   <div
                     key={r.id}
                     className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm transition hover:scale-[1.01] sm:p-5"
                   >
-                    <Link
-                      to={r.paid ? "/report/$id" : "/results/$id"}
-                      params={{ id: r.id }}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{r.headline ?? "VibeCheck report"}</p>
-                        <p className="mt-1 text-xs text-ink/60">
-                          {new Date(r.createdAt).toLocaleDateString()}
-                          {r.interestScore != null && <> · {r.interestScore}% interest</>}
-                          {!r.paid && <> · preview only</>}
-                        </p>
-                      </div>
-                      <span
-                        className={`ml-3 shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                          r.paid ? "bg-mint-soft text-ink/80" : "bg-pink-soft text-pink"
-                        }`}
+                    {isEditing ? (
+                      // Own form instead of nesting an input inside the Link
+                      // below — clicking into a text field inside an <a>
+                      // would otherwise risk triggering navigation.
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          saveEdit(r.id);
+                        }}
+                        className="flex items-center gap-2"
                       >
-                        {r.paid ? "Unlocked" : "Preview"}
-                      </span>
-                    </Link>
-                    {showNudge && (
+                        <input
+                          autoFocus
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          maxLength={60}
+                          placeholder="Name this report — e.g. “Alex, week 2”"
+                          className="min-w-0 flex-1 rounded-full border border-border bg-cream px-3.5 py-2 text-sm outline-none focus:border-pink"
+                        />
+                        <button
+                          type="submit"
+                          disabled={savingId === r.id}
+                          className="shrink-0 rounded-full bg-pink px-3.5 py-2 text-xs font-medium text-white shadow-sm disabled:opacity-50"
+                        >
+                          {savingId === r.id ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          className="shrink-0 rounded-full border border-border/60 px-3.5 py-2 text-xs font-medium text-ink/70 hover:text-ink"
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={r.paid ? "/report/$id" : "/results/$id"}
+                          params={{ id: r.id }}
+                          className="flex min-w-0 flex-1 items-center justify-between"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{r.headline ?? "VibeCheck report"}</p>
+                            <p className="mt-1 text-xs text-ink/60">
+                              {new Date(r.createdAt).toLocaleDateString()}
+                              {r.interestScore != null && <> · {r.interestScore}% interest</>}
+                              {!r.paid && <> · preview only</>}
+                            </p>
+                          </div>
+                          <span
+                            className={`ml-3 shrink-0 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                              r.paid ? "bg-mint-soft text-ink/80" : "bg-pink-soft text-pink"
+                            }`}
+                          >
+                            {r.paid ? "Unlocked" : "Preview"}
+                          </span>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(r)}
+                          aria-label="Rename this report"
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink/40 transition hover:bg-muted hover:text-ink"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    {showNudge && !isEditing && (
                       <Link
                         to="/checkin/$id"
                         params={{ id: r.id }}
