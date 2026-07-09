@@ -405,7 +405,13 @@ const CheckoutInputSchema = z.object({
   ownerAnonId: z.string().min(8).max(128),
   plan: PlanEnum,
   environment: z.enum(["sandbox", "live"]),
+  // Success URL — Stripe redirects here after a successful payment.
+  // We keep the historical `returnUrl` field name so client callers don't
+  // need to change; semantically it's now `success_url` for hosted checkout.
   returnUrl: z.string().url(),
+  // Cancel URL — Stripe redirects here if the user clicks "back" from the
+  // hosted checkout page. Optional; defaults to `returnUrl` if omitted.
+  cancelUrl: z.string().url().optional(),
   // Required, not optional: email is now the durable identity key that lets
   // a buyer find their report(s) again from any device via magic link,
   // instead of relying solely on a localStorage anon id.
@@ -415,7 +421,7 @@ const CheckoutInputSchema = z.object({
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CheckoutInputSchema.parse(input))
-  .handler(async ({ data }): Promise<{ clientSecret: string } | { error: string }> => {
+  .handler(async ({ data }): Promise<{ url: string } | { error: string }> => {
     try {
       const { createStripeClient, getStripeErrorMessage } = await import("./stripe.server");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -477,8 +483,13 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       const session = await stripe.checkout.sessions.create({
         line_items: lineItems,
         mode: isSubscription ? "subscription" : "payment",
-        ui_mode: "embedded_page",
-        return_url: data.returnUrl,
+        // Hosted Stripe Checkout (redirect flow). This unlocks Apple Pay,
+        // Google Pay, Link, Amazon Pay, and other wallets that the embedded
+        // iframe suppresses on unverified domains. All app metadata below
+        // still flows through and our webhook stays unchanged.
+        success_url: data.returnUrl,
+        cancel_url: data.cancelUrl ?? data.returnUrl,
+        allow_promotion_codes: !referralApplied,
         automatic_tax: { enabled: true },
         customer_email: data.email,
         metadata,
@@ -503,7 +514,8 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         .update({ stripe_session_id: session.id, plan: data.plan, email: data.email })
         .eq("id", data.analysisId);
 
-      return { clientSecret: session.client_secret ?? "" };
+      if (!session.url) return { error: "Stripe did not return a checkout URL" };
+      return { url: session.url };
     } catch (err) {
       const { getStripeErrorMessage } = await import("./stripe.server");
       return { error: getStripeErrorMessage(err) };
