@@ -74,6 +74,19 @@ function ReportPage() {
     if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
   };
 
+  // The exported ShareCard images are dead ends for the person who
+  // receives them — no way back into the funnel. Copying this page's own
+  // URL keeps the on-page CTAs (paywall, Compare Vibes) intact for whoever
+  // opens it. Mirrors the same "Send this to a friend" pattern already
+  // shipped on the free /results/$id preview page.
+  const [linkCopied, setLinkCopied] = useState(false);
+  const handleCopyLink = async () => {
+    if (typeof window === "undefined") return;
+    await navigator.clipboard.writeText(window.location.href);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
   const wordCloudShareRef = useRef<HTMLDivElement>(null);
   const handleShareWordCloud = async () => {
     if (wordCloudShareRef.current) await exportShareCard(wordCloudShareRef.current, "vibecheck-words.png");
@@ -357,6 +370,13 @@ function ReportPage() {
               <Sparkles className="h-4 w-4" />
               Analyze Another Chat
             </Link>
+            <button
+              onClick={handleCopyLink}
+              className="inline-flex items-center gap-2 rounded-full border border-mint/40 bg-mint-soft/50 px-6 py-3 text-sm font-medium text-ink/80 shadow-sm transition hover:bg-mint-soft"
+            >
+              {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {linkCopied ? "Link copied!" : "Send this report to a friend"}
+            </button>
           </div>
         </div>
       </section>
@@ -405,6 +425,42 @@ function ReportSection({ Icon, title, children }: { Icon: typeof Heart; title: s
   );
 }
 
+// Naive ".!?"-based sentence splitting broke whenever the AI-generated text
+// quoted a chat line that itself contains a "?" (e.g. an embedded Russian
+// quote like 'Может завтра?)' mid-sentence) — it treated that inner "?" as
+// the end of the whole English sentence, so the quote's closing punctuation
+// ")'" ended up starting its own orphaned paragraph. Fix: track whether
+// we're inside a straight-quoted fragment and ignore terminators while
+// inQuote. A quote only "opens" when the preceding character isn't
+// alphanumeric, so contractions ("she's") and decades ("'90s") never get
+// mistaken for quote marks; the very next apostrophe after that closes it.
+function splitIntoSentences(text: string): string[] {
+  const sentences: string[] = [];
+  let start = 0;
+  let inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "'" || ch === "’") {
+      if (inQuote) {
+        inQuote = false;
+      } else if (!/[a-zA-Zа-яёА-ЯЁ0-9]/.test(i > 0 ? text[i - 1] : "")) {
+        inQuote = true;
+      }
+      continue;
+    }
+    if ((ch === "." || ch === "!" || ch === "?") && !inQuote) {
+      let j = i + 1;
+      while (j < text.length && /[.!?]/.test(text[j])) j++;
+      sentences.push(text.slice(start, j).trim());
+      start = j;
+      i = j - 1;
+    }
+  }
+  const tail = text.slice(start).trim();
+  if (tail) sentences.push(tail);
+  return sentences.filter(Boolean);
+}
+
 function PullQuoteBlock({
   label,
   text,
@@ -418,7 +474,8 @@ function PullQuoteBlock({
   bare?: boolean;
   className?: string;
 }) {
-  const sentences = text.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()).filter(Boolean) ?? [text];
+  const parsed = splitIntoSentences(text);
+  const sentences = parsed.length > 0 ? parsed : [text];
   const lead = sentences[0] ?? text;
   // Group the remaining sentences into short 1-2 sentence paragraphs instead
   // of one merged wall of text — same words, but broken into something a
