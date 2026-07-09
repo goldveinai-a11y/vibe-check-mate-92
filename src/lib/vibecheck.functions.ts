@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type Stripe from "stripe";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Report } from "./vibecheck-schema";
 
@@ -489,6 +490,10 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         // still flows through and our webhook stays unchanged.
         success_url: data.returnUrl,
         cancel_url: data.cancelUrl ?? data.returnUrl,
+        // Let Stripe surface every wallet enabled on the account (Google Pay,
+        // Apple Pay, Link, Amazon Pay, …). Payment Links do this by default;
+        // Checkout Sessions require the flag explicitly.
+        ...({ automatic_payment_methods: { enabled: true } } as Stripe.Checkout.SessionCreateParams),
         allow_promotion_codes: !referralApplied,
         automatic_tax: { enabled: true },
         customer_email: data.email,
