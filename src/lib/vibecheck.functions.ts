@@ -511,7 +511,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
                 metadata,
               },
             }),
-      });
+      } as Stripe.Checkout.SessionCreateParams);
 
       await supabaseAdmin
         .from("analyses")
