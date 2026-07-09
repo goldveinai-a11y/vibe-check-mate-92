@@ -405,13 +405,7 @@ const CheckoutInputSchema = z.object({
   ownerAnonId: z.string().min(8).max(128),
   plan: PlanEnum,
   environment: z.enum(["sandbox", "live"]),
-  // Success URL — Stripe redirects here after a successful payment.
-  // We keep the historical `returnUrl` field name so client callers don't
-  // need to change; semantically it's now `success_url` for hosted checkout.
   returnUrl: z.string().url(),
-  // Cancel URL — Stripe redirects here if the user clicks "back" from the
-  // hosted checkout page. Optional; defaults to `returnUrl` if omitted.
-  cancelUrl: z.string().url().optional(),
   // Required, not optional: email is now the durable identity key that lets
   // a buyer find their report(s) again from any device via magic link,
   // instead of relying solely on a localStorage anon id.
@@ -421,7 +415,7 @@ const CheckoutInputSchema = z.object({
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CheckoutInputSchema.parse(input))
-  .handler(async ({ data }): Promise<{ url: string } | { error: string }> => {
+  .handler(async ({ data }): Promise<{ clientSecret: string } | { error: string }> => {
     try {
       const { createStripeClient, getStripeErrorMessage } = await import("./stripe.server");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -483,13 +477,8 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       const session = await stripe.checkout.sessions.create({
         line_items: lineItems,
         mode: isSubscription ? "subscription" : "payment",
-        // Hosted Stripe Checkout (redirect flow). This unlocks Apple Pay,
-        // Google Pay, Link, Amazon Pay, and other wallets that the embedded
-        // iframe suppresses on unverified domains. All app metadata below
-        // still flows through and our webhook stays unchanged.
-        success_url: data.returnUrl,
-        cancel_url: data.cancelUrl ?? data.returnUrl,
-        allow_promotion_codes: !referralApplied,
+        ui_mode: "embedded_page",
+        return_url: data.returnUrl,
         automatic_tax: { enabled: true },
         customer_email: data.email,
         metadata,
@@ -514,8 +503,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         .update({ stripe_session_id: session.id, plan: data.plan, email: data.email })
         .eq("id", data.analysisId);
 
-      if (!session.url) return { error: "Stripe did not return a checkout URL" };
-      return { url: session.url };
+      return { clientSecret: session.client_secret ?? "" };
     } catch (err) {
       const { getStripeErrorMessage } = await import("./stripe.server");
       return { error: getStripeErrorMessage(err) };
@@ -561,6 +549,10 @@ const MyReportsResultSchema = z.object({
       paid: z.boolean(),
       interestScore: z.number().nullable(),
       headline: z.string().nullable(),
+      // True when `headline` is the user's own custom_label rather than the
+      // auto-generated vibe_award/pop_culture title — lets the UI decide
+      // whether "rename" should prefill the box or start blank.
+      isCustomLabel: z.boolean(),
       // Most recent of: report creation, or latest check-in. Drives the
       // "come back and check in" nudge on /account — a paid report that's
       // gone quiet for a while surfaces a soft reminder instead of relying
@@ -592,7 +584,7 @@ export const getMyReports = createServerFn({ method: "GET" })
 
     const { data: analyses, error } = await supabaseAdmin
       .from("analyses")
-      .select("id, created_at, status, plan, paid, preview_json")
+      .select("id, created_at, status, plan, paid, preview_json, custom_label")
       .eq("email", email)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -631,6 +623,9 @@ export const getMyReports = createServerFn({ method: "GET" })
           viral_preview?: { pop_culture_match?: { couple?: string }; vibe_award?: { title?: string } };
         } | null;
         const id = a.id as string;
+        const customLabel = (a.custom_label as string | null)?.trim() || null;
+        const autoHeadline =
+          preview?.viral_preview?.vibe_award?.title ?? preview?.viral_preview?.pop_culture_match?.couple ?? null;
         return {
           id,
           createdAt: a.created_at as string,
@@ -638,7 +633,8 @@ export const getMyReports = createServerFn({ method: "GET" })
           plan: (a.plan as string | null) ?? null,
           paid: a.paid as boolean,
           interestScore: preview?.scores?.interest_score ?? null,
-          headline: preview?.viral_preview?.vibe_award?.title ?? preview?.viral_preview?.pop_culture_match?.couple ?? null,
+          headline: customLabel ?? autoHeadline,
+          isCustomLabel: customLabel !== null,
           lastActivityAt: lastCheckinByAnalysis.get(id) ?? (a.created_at as string),
         };
       }),
@@ -650,6 +646,44 @@ export const getMyReports = createServerFn({ method: "GET" })
           }
         : null,
     };
+  });
+
+const RenameReportInputSchema = z.object({
+  id: z.string().uuid(),
+  // Empty string means "clear it" — falls back to the auto-generated
+  // headline rather than storing an empty label.
+  label: z.string().max(60),
+});
+
+// Protected by requireSupabaseAuth, same as getMyReports — but ownership
+// here isn't "any authenticated session can rename any report", it's
+// specifically checked against THIS row's email column below, so someone
+// logged in on their own account can't rename a report id that isn't
+// theirs just by guessing a UUID.
+export const renameReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => RenameReportInputSchema.parse(input))
+  .handler(async ({ data, context }): Promise<{ ok: true } | { error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const email = (context.claims as { email?: string }).email?.toLowerCase();
+    if (!email) return { error: "No verified email on this session" };
+
+    const { data: row } = await supabaseAdmin
+      .from("analyses")
+      .select("email")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row || (row.email as string | null)?.toLowerCase() !== email) {
+      return { error: "not_found" };
+    }
+
+    const trimmed = data.label.trim();
+    const { error } = await supabaseAdmin
+      .from("analyses")
+      .update({ custom_label: trimmed.length > 0 ? trimmed : null })
+      .eq("id", data.id);
+    if (error) return { error: error.message };
+    return { ok: true };
   });
 
 const BillingPortalInputSchema = z.object({
