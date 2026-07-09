@@ -488,7 +488,12 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         // (the embedded iframe wrapper) no longer exists.
         success_url: data.returnUrl,
         cancel_url: data.cancelUrl,
-        automatic_tax: { enabled: true },
+        // automatic_tax intentionally OFF: Stripe filters Google Pay out of
+        // Checkout whenever automatic tax is on unless a shipping address is
+        // also collected (undesirable friction for a digital-only product —
+        // see https://docs.stripe.com/tax/checkout/page). Decision: keep
+        // Google Pay, handle tax manually outside Stripe Tax. Revisit if
+        // sales-tax/VAT obligations change.
         customer_email: data.email,
         metadata,
         ...(referralApplied ? { discounts: [{ coupon: WINGMAN_COUPON_ID }] } : {}),
