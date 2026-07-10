@@ -13,7 +13,6 @@ export function InterestDonut({ value, size = 208 }: { value: number; size?: num
   const mv = useMotionValue(clamped);
   const [display, setDisplay] = useState(clamped);
   useEffect(() => {
-    mv.set(0);
     const controls = animate(mv, clamped, { duration: 1.2, ease: "easeOut" });
     const unsub = mv.on("change", (v) => setDisplay(Math.round(v)));
     return () => {
