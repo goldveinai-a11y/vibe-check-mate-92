@@ -80,9 +80,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "VibeCheck — brutally honest chat analysis" },
       { name: "description", content: "Upload your chat screenshots. Get an unfiltered AI breakdown of interest, red flags, and where it's really going." },
       { property: "og:title", content: "VibeCheck — brutally honest chat analysis" },
-      { property: "og:description", content: "Upload chat screenshots, get the truth about how they actually feel." },
+      { property: "og:description", content: "Upload your chat screenshots. Get an unfiltered AI breakdown of interest, red flags, and where it's really going." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "VibeCheck — brutally honest chat analysis" },
+      { name: "twitter:description", content: "Upload your chat screenshots. Get an unfiltered AI breakdown of interest, red flags, and where it's really going." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d40ac1ce-d389-485a-8588-39a578b37a49/id-preview-5694ef9a--1f4e2abe-1a27-4ca5-aa1b-a8129e51ca4e.lovable.app-1783635372305.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d40ac1ce-d389-485a-8588-39a578b37a49/id-preview-5694ef9a--1f4e2abe-1a27-4ca5-aa1b-a8129e51ca4e.lovable.app-1783635372305.png" },
     ],
     links: [
       {
