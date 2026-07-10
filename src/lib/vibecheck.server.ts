@@ -167,6 +167,8 @@ const CHECKIN_SYSTEM_PROMPT = `You are VibeCheck's scoring engine. You are looki
 
 Output ONLY the calibrated numeric scores, nothing else. Scale 0-100, integers. Calibration: 60 = decent, 80+ = strong, 30- = concerning. conversation_health follows Gottman's research — high = healthy dynamic, low = toxic patterns.
 
+MANDATORY GROUNDING: For each of interest_score, toxicity_score, emotional_warmth, flirting_signals, and conversation_health, ground the integer in a specific quotable behavior or countable pattern from THIS check-in's screenshots (exact phrases, response-time shifts, question ratio, initiation balance, contempt/defensiveness markers). Never default to a generic baseline; two different conversations should almost never share the same integer on these fields unless behavior is genuinely identical.
+
 Return ONLY valid JSON matching this exact type, no prose, no markdown fences:
 type Scores = {
   interest_score: number;
