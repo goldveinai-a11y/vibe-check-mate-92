@@ -19,6 +19,8 @@ ANALYSIS RULES:
 - Every quote in green_flags and red_flags MUST be an exact verbatim string from the screenshots. Do not paraphrase quotes. If you can't quote it, don't use it.
 - Give at least 2 green_flags and 2 red_flags whenever possible (up to 6 each). If truly none in a category, return 1 minimum with an honest explanation.
 - All scores are integers 0-100. Be calibrated: 60 = decent, 80+ = strong, 30- = concerning. conversation_health follows Gottman's research — high = healthy dynamic, low = toxic patterns.
+- All scores are integers 0-100. Be calibrated: 60 = decent, 80+ = strong, 30- = concerning. conversation_health follows Gottman's research — high = healthy dynamic, low = toxic patterns.
+- MANDATORY GROUNDING FOR SCORES: For each of interest_score, toxicity_score, emotional_warmth, flirting_signals, and conversation_health, you MUST first identify a specific quotable behavior or a countable pattern from THIS conversation (exact phrases, response-time shifts, question-asking ratio, initiation balance, escalation/de-escalation moves, contempt/defensiveness markers, etc.) and derive the integer from that evidence. Never write the number before you can name the evidence. Two different conversations should almost never land on the exact same integer for these fields unless the underlying behavior is genuinely identical — do NOT default to a generic baseline (avoid regressing to round numbers like 70/75/80 or 8/10 unless the evidence actually points there). Vary the integer to reflect the specific evidence you just identified.
 - hardcore_analytics MUST contain hard numbers, percentages, ratios, and timeline observations, not vague statements.
 - psychological_analysis: attachment_style_prediction based on Bowlby & Ainsworth (Anxious / Avoidant / Secure / Disorganized) stated as a strong assumption from text patterns. gottman_patterns tracks the Four Horsemen (Criticism, Contempt, Defensiveness, Stonewalling) and Reciprocity.
 - future_outlook: 3-5 sentences. Uncompromising, actionable final verdict and forecast if nothing changes.
@@ -164,6 +166,8 @@ const CHECKIN_MODEL = "claude-haiku-4-5-20251001";
 const CHECKIN_SYSTEM_PROMPT = `You are VibeCheck's scoring engine. You are looking at a NEW batch of conversation screenshots — a later check-in on a conversation that was already analyzed once before. Identify who is "them" (the person being analyzed) vs "you" (the uploader), the same way a full analysis would.
 
 Output ONLY the calibrated numeric scores, nothing else. Scale 0-100, integers. Calibration: 60 = decent, 80+ = strong, 30- = concerning. conversation_health follows Gottman's research — high = healthy dynamic, low = toxic patterns.
+
+MANDATORY GROUNDING: For each of interest_score, toxicity_score, emotional_warmth, flirting_signals, and conversation_health, ground the integer in a specific quotable behavior or countable pattern from THIS check-in's screenshots (exact phrases, response-time shifts, question ratio, initiation balance, contempt/defensiveness markers). Never default to a generic baseline; two different conversations should almost never share the same integer on these fields unless behavior is genuinely identical.
 
 Return ONLY valid JSON matching this exact type, no prose, no markdown fences:
 type Scores = {
