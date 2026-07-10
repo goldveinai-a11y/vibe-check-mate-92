@@ -7,9 +7,13 @@ export function InterestDonut({ value, size = 208 }: { value: number; size?: num
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, value));
   const offset = c * (1 - clamped / 100);
-  const mv = useMotionValue(0);
-  const [display, setDisplay] = useState(0);
+  // Seed with the real clamped value so first paint (and any pre-hydration
+  // screenshot) shows the correct percentage instead of 0%. The count-up
+  // animation below is purely cosmetic on top of the already-correct value.
+  const mv = useMotionValue(clamped);
+  const [display, setDisplay] = useState(clamped);
   useEffect(() => {
+    mv.set(0);
     const controls = animate(mv, clamped, { duration: 1.2, ease: "easeOut" });
     const unsub = mv.on("change", (v) => setDisplay(Math.round(v)));
     return () => {
