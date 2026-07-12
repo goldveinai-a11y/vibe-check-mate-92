@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Heart, Flag as FlagIcon, MessageCircle, Bell, Star, CheckCircle, AlertCircle, Sparkles, Award, Film, Quote, TrendingDown, TrendingUp, Minus, Share2, Send, Copy, Check, History, Wind } from "lucide-react";
 import { getAnalysisFull, getCheckins } from "@/lib/vibecheck.functions";
 import { getAnonId } from "@/lib/anon-id";
@@ -13,6 +13,7 @@ import { CompatibilityRadar } from "@/components/CompatibilityRadar";
 import { ReportChat } from "@/components/ReportChat";
 import { WordCloud } from "@/components/WordCloud";
 import { SiteFooter } from "@/components/SiteFooter";
+import { trackEvent } from "@/lib/analytics";
 
 const fullQuery = (id: string, ownerAnonId: string) =>
   queryOptions({
@@ -62,6 +63,12 @@ function ReportPage() {
   const overallScore = Math.round(
     (s.interest_score + s.reciprocity_score + s.emotional_warmth + s.response_consistency + s.flirting_signals + (100 - s.toxicity_score) + s.conversation_health) / 7,
   );
+
+  useEffect(() => {
+    trackEvent("report_viewed", { report_id: id, is_paid_user: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   const delusion = computeDelusionLevel(s);
   const shareData: ShareCardData = {
     award: viral?.vibe_award ?? null,
@@ -71,17 +78,19 @@ function ReportPage() {
   };
   const shareRef = useRef<HTMLDivElement>(null);
   const handleShare = async () => {
+    trackEvent("report_shared", { report_id: id, share_method: "share_card" });
     if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
   };
 
   // The exported ShareCard images are dead ends for the person who
-  // receives them — no way back into the funnel. Copying this page's own
+  // receives them - no way back into the funnel. Copying this page's own
   // URL keeps the on-page CTAs (paywall, Compare Vibes) intact for whoever
   // opens it. Mirrors the same "Send this to a friend" pattern already
   // shipped on the free /results/$id preview page.
   const [linkCopied, setLinkCopied] = useState(false);
   const handleCopyLink = async () => {
     if (typeof window === "undefined") return;
+    trackEvent("report_shared", { report_id: id, share_method: "copy_link" });
     await navigator.clipboard.writeText(window.location.href);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
@@ -89,16 +98,19 @@ function ReportPage() {
 
   const wordCloudShareRef = useRef<HTMLDivElement>(null);
   const handleShareWordCloud = async () => {
+    trackEvent("report_shared", { report_id: id, share_method: "word_cloud" });
     if (wordCloudShareRef.current) await exportShareCard(wordCloudShareRef.current, "vibecheck-words.png");
   };
 
   const threeWordsShareRef = useRef<HTMLDivElement>(null);
   const handleShareThreeWords = async () => {
+    trackEvent("report_shared", { report_id: id, share_method: "three_words" });
     if (threeWordsShareRef.current) await exportShareCard(threeWordsShareRef.current, "vibecheck-type.png");
   };
 
   const badgeShareRef = useRef<HTMLDivElement>(null);
   const handleShareBadge = async () => {
+    trackEvent("report_shared", { report_id: id, share_method: "badge" });
     if (badgeShareRef.current) await exportShareCard(badgeShareRef.current, "vibecheck-badge.png");
   };
 
@@ -135,7 +147,7 @@ function ReportPage() {
               Your Full Compatibility Report
             </h1>
             <p className="mt-4 max-w-xl text-base text-ink/70">
-              Here's the deep dive into your connection — compatibility, flags, tone, and where things might be headed.
+              Here's the deep dive into your connection - compatibility, flags, tone, and where things might be headed.
             </p>
           </div>
 
@@ -165,7 +177,7 @@ function ReportPage() {
               </div>
             )}
 
-            {/* Delusion Level — pure arithmetic on the 7 scores above, not a
+            {/* Delusion Level - pure arithmetic on the 7 scores above, not a
                 new AI judgment. Gap between "feels exciting" and "actually
                 reciprocated", framed as a for-fun read like Vibe Award. */}
             <div className="rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm sm:p-8">
@@ -182,12 +194,12 @@ function ReportPage() {
                 </div>
               </div>
               <p className="mt-4 text-xs text-ink/50">
-                Calculated from the same scores below — the gap between how exciting this feels (flirting + warmth) and how much of that is actually reciprocated (consistency + reciprocity + health).
+                Calculated from the same scores below - the gap between how exciting this feels (flirting + warmth) and how much of that is actually reciprocated (consistency + reciprocity + health).
               </p>
             </div>
 
             {viral?.pop_culture_match && (
-              <ReportSection Icon={Film} title="You're Giving…">
+              <ReportSection Icon={Film} title="You're Giving...">
                 <h3 className="font-serif text-3xl leading-tight">{viral.pop_culture_match.couple}</h3>
                 <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
                 <p className="mt-4 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
@@ -226,7 +238,7 @@ function ReportPage() {
             {viral?.viral_keywords && viral.viral_keywords.length > 0 && (
               <ReportSection Icon={Quote} title="Words That Moved the Needle">
                 <p className="mb-1 text-center text-xs text-ink/50">
-                  The full story behind each flag is below, in Red &amp; Green Flags — this is just the highlight reel.
+                  The full story behind each flag is below, in Red &amp; Green Flags - this is just the highlight reel.
                 </p>
                 <WordCloud keywords={viral.viral_keywords} />
                 <button
@@ -337,7 +349,7 @@ function ReportPage() {
               </ReportSection>
             )}
 
-            {/* Was a solid bg-pink block — reads as an alarm/warning color
+            {/* Was a solid bg-pink block - reads as an alarm/warning color
                 at that size and saturation regardless of what the verdict
                 actually says, so a genuinely good read still looked like a
                 red-flag card. Softened to the same pink-soft-card language
@@ -433,7 +445,7 @@ function ReportSection({ Icon, title, children }: { Icon: typeof Heart; title: s
 
 // Naive ".!?"-based sentence splitting broke whenever the AI-generated text
 // quoted a chat line that itself contains a "?" (e.g. an embedded Russian
-// quote like 'Может завтра?)' mid-sentence) — it treated that inner "?" as
+// quote like 'Может завтра?)' mid-sentence) - it treated that inner "?" as
 // the end of the whole English sentence, so the quote's closing punctuation
 // ")'" ended up starting its own orphaned paragraph. Fix: track whether
 // we're inside a straight-quoted fragment and ignore terminators while
@@ -446,7 +458,7 @@ function splitIntoSentences(text: string): string[] {
   let inQuote = false;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    if (ch === "'" || ch === "’") {
+    if (ch === "'" || ch === "'") {
       if (inQuote) {
         inQuote = false;
       } else if (!/[a-zA-Zа-яёА-ЯЁ0-9]/.test(i > 0 ? text[i - 1] : "")) {
@@ -484,7 +496,7 @@ function PullQuoteBlock({
   const sentences = parsed.length > 0 ? parsed : [text];
   const lead = sentences[0] ?? text;
   // Group the remaining sentences into short 1-2 sentence paragraphs instead
-  // of one merged wall of text — same words, but broken into something a
+  // of one merged wall of text - same words, but broken into something a
   // phone screen can actually be skimmed at instead of read start to finish.
   const restSentences = sentences.slice(1);
   const restParagraphs: string[] = [];
@@ -606,7 +618,7 @@ function ReplyCard({ label, text, accent }: { label: string; text: string; accen
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // clipboard unavailable — no-op, button just won't confirm
+      // clipboard unavailable - no-op, button just won't confirm
     }
   };
 
@@ -627,15 +639,15 @@ function ReplyCard({ label, text, accent }: { label: string; text: string; accen
   );
 }
 
-// "Close the Gestalt" — the Zeigarnik effect (unfinished situations loop in
+// "Close the Gestalt" - the Zeigarnik effect (unfinished situations loop in
 // memory harder than resolved ones) says the report itself already gives
 // closure; this just gives that moment a physical, interactive beat instead
-// of the report silently ending. No new data, no invented percentages —
+// of the report silently ending. No new data, no invented percentages -
 // just a framed pause on what's already been said (vibe_award / overallScore
 // / future_outlook), reusing values already in scope on the report page.
 function CloseTheLoop({ report, overallScore }: { report: Report; overallScore: number }) {
   const [closed, setClosed] = useState(false);
-  // Was "You have your read: couch potato with potential —" which reads as
+  // Was "You have your read: couch potato with potential -" which reads as
   // a grammar error (label doesn't fit as the object of "have"), and just
   // restated the pre-click line ("You've got your answer now") instead of
   // adding anything. Rephrased as an appositive so the label slots in
@@ -657,7 +669,7 @@ function CloseTheLoop({ report, overallScore }: { report: Report; overallScore: 
             transition={{ duration: 0.3 }}
           >
             <p className="mx-auto max-w-md text-sm text-ink/60">
-              Still replaying their last message in your head? That looping feeling has a name — the Zeigarnik effect. Unfinished things stick. You've got your answer now.
+              Still replaying their last message in your head? That looping feeling has a name - the Zeigarnik effect. Unfinished things stick. You've got your answer now.
             </p>
             <button
               onClick={() => setClosed(true)}
@@ -724,8 +736,8 @@ type RealTrend = {
 };
 
 // Pulls the first hard number out of a hardcore_analytics sentence (e.g.
-// "They initiate 73% of conversations…" -> "73%") so it can be rendered
-// large, data-panel style, ahead of the sentence — instead of the number
+// "They initiate 73% of conversations..." -> "73%") so it can be rendered
+// large, data-panel style, ahead of the sentence - instead of the number
 // being buried mid-paragraph in body text.
 function extractLeadStat(text: string): string | null {
   const match = text.match(/-?\d+(\.\d+)?%|\b\d+(\.\d+)?x\b|\b\d+\/\d+\b/i);
@@ -740,7 +752,7 @@ function formatElapsed(days: number): string {
 }
 
 // Turns real (time, score) pairs into the same shape the old AI-predicted
-// narrative used, so the same card UI can render either — but every number
+// narrative used, so the same card UI can render either - but every number
 // here is computed from actual check-ins, not generated.
 function computeRealTrend(points: { t: number; score: number }[]): RealTrend | null {
   if (points.length < 2) return null;
@@ -757,7 +769,7 @@ function computeRealTrend(points: { t: number; score: number }[]): RealTrend | n
 
   const range = `over ${formatElapsed(totalDays)}`;
   const checkinsCount = points.length - 1;
-  const verdict = `Your vibe score moved from ${first.score} to ${last.score} ${range} — ${checkinsCount} real check-in${checkinsCount === 1 ? "" : "s"}, not a prediction.`;
+  const verdict = `Your vibe score moved from ${first.score} to ${last.score} ${range} - ${checkinsCount} real check-in${checkinsCount === 1 ? "" : "s"}, not a prediction.`;
 
   return {
     trajectory,
@@ -887,7 +899,7 @@ function VibeDecayCard({
 
       {!real && (
         <p className="mt-2 text-xs text-ink/50">
-          This is an AI estimate from a single snapshot — no repeat data yet.
+          This is an AI estimate from a single snapshot - no repeat data yet.
         </p>
       )}
 
