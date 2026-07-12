@@ -1,15 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Heart, Sparkles, Activity, MessageSquare, Lock } from "lucide-react";
 import { getAnalysisPreview } from "@/lib/vibecheck.functions";
 import { SiteHeader } from "@/components/SiteHeader";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/analyzing/$id")({
   head: () => ({
     meta: [
-      { title: "Analyzing your vibe — VibeCheck" },
+      { title: "Analyzing your vibe - VibeCheck" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -26,6 +27,7 @@ function AnalyzingPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [progress, setProgress] = useState(15);
+  const startedAtRef = useRef(Date.now());
 
   const { data } = useQuery({
     queryKey: ["analysis-preview", id],
@@ -39,7 +41,11 @@ function AnalyzingPage() {
   }, []);
 
   useEffect(() => {
-    if (data?.status === "ready") navigate({ to: "/results/$id", params: { id } });
+    if (data?.status === "ready") {
+      const processingSeconds = Math.round((Date.now() - startedAtRef.current) / 1000);
+      trackEvent("analysis_completed", { report_id: id, processing_seconds: processingSeconds });
+      navigate({ to: "/results/$id", params: { id } });
+    }
   }, [data?.status, id, navigate]);
 
   return (
@@ -59,7 +65,7 @@ function AnalyzingPage() {
             </motion.div>
 
             <h1 className="font-serif mt-6 text-3xl sm:text-4xl">Analyzing your vibe</h1>
-            <p className="mt-3 text-sm text-ink/60">Reading the energy…</p>
+            <p className="mt-3 text-sm text-ink/60">Reading the energy...</p>
 
             <div className="mt-6 w-full">
               <div className="h-2 overflow-hidden rounded-full bg-muted">
