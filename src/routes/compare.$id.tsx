@@ -1,17 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Sparkles, Copy, Check, ArrowRight, Trophy } from "lucide-react";
 import { getAnalysisPreview } from "@/lib/vibecheck.functions";
 import { computeDelusionLevel, type PreviewJson } from "@/lib/vibecheck-schema";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { trackEvent } from "@/lib/analytics";
 
 // Compare Vibes: a friend-referral mechanic that only ever touches data
 // that's ALREADY public-by-id (the same preview_json getAnalysisPreview
 // serves on the free /results/$id page, pre-paywall, no entitlement gate).
-// Comparing two situationships' SCORES only — never raw chat content — so
+// Comparing two situationships' SCORES only - never raw chat content - so
 // this doesn't raise the "publishing a third party's private data" issue
 // that a public Wall of Vibes would.
 
@@ -24,7 +25,7 @@ const previewQuery = (id: string) =>
 export const Route = createFileRoute("/compare/$id")({
   head: () => ({
     meta: [
-      { title: "Compare Vibes — VibeCheck" },
+      { title: "Compare Vibes - VibeCheck" },
       { name: "description", content: "Compare your vibe score with a friend's." },
       { name: "robots", content: "noindex" },
     ],
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/compare/$id")({
 });
 
 // Pulls a UUID out of either a raw id or a pasted full URL like
-// vibecheck.app/results/<uuid> or /compare/<uuid> — friends will paste
+// vibecheck.app/results/<uuid> or /compare/<uuid> - friends will paste
 // whichever link they have on hand, not necessarily a bare id.
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 function extractId(input: string): string | null {
@@ -93,6 +94,11 @@ function ComparePage() {
 
   const myPreview = data.status === "ready" ? (data.preview_json as unknown as PreviewJson) : null;
 
+  useEffect(() => {
+    trackEvent("compare_started", { report_id_a: id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   const handleCopyLink = async () => {
     const link = `${window.location.origin}/compare/${id}`;
     await navigator.clipboard.writeText(link);
@@ -114,6 +120,7 @@ function ComparePage() {
         return;
       }
       setFriendData(result.preview_json as unknown as PreviewJson);
+      trackEvent("compare_completed", { report_id_a: id, report_id_b: parsed });
       setStatus("idle");
     } catch {
       setStatus("error");
@@ -123,7 +130,7 @@ function ComparePage() {
   if (!myPreview) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream px-6 text-center">
-        <p className="text-sm text-ink/60">This report isn't ready yet — try again in a moment.</p>
+        <p className="text-sm text-ink/60">This report isn't ready yet - try again in a moment.</p>
       </main>
     );
   }
@@ -153,7 +160,7 @@ function ComparePage() {
               Whose vibe hits harder?
             </h1>
             <p className="mt-4 max-w-md text-sm text-ink/70">
-              Paste a friend's VibeCheck link below to see both scores side by side — only the numbers, never the actual chat.
+              Paste a friend's VibeCheck link below to see both scores side by side - only the numbers, never the actual chat.
             </p>
           </div>
 
@@ -178,7 +185,7 @@ function ComparePage() {
               >
                 <Trophy className="h-4 w-4 text-pink" />
                 {winner === "tie"
-                  ? "Dead even — you're both equally in it."
+                  ? "Dead even - you're both equally in it."
                   : winner === "mine"
                     ? "This report's vibe scores higher. 🏆"
                     : "Their vibe scores higher this round. 🏆"}
@@ -203,13 +210,13 @@ function ComparePage() {
                 disabled={status === "loading" || !friendInput.trim()}
                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-pink px-5 py-3 text-sm font-medium text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
               >
-                {status === "loading" ? "Loading…" : "Compare"}
+                {status === "loading" ? "Loading..." : "Compare"}
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
             </div>
             {status === "error" && (
               <p className="mt-2 text-xs text-destructive">
-                Couldn't find that report — double check the link, or make sure their analysis has finished.
+                Couldn't find that report - double check the link, or make sure their analysis has finished.
               </p>
             )}
           </div>
