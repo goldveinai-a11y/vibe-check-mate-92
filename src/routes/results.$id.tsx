@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Sparkles, Lock, Heart, Flame, MessageCircle, AlertTriangle, TrendingUp, Users, Activity, BarChart3, Award, Film, Share2, Quote, Copy, Check } from "lucide-react";
 import { getAnalysisPreview, getUnlockedCount } from "@/lib/vibecheck.functions";
 import { computeDelusionLevel, type PreviewJson } from "@/lib/vibecheck-schema";
@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 import { InterestDonut } from "@/components/InterestDonut";
 import { StickyUnlockBar } from "@/components/StickyUnlockBar";
+import { trackEvent } from "@/lib/analytics";
 
 const previewQuery = (id: string) =>
   queryOptions({
@@ -25,7 +26,7 @@ const unlockedCountQuery = queryOptions({
 export const Route = createFileRoute("/results/$id")({
   head: () => ({
     meta: [
-      { title: "Your vibe check — free preview" },
+      { title: "Your vibe check - free preview" },
       { name: "description", content: "Free preview of your AI chat breakdown." },
       { name: "robots", content: "noindex" },
     ],
@@ -47,25 +48,16 @@ export const Route = createFileRoute("/results/$id")({
   notFoundComponent: () => <div className="p-8 text-center">Not found</div>,
 });
 
-
 function computeVerdict(p: PreviewJson) {
   const { interest_score: i, flirting_signals: f, toxicity_score: t, conversation_health: h } = p.scores;
-  if (t >= 60 || h <= 35) return { title: "Red Flag Zone", tag: "Proceed with caution", tone: "danger" as const, blurb: "There's tension under the surface — the vibe is off in ways worth naming out loud." };
+  if (t >= 60 || h <= 35) return { title: "Red Flag Zone", tag: "Proceed with caution", tone: "danger" as const, blurb: "There's tension under the surface - the vibe is off in ways worth naming out loud." };
   if (i >= 75 && f >= 60) return { title: "Mutual Crush", tag: "It's giving main character energy", tone: "hot" as const, blurb: "Warm, playful energy flowing both ways. You two mirror each other's enthusiasm and keep the conversation alive with genuine curiosity." };
-  if (i >= 70) return { title: "Warming Up", tag: "The spark is real", tone: "warm" as const, blurb: "They're leaning in. Real interest, real engagement — this one has legs if you keep the momentum." };
-  if (i >= 50 && h < 65) return { title: "Mixed Signals", tag: "It's… complicated", tone: "caution" as const, blurb: "Some warmth, some distance. There's a pattern here you'll want to see before you invest more." };
-  if (i < 45) return { title: "One-Sided Energy", tag: "You're doing the work", tone: "cold" as const, blurb: "The math isn't mathing. Effort and interest are lopsided — the full report shows exactly where." };
+  if (i >= 70) return { title: "Warming Up", tag: "The spark is real", tone: "warm" as const, blurb: "They're leaning in. Real interest, real engagement - this one has legs if you keep the momentum." };
+  if (i >= 50 && h < 65) return { title: "Mixed Signals", tag: "It's... complicated", tone: "caution" as const, blurb: "Some warmth, some distance. There's a pattern here you'll want to see before you invest more." };
+  if (i < 45) return { title: "One-Sided Energy", tag: "You're doing the work", tone: "cold" as const, blurb: "The math isn't mathing. Effort and interest are lopsided - the full report shows exactly where." };
   return { title: "Steady Vibes", tag: "Low-key promising", tone: "neutral" as const, blurb: "Nothing electric yet, nothing broken. There's a slow-burn possibility here worth reading closer." };
 }
 
-// Every tone's card (V.bg) is a solid, saturated color with the whole card
-// set to text-white — chip badges used to override that with a same-hue
-// "soft" background + matching-hue text (e.g. bg-pink-soft text-pink on a
-// bg-pink card), which is a near-invisible same-color-on-itself combo. Fixed
-// live: a translucent white pill for every tone, with NO text-color override,
-// so it inherits the card's text-white and reads correctly against any of
-// the six background colors instead of just accidentally working for
-// "neutral"/"cold" (the only two that happened to use text-ink already).
 const VERDICT_STYLES = {
   hot: { bg: "bg-pink", chip: "bg-white/15", icon: Flame },
   warm: { bg: "bg-pink", chip: "bg-white/15", icon: Heart },
@@ -107,18 +99,12 @@ function ResultsPage() {
   const footerCtaRef = useRef<HTMLDivElement>(null);
 
   if (data.status === "failed") {
-    // Never render data.error_message directly — it's the raw internal
-    // exception string (stack traces, JSON validation errors, API error
-    // bodies) saved for our own debugging in Supabase, not user-facing copy.
-    // A real one leaked to production once already: a Zod validation error
-    // rendered verbatim as "[ { origin: 'string', code: 'too_big', ... } ]"
-    // right on this page. Always show a fixed, friendly message instead.
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream px-6 text-center">
         <div>
           <h1 className="font-serif text-3xl">The AI couldn't read it</h1>
           <p className="mt-2 text-sm text-ink/60">
-            Something went sideways on our end — not your screenshots. Give it another go.
+            Something went sideways on our end - not your screenshots. Give it another go.
           </p>
           <Link to="/upload" className="mt-6 inline-block rounded-full bg-pink px-6 py-3 text-white">Try again</Link>
         </div>
@@ -129,7 +115,7 @@ function ResultsPage() {
   if (data.status !== "ready" || !data.preview_json) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream px-6 text-center">
-        <p className="text-sm text-ink/60">Still analyzing… refresh in a moment.</p>
+        <p className="text-sm text-ink/60">Still analyzing... refresh in a moment.</p>
       </main>
     );
   }
@@ -142,6 +128,12 @@ function ResultsPage() {
   const overallScore = Math.round(
     (s.interest_score + s.reciprocity_score + s.emotional_warmth + s.response_consistency + s.flirting_signals + (100 - s.toxicity_score) + s.conversation_health) / 7,
   );
+
+  useEffect(() => {
+    trackEvent("results_viewed", { report_id: id, compatibility_score: overallScore });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   const shareData: ShareCardData = {
     award: viral?.vibe_award ?? null,
     popCulture: viral?.pop_culture_match ?? null,
@@ -153,15 +145,6 @@ function ResultsPage() {
     if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
   };
 
-  // Sharing the exported PNG is a dead end — it's a static image with no way
-  // back into the funnel. This page itself is already safely public (read
-  // by UUID, same as Compare Vibes relies on), so copying the live URL turns
-  // a share into an actual acquisition path: whoever opens it sees the real
-  // result AND the "Start Your VibeCheck" CTA in the header/footer, not just
-  // a screenshot. No auth or backend call needed — Wingman's 20%-off referral
-  // codes are a separate, auth-gated mechanic (lives on /account) and aren't
-  // wired up here; see conversation for the open question on whether to
-  // extend that to signed-out visitors.
   const [linkCopied, setLinkCopied] = useState(false);
   const handleCopyLink = async () => {
     if (typeof window === "undefined") return;
@@ -184,11 +167,10 @@ function ResultsPage() {
               Your Vibe Results Are In
             </h1>
             <p className="mt-4 max-w-lg text-base text-ink/70">
-              Here's the appetizer. The full report has the receipts — every red flag, exact quote, and forecast, zero sugarcoating.
+              Here's the appetizer. The full report has the receipts - every red flag, exact quote, and forecast, zero sugarcoating.
             </p>
           </div>
 
-          {/* Headline Verdict */}
           <motion.div
             ref={heroRef}
             initial={{ opacity: 0, y: 10 }}
@@ -200,10 +182,6 @@ function ResultsPage() {
               {verdict.tag}
             </span>
             <h2 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{verdict.title}</h2>
-            {/* pr-20 reserves room for the absolutely-positioned Share button
-                below so a longer blurb can never run underneath and get
-                clipped by it — happened live with the pop-culture-match card
-                (see same fix there) before this was caught. */}
             <p className="mt-4 pr-20 text-base leading-relaxed text-white/90">{verdict.blurb}</p>
             <button
               onClick={handleShare}
@@ -215,7 +193,6 @@ function ResultsPage() {
             </button>
           </motion.div>
 
-          {/* Vibe Award badge — the hero screenshot moment */}
           {viral?.vibe_award && (
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
@@ -240,7 +217,6 @@ function ResultsPage() {
             </motion.div>
           )}
 
-          {/* Pop-culture match — meme-instant comparison */}
           {viral?.pop_culture_match && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -250,13 +226,10 @@ function ResultsPage() {
             >
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
                 <Film className="h-4 w-4" />
-                You're Giving…
+                You're Giving...
               </div>
               <h3 className="font-serif mt-3 text-3xl leading-tight">{viral.pop_culture_match.couple}</h3>
               <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
-              {/* pr-20: this exact paragraph was the one that broke live —
-                  the Share button (absolute bottom-4 right-4 below) clipped
-                  the last word of the explanation whenever it ran long. */}
               <p className="mt-4 pr-20 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
               <button
                 onClick={handleShare}
@@ -269,7 +242,6 @@ function ResultsPage() {
             </motion.div>
           )}
 
-          {/* Interest score donut */}
           <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 text-center shadow-sm sm:p-10">
             <h2 className="font-serif text-2xl sm:text-3xl">Interest Score</h2>
             <div className="mt-6">
@@ -280,7 +252,6 @@ function ResultsPage() {
             </p>
           </div>
 
-          {/* Score breakdown — full 7-metric board */}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <ScoreBar label="Reciprocity" value={s.reciprocity_score} Icon={Users} tone="pink" />
             <ScoreBar label="Emotional Warmth" value={s.emotional_warmth} Icon={Heart} tone="pink" />
@@ -290,8 +261,6 @@ function ResultsPage() {
             <ScoreBar label="Toxicity Level" value={s.toxicity_score} Icon={AlertTriangle} tone="danger" />
           </div>
 
-          {/* Delusion Level teaser — same free scores above, just reframed.
-              Full breakdown + trend lives behind the paywall. */}
           <div className="mt-5 rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
               <Sparkles className="h-4 w-4" /> Delusion Level (just for fun)
@@ -307,7 +276,6 @@ function ResultsPage() {
             </div>
           </div>
 
-          {/* Hard statistic hook */}
           <div className="mt-5 rounded-3xl bg-ink p-6 text-white shadow-lg">
             <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-white/60">
               <BarChart3 className="h-3.5 w-3.5" />
@@ -319,7 +287,6 @@ function ResultsPage() {
             </p>
           </div>
 
-          {/* One viral keyword revealed, rest teased */}
           {viral?.first_keyword && (
             <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-pink">
@@ -341,7 +308,6 @@ function ResultsPage() {
             </div>
           )}
 
-          {/* Teaser: one flag revealed, one hidden */}
           {preview.green_flag_preview && (
             <div className="mt-5 rounded-3xl border border-mint/40 bg-mint-soft p-5 shadow-sm">
               <div className="flex items-center gap-2">
@@ -357,15 +323,14 @@ function ResultsPage() {
             <div className="mt-3 relative overflow-hidden rounded-3xl border border-destructive/30 bg-card p-5 shadow-sm">
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-destructive px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">Red Flag</span>
-                <span className="text-xs text-ink/60">{preview.red_flags_count} found — unlock to reveal</span>
+                <span className="text-xs text-ink/60">{preview.red_flags_count} found - unlock to reveal</span>
               </div>
               <h4 className="font-serif mt-3 text-xl blur-sm select-none">{preview.red_flag_preview.title}</h4>
-              <p className="mt-2 text-sm italic text-ink/70 blur-sm select-none">"the exact quote is locked — it's a receipt you'll want to see"</p>
+              <p className="mt-2 text-sm italic text-ink/70 blur-sm select-none">"the exact quote is locked - it's a receipt you'll want to see"</p>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card via-card/85 to-transparent" />
             </div>
           )}
 
-          {/* Unlock section */}
           <div className="mt-10 flex flex-col items-center text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-pink-soft px-4 py-2 text-xs font-medium text-ink/80">
               <Lock className="h-3.5 w-3.5" />
@@ -381,12 +346,11 @@ function ResultsPage() {
             <LockedCard title="Hardcore Analytics" items={["Initiative ratio", "Engagement % breakdown", "Timeline shifts over the chat", "Communication style verdict"]} />
             <LockedCard title={`All ${preview.red_flags_count} Red Flags`} items={["Verbatim quote receipts", "Why each is a pattern", "Which ones are dealbreakers"]} />
             <LockedCard title="Psychological Analysis" items={["Attachment style prediction", "Gottman Four Horsemen check", "Power dynamic read"]} />
-            <LockedCard title="Future Outlook" items={["3–5 sentence forecast", "What happens if nothing changes", "The one move that flips it"]} />
+            <LockedCard title="Future Outlook" items={["3-5 sentence forecast", "What happens if nothing changes", "The one move that flips it"]} />
             <LockedCard title="Their Type in 3 Words" items={["The 3 words that define them", "Why they land that way", "How to work with (or around) it"]} />
             <LockedCard title="Vibe Decay Trajectory" items={["Weekly % interest change", "Cooling / rising / nose-diving", "Realistic window if nothing changes"]} />
           </div>
 
-          {/* Compare Vibes + send-to-a-friend entry points */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/compare/$id"
@@ -404,7 +368,6 @@ function ResultsPage() {
             </button>
           </div>
 
-          {/* Social proof — live counter */}
           <div className="mt-8 text-center text-sm text-ink/60">
             <span className="inline-flex items-center gap-2 rounded-full bg-mint-soft px-4 py-2">
               <span className="relative flex h-2 w-2">
@@ -426,13 +389,12 @@ function ResultsPage() {
               Unlock Full Report
             </Link>
             <p className="mt-3 text-center text-xs text-ink/60">
-              One-time payment · Instant access · No receipts kept
+              One-time payment - Instant access - No receipts kept
             </p>
           </div>
         </div>
       </section>
 
-      {/* Hidden 9:16 export node */}
       <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
         <ShareCard ref={shareRef} data={shareData} />
       </div>
@@ -444,8 +406,6 @@ function ResultsPage() {
 
 function LockedCard({ title, items }: { title: string; items: string[] }) {
   const [peek, setPeek] = useState(false);
-  // toggle instead of an auto-hide timeout — reveals on tap and stays
-  // revealed until tapped again, so there's actually time to read it.
   const togglePeek = () => setPeek((p) => !p);
   return (
     <button
@@ -466,10 +426,9 @@ function LockedCard({ title, items }: { title: string; items: string[] }) {
           <li key={it} className="truncate">{it}</li>
         ))}
       </ul>
-      {/* Always visible (no hover-only state) so it reads as tappable on mobile too */}
       {!peek && (
         <div className="pointer-events-none absolute right-3 top-3 animate-pulse rounded-full bg-ink/70 px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest text-white">
-          tap to peek 👀
+          tap to peek
         </div>
       )}
       {peek && (
