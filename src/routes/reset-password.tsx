@@ -2,11 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Reset your password — VibeCheck" },
+      { title: "Reset your password - VibeCheck" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -36,6 +37,7 @@ function ResetPasswordPage() {
       setError(err.message);
       return;
     }
+    trackEvent("password_reset_completed", {});
     navigate({ to: "/" });
   }
 
@@ -79,7 +81,7 @@ function ResetPasswordPage() {
               disabled={disabled || submitting}
               className="inline-flex w-full items-center justify-center rounded-full bg-pink px-6 py-3.5 text-base font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-40"
             >
-              {submitting ? "Saving…" : "Confirm"}
+              {submitting ? "Saving..." : "Confirm"}
             </button>
           </form>
         </div>
