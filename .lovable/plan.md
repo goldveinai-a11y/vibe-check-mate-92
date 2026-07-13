@@ -1,27 +1,20 @@
-## Что случилось
+## Что сделаю
 
-В прошлом шаге я добавил в `stripe.checkout.sessions.create(...)` параметр `automatic_payment_methods: { enabled: true }`. Этот параметр валиден для **PaymentIntents**, но **не для Checkout Sessions** — Stripe API его отклоняет, поэтому серверная функция падает и кнопка на пейволле «ничего не делает» (ошибка возвращается в `checkoutError`, но визуально это выглядит как «мертвая» кнопка).
+Два вызова к Stripe API через connector gateway (sandbox), без изменений в коде.
 
-Возвращаемся ровно к тому состоянию, которое ты одобрил: hosted Stripe Checkout с Apple Pay / Link / Amazon Pay / картами / промокодом — без моих «улучшений».
+1. **Установить новую цену как `default_price` продукта**
+   - `POST /v1/products/prod_UpZI0ywFi4pEyc`
+   - `default_price = price_1TsfdQDVQpiPQdi6Nosmpoxz` ($39.99, lookup_key `vibecheck_yearly`)
 
-## Изменение (одно, точечное)
+2. **Архивировать старую цену $49.99**
+   - Сначала `GET /v1/prices?product=prod_UpZI0ywFi4pEyc&active=true` — найду id старой цены на 4999.
+   - `POST /v1/prices/{old_price_id}` с `active=false`.
+   - Существующие подписки на старой цене продолжат биллиться как есть (архивирование не отменяет действующие подписки — это стандартное поведение Stripe).
 
-**`src/lib/vibecheck.functions.ts`**
-- Удалить строку `...({ automatic_payment_methods: { enabled: true } } as Stripe.Checkout.SessionCreateParams),` из `stripe.checkout.sessions.create({...})`.
-- Удалить неиспользуемый `import type Stripe from "stripe"` (если после удаления он больше нигде не нужен в файле).
+3. **Проверю результат**: перечитаю продукт и активные цены, чтобы убедиться, что в каталоге теперь висит $39.99 и старая цена помечена inactive.
 
-Всё остальное (success_url / cancel_url / metadata / subscription_data / trial / discounts / webhook) не трогаю.
+## Что НЕ меняется
 
-## Про Google Pay
-
-В Checkout Sessions **нет** программного флага, эквивалентного «включи Google Pay». Google Pay в hosted Checkout появляется автоматически, если:
-1. Он включён в Stripe Dashboard → **Settings → Payment methods** для нужного аккаунта (sandbox/live), **и**
-2. Браузер/устройство пользователя действительно поддерживает Google Pay (в Chrome нужна сохранённая карта в Google Pay в этом же Google-аккаунте).
-
-Твоя ссылка `buy.stripe.com/test_...` работает, потому что Payment Link создан из того же аккаунта, где Google Pay включён — значит настройка на уровне Dashboard уже правильная. Скорее всего дело в п.2 (в Chrome, где ты тестируешь, нет привязанной карты в Google Pay именно для того Google-аккаунта). Проверить можно открыв ту же Payment Link ссылку в том же Chrome-профиле — если там Google Pay тоже не показывается, значит проблема на стороне браузера, а не в нашем коде.
-
-**Никакого кода для «включить Google Pay» я больше писать не буду**, пока ты явно не подтвердишь, что хочешь дальше копать.
-
-## После этого фикса
-
-Кнопка снова редиректит на `checkout.stripe.com/...` — как было в том сообщении, которое ты одобрил.
+- Код (`paywall.$id.tsx`, `stripe.server.ts`, чекаут-функции) — не трогается.
+- Live-окружение — не трогается (работаем только в sandbox; в live новая цена создастся автоматически при go-live через синк).
+- Существующие подписчики на $49.99 (если такие есть) — остаются на своей цене до отмены/ресабскрайба. Отдельная миграция подписок в план не входит.
