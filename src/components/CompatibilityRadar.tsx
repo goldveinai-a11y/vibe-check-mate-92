@@ -48,8 +48,22 @@ export function CompatibilityRadar({
   const centerPoly = metrics.map(() => `${cx},${cy}`).join(" ");
 
   return (
-    <div className="mx-auto" style={{ width, height: size }}>
-      <svg width={width} height={size} viewBox={`0 0 ${width} ${size}`}>
+    // Fixed pixel width/height here (previously `style={{ width, height:
+    // size }}` with matching fixed `width`/`height` attrs on the <svg>)
+    // forced this block to render at its full ~464px size regardless of
+    // viewport, breaking out of narrow mobile cards and pushing the whole
+    // page into horizontal scroll. Capping with maxWidth instead of a hard
+    // width, and letting the SVG scale via width="100%" + height="auto"
+    // off its viewBox, keeps the exact same plotted geometry (all math
+    // above is unchanged) but lets it shrink to fit any container —
+    // full size on desktop, scaled down on mobile.
+    <div className="mx-auto" style={{ maxWidth: width, width: "100%" }}>
+      <svg
+        width="100%"
+        height="auto"
+        viewBox={`0 0 ${width} ${size}`}
+        style={{ display: "block" }}
+      >
         <defs>
           <linearGradient id="radar-fill" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="var(--pink)" stopOpacity={0.55} />
