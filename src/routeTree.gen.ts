@@ -10,8 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RefundRouteImport } from './routes/refund'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MyReportsRouteImport } from './routes/my-reports'
+import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResultsIdRouteImport } from './routes/results.$id'
@@ -31,14 +35,34 @@ const UploadRoute = UploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RefundRoute = RefundRouteImport.update({
+  id: '/refund',
+  path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyReportsRoute = MyReportsRouteImport.update({
   id: '/my-reports',
   path: '/my-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -112,8 +136,12 @@ const ApiPublicPaymentsWebhookRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/cookies': typeof CookiesRoute
   '/my-reports': typeof MyReportsRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
   '/checkin/$id': typeof CheckinIdRoute
@@ -130,8 +158,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/cookies': typeof CookiesRoute
   '/my-reports': typeof MyReportsRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
   '/checkin/$id': typeof CheckinIdRoute
@@ -149,8 +181,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/cookies': typeof CookiesRoute
   '/my-reports': typeof MyReportsRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
   '/checkin/$id': typeof CheckinIdRoute
@@ -169,8 +205,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/cookies'
     | '/my-reports'
+    | '/privacy'
+    | '/refund'
     | '/reset-password'
+    | '/terms'
     | '/upload'
     | '/analyzing/$id'
     | '/checkin/$id'
@@ -187,8 +227,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/cookies'
     | '/my-reports'
+    | '/privacy'
+    | '/refund'
     | '/reset-password'
+    | '/terms'
     | '/upload'
     | '/analyzing/$id'
     | '/checkin/$id'
@@ -205,8 +249,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/cookies'
     | '/my-reports'
+    | '/privacy'
+    | '/refund'
     | '/reset-password'
+    | '/terms'
     | '/upload'
     | '/analyzing/$id'
     | '/checkin/$id'
@@ -224,8 +272,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  CookiesRoute: typeof CookiesRoute
   MyReportsRoute: typeof MyReportsRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RefundRoute: typeof RefundRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TermsRoute: typeof TermsRoute
   UploadRoute: typeof UploadRoute
   AnalyzingIdRoute: typeof AnalyzingIdRoute
   CheckinIdRoute: typeof CheckinIdRoute
@@ -249,6 +301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -256,11 +315,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/refund': {
+      id: '/refund'
+      path: '/refund'
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-reports': {
       id: '/my-reports'
       path: '/my-reports'
       fullPath: '/my-reports'
       preLoaderRoute: typeof MyReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -360,8 +440,12 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  CookiesRoute: CookiesRoute,
   MyReportsRoute: MyReportsRoute,
+  PrivacyRoute: PrivacyRoute,
+  RefundRoute: RefundRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TermsRoute: TermsRoute,
   UploadRoute: UploadRoute,
   AnalyzingIdRoute: AnalyzingIdRoute,
   CheckinIdRoute: CheckinIdRoute,
