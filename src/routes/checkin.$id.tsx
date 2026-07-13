@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
@@ -7,11 +7,12 @@ import { Upload as UploadIcon, Sparkles, ShieldCheck, TrendingUp } from "lucide-
 import { addCheckin } from "@/lib/vibecheck.functions";
 import { getAnonId } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/checkin/$id")({
   head: () => ({
     meta: [
-      { title: "Track this conversation — VibeCheck" },
+      { title: "Track this conversation - VibeCheck" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -45,6 +46,11 @@ function CheckinPage() {
   const [files, setFiles] = useState<Prepared[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    trackEvent("checkin_started", { report_id: id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   const onDrop = useCallback(async (accepted: File[]) => {
     setError(null);
     try {
@@ -76,6 +82,7 @@ function CheckinPage() {
       return result.overallScore;
     },
     onSuccess: () => {
+      trackEvent("checkin_completed", { report_id: id });
       navigate({ to: "/report/$id", params: { id } });
     },
   });
@@ -94,7 +101,7 @@ function CheckinPage() {
               How's it going now?
             </h1>
             <p className="mt-4 max-w-lg text-base text-ink/70">
-              Drop in fresh screenshots of the same conversation and we'll add a real data point to your vibe trend — not a prediction, an actual measurement.
+              Drop in fresh screenshots of the same conversation and we'll add a real data point to your vibe trend - not a prediction, an actual measurement.
             </p>
           </div>
 
@@ -110,7 +117,7 @@ function CheckinPage() {
                 <UploadIcon className="h-6 w-6" />
               </div>
               <h3 className="font-serif mt-5 text-xl sm:text-2xl">Drag &amp; drop new screenshots here</h3>
-              <p className="mt-2 text-sm text-ink/60">or tap to browse — PNG, JPG, HEIC accepted</p>
+              <p className="mt-2 text-sm text-ink/60">or tap to browse - PNG, JPG, HEIC accepted</p>
               <span className="mt-6 inline-flex items-center rounded-full bg-pink px-6 py-3 text-sm font-medium text-white shadow-sm">
                 Choose images
               </span>
@@ -162,7 +169,7 @@ function CheckinPage() {
               <p className="mt-4 text-sm text-destructive">
                 {mutation.error instanceof Error && mutation.error.message === "limit_reached"
                   ? "This conversation has hit its check-in limit."
-                  : "Something went wrong — try again in a moment."}
+                  : "Something went wrong - try again in a moment."}
               </p>
             )}
 
@@ -172,7 +179,7 @@ function CheckinPage() {
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-40"
             >
               <Sparkles className="h-4 w-4" />
-              {mutation.isPending ? "Measuring the vibe…" : "Add this check-in"}
+              {mutation.isPending ? "Measuring the vibe..." : "Add this check-in"}
             </button>
           </div>
         </div>
