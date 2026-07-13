@@ -292,7 +292,7 @@ export type ChatMessage = { role: "user" | "assistant"; content: string; created
 
 export const getChatMessages = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ChatIdInputSchema.parse(input))
-  .handler(async ({ data }): Promise<{ messages: ChatMessage[]; limit: number; locked: boolean }> => {
+  .handler(async ({ data }): Promise<{ messages: ChatMessage[]; limit: number; locked: boolean; plan: string | null }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { chatLimitForPlan } = await import("./vibecheck-chat.server");
 
@@ -306,7 +306,7 @@ export const getChatMessages = createServerFn({ method: "POST" })
 
     const { entitled, plan } = await checkEntitlement(row, data.ownerAnonId);
     const limit = chatLimitForPlan(plan);
-    if (!entitled) return { messages: [], limit, locked: true };
+    if (!entitled) return { messages: [], limit, locked: true, plan: null };
 
     const { data: msgs, error: msgErr } = await supabaseAdmin
       .from("report_chat_messages")
@@ -323,6 +323,7 @@ export const getChatMessages = createServerFn({ method: "POST" })
       })),
       limit,
       locked: false,
+      plan,
     };
   });
 
