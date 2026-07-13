@@ -6,11 +6,12 @@ import { getMyReports, createBillingPortalSession, getOrCreateReferralCode, rena
 import { getStripeEnvironment } from "@/lib/stripe";
 import { getAnonId } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
-      { title: "Your reports — VibeCheck" },
+      { title: "Your reports - VibeCheck" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -26,7 +27,7 @@ function AccountPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [referral, setReferral] = useState<{ code: string; redemptionCount: number } | null>(null);
   const [copied, setCopied] = useState(false);
-  // Renaming state — deliberately refetches getMyReports() after a
+  // Renaming state - deliberately refetches getMyReports() after a
   // successful save rather than patching local state optimistically, since
   // clearing a custom_label needs the server's recomputed auto-headline
   // (title/pop-culture couple), which isn't available client-side.
@@ -44,13 +45,15 @@ function AccountPage() {
         setState("signed-out");
         return;
       }
+      trackEvent("login", { login_method: "returning_session" });
       setState("loading");
       try {
         const result = await getMyReports();
         if (cancelled) return;
         setData(result);
         setState("ready");
-        // Referral code fetch is best-effort — if it fails, the rest of the
+        trackEvent("my_reports_viewed", { report_count: result.reports.length });
+        // Referral code fetch is best-effort - if it fails, the rest of the
         // account page still works, so it's isolated from the main load path.
         getOrCreateReferralCode({ data: { ownerAnonId: getAnonId() } })
           .then((r) => { if (!cancelled) setReferral(r); })
@@ -103,7 +106,7 @@ function AccountPage() {
     try {
       const result = await renameReport({ data: { id, label: editValue } });
       if ("error" in result) {
-        alert("Couldn't rename that report — try refreshing the page.");
+        alert("Couldn't rename that report - try refreshing the page.");
         return;
       }
       const refreshed = await getMyReports();
@@ -188,13 +191,13 @@ function AccountPage() {
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
               >
                 <CreditCard className="h-3.5 w-3.5" />
-                {portalLoading ? "Opening…" : "Manage subscription"}
+                {portalLoading ? "Opening..." : "Manage subscription"}
                 <ExternalLink className="h-3 w-3" />
               </button>
             </div>
           ) : (
             <div className="mt-6 rounded-3xl border border-border/60 bg-card p-5 text-sm text-ink/70 shadow-sm">
-              No active subscription — you're on single-report access.
+              No active subscription - you're on single-report access.
             </div>
           )}
 
@@ -205,7 +208,7 @@ function AccountPage() {
                 <Gift className="h-4 w-4" /> Give a Friend 20% Off
               </div>
               <p className="mt-2 text-sm text-ink/80">
-                Share your link — whoever uses it gets 20% off their report.
+                Share your link - whoever uses it gets 20% off their report.
               </p>
               <button
                 onClick={async () => {
@@ -253,7 +256,7 @@ function AccountPage() {
                   >
                     {isEditing ? (
                       // Own form instead of nesting an input inside the Link
-                      // below — clicking into a text field inside an <a>
+                      // below - clicking into a text field inside an <a>
                       // would otherwise risk triggering navigation.
                       <form
                         onSubmit={(e) => {
@@ -267,7 +270,7 @@ function AccountPage() {
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           maxLength={60}
-                          placeholder="Name this report — e.g. “Alex, week 2”"
+                          placeholder="Name this report - e.g. 'Alex, week 2'"
                           className="min-w-0 flex-1 rounded-full border border-border bg-cream px-3.5 py-2 text-sm outline-none focus:border-pink"
                         />
                         <button
@@ -275,7 +278,7 @@ function AccountPage() {
                           disabled={savingId === r.id}
                           className="shrink-0 rounded-full bg-pink px-3.5 py-2 text-xs font-medium text-white shadow-sm disabled:opacity-50"
                         >
-                          {savingId === r.id ? "Saving…" : "Save"}
+                          {savingId === r.id ? "Saving..." : "Save"}
                         </button>
                         <button
                           type="button"
@@ -325,7 +328,7 @@ function AccountPage() {
                         className="mt-3 flex items-center gap-2 rounded-2xl bg-purple-soft/60 px-3.5 py-2.5 text-xs font-medium text-purple-deep transition hover:bg-purple-soft"
                       >
                         <History className="h-3.5 w-3.5 shrink-0" />
-                        {Math.round(daysSinceActivity)} days since your last check-in — see if the vibe shifted →
+                        {Math.round(daysSinceActivity)} days since your last check-in - see if the vibe shifted →
                       </Link>
                     )}
                   </div>
