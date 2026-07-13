@@ -22,8 +22,15 @@ export function SiteFooter() {
         </nav>
 
         <p className="max-w-md text-xs leading-relaxed text-ink/50">
-          VibeCheck is designed for fun and reflection. Insights are AI-generated estimates and should not replace real conversations or professional advice.
+          Take it seriously, not literally. VibeCheck's reads are AI takes for fun and self-reflection — a great conversation starter, not a substitute for an actual conversation (or a therapist).
         </p>
+
+        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-ink/40">
+          <Link to="/terms" className="transition hover:text-ink">Terms</Link>
+          <Link to="/privacy" className="transition hover:text-ink">Privacy</Link>
+          <Link to="/refund" className="transition hover:text-ink">Refund</Link>
+          <Link to="/cookies" className="transition hover:text-ink">Cookies</Link>
+        </nav>
 
         <p className="text-xs text-ink/40">© {new Date().getFullYear()} VibeCheck. All rights reserved.</p>
       </div>
