@@ -67,12 +67,12 @@ const TIERS: Tier[] = [
   {
     id: "yearly",
     name: "Premium Yearly",
-    price: "$49",
+    price: "$39",
     cents: ".99",
-    priceValue: 49.99,
+    priceValue: 39.99,
     sub: "Full access to all features for 12 months, including unlimited AI chat about your results. Best value.",
-    cta: "Get Annual Access - $49.99",
-    annualNote: "$4.17 / mo (billed annually)",
+    cta: "Get Annual Access - $39.99",
+    annualNote: "$3.33 / mo (billed annually)",
   },
 ];
 
