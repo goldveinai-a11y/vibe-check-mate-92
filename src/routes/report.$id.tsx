@@ -267,6 +267,8 @@ function ReportPage() {
               </p>
             </ReportSection>
 
+            <ReportChat analysisId={id} ownerAnonId={ownerAnonId} />
+
             <ReportSection Icon={MessageCircle} title="Hardcore Analytics">
               <div className="space-y-3">
                 {([
@@ -315,8 +317,6 @@ function ReportPage() {
                 </div>
               </div>
             </ReportSection>
-
-            <ReportChat analysisId={id} ownerAnonId={ownerAnonId} />
 
             <ReportSection Icon={Sparkles} title="Psychological Analysis">
               <div className="space-y-4">
