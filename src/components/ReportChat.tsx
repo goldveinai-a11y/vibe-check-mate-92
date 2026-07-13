@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, Send } from "lucide-react";
 import { getChatMessages, sendChatMessage, type ChatMessage } from "@/lib/vibecheck.functions";
@@ -50,6 +51,9 @@ export function ReportChat({ analysisId, ownerAnonId }: Props) {
   const locked = data?.locked ?? false;
   const used = Math.ceil(messages.length / 2) + (pending ? 1 : 0);
   const remaining = Math.max(0, limit - used);
+  const plan = data?.plan ?? null;
+  const unlimited = plan === "monthly" || plan === "yearly";
+  const showUpgradeCTA = !unlimited && !locked && remaining <= 0;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -85,25 +89,36 @@ export function ReportChat({ analysisId, ownerAnonId }: Props) {
   };
 
   return (
-    <section className="mt-12 rounded-3xl border border-border/60 bg-card p-6 shadow-sm sm:p-8">
-      <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-purple-soft">
-          <MessageCircle className="h-5 w-5 text-purple-deep" aria-hidden />
+    <section className="relative overflow-hidden rounded-3xl border-2 border-purple/25 bg-gradient-to-br from-purple-soft/50 via-card to-pink-soft/30 p-6 shadow-md sm:p-8">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-purple-soft">
+            <MessageCircle className="h-5 w-5 text-purple-deep" aria-hidden />
+          </div>
+          <div>
+            {/* Was "Ask the report" — read as talking to a static document
+                rather than an AI, per live user feedback. The "X of N left"
+                counter now shows on the Single tier only (see badge below) —
+                on Monthly/Yearly the paywall sells this as unlimited AI chat,
+                so surfacing a running countdown there would contradict that
+                promise. The underlying `remaining` gate still exists as a
+                fair-use safety net either way (see the limit_reached branch
+                below). */}
+            <h3 className="font-serif text-2xl leading-tight">Ask the AI Analyst</h3>
+            <p className="mt-1 text-sm text-ink/60">
+              Follow-up questions, grounded in your data.
+            </p>
+          </div>
         </div>
-        <div>
-          {/* Was "Ask the report" — read as talking to a static document
-              rather than an AI, per live user feedback. Also dropped the
-              "X of N left" counter that used to sit up here: the paywall
-              sells this as unlimited AI chat on monthly/annual plans, so
-              surfacing a running countdown contradicted that promise. The
-              underlying `remaining` gate still exists as a fair-use safety
-              net (see the limit_reached branch below) — it's just no longer
-              flaunted as a number up front. */}
-          <h3 className="font-serif text-2xl leading-tight">Ask the AI Analyst</h3>
-          <p className="mt-1 text-sm text-ink/60">
-            Follow-up questions, grounded in your data.
-          </p>
-        </div>
+        {unlimited ? (
+          <span className="shrink-0 rounded-full bg-mint px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-white">
+            Unlimited
+          </span>
+        ) : (
+          <span className="shrink-0 rounded-full bg-purple-soft px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-purple-deep">
+            {remaining} of {limit} left
+          </span>
+        )}
       </div>
 
       <div
@@ -161,7 +176,13 @@ export function ReportChat({ analysisId, ownerAnonId }: Props) {
           }}
           maxLength={400}
           rows={1}
-          placeholder={remaining <= 0 ? "You've hit the fair-use limit for now." : "Ask a follow-up…"}
+          placeholder={
+            remaining <= 0
+              ? unlimited
+                ? "You've hit the fair-use limit for now."
+                : "You've used all your questions on this report."
+              : "Ask a follow-up…"
+          }
           disabled={mutation.isPending || remaining <= 0}
           className="min-h-[44px] flex-1 resize-none rounded-2xl border border-border/60 bg-cream px-4 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-purple-deep focus:outline-none disabled:opacity-60"
         />
@@ -176,6 +197,22 @@ export function ReportChat({ analysisId, ownerAnonId }: Props) {
       </form>
 
       {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
+
+      {showUpgradeCTA && (
+        <div className="mt-4 rounded-2xl bg-pink-soft p-4 text-sm text-ink">
+          <p className="font-medium">You've used all {limit} questions on this report.</p>
+          <p className="mt-1 text-ink/70">
+            Upgrade to Monthly for unlimited AI chat and conversation tracking.
+          </p>
+          <Link
+            to="/paywall/$id"
+            params={{ id: analysisId }}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-pink px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:opacity-90"
+          >
+            Upgrade to Unlimited
+          </Link>
+        </div>
+      )}
     </section>
   );
 }
