@@ -40,6 +40,7 @@ type Tier = {
   cta: string;
   badge?: string;
   annualNote?: string;
+  savingsBadge?: string;
   highlight?: boolean;
 };
 
@@ -73,6 +74,7 @@ const TIERS: Tier[] = [
     sub: "Full access to all features for 12 months, including unlimited AI chat about your results. Best value.",
     cta: "Get Annual Access - $39.99",
     annualNote: "$3.33 / mo (billed annually)",
+    savingsBadge: "SAVE 67%",
   },
 ];
 
@@ -149,6 +151,10 @@ function PaywallPage() {
               <Lock className="h-4 w-4 text-mint" />
               No receipts kept - read once, deleted for good.
             </div>
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-pink/40 bg-pink-soft px-4 py-2 text-xs font-medium text-pink sm:text-sm">
+              <Lock className="h-3.5 w-3.5" />
+              1,217 chats analyzed
+            </div>
             {refCode && (
               <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-mint-soft/60 px-4 py-2 text-sm text-ink/80">
                 <Gift className="h-4 w-4 shrink-0 text-mint" />
@@ -171,6 +177,15 @@ function PaywallPage() {
                     <p className="mt-2 text-sm text-ink/70">{f.body}</p>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 rounded-3xl bg-ink p-5 text-cream sm:p-6">
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-pink" />
+                  <p className="text-sm font-medium">Plus: ask AI anything about your results</p>
+                </div>
+                <p className="mt-1.5 text-xs text-cream/70">
+                  10 free questions with any report. Unlimited with Premium.
+                </p>
               </div>
             </div>
 
@@ -216,7 +231,14 @@ function PaywallPage() {
                       </span>
                     </div>
                   )}
-                  <h3 className="font-serif text-xl">{t.name}</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-serif text-xl">{t.name}</h3>
+                    {t.savingsBadge && (
+                      <span className="rounded-full bg-mint-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-ink/80">
+                        {t.savingsBadge}
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-2 flex items-baseline gap-1">
                     <span className={`font-serif text-4xl ${t.highlight ? "text-pink" : "text-ink"}`}>{t.price}</span>
                     <span className={`font-serif text-2xl ${t.highlight ? "text-pink" : "text-ink"}`}>{t.cents}</span>
@@ -226,6 +248,9 @@ function PaywallPage() {
                     <span className="mt-3 inline-block rounded-full bg-mint-soft px-3 py-1 text-xs text-ink/80">
                       {t.annualNote}
                     </span>
+                  )}
+                  {t.id === "yearly" && (
+                    <p className="mt-2 text-xs text-ink/50">vs $9.99/mo monthly ($119.88/yr)</p>
                   )}
                   <button
                     onClick={() => handlePickPlan(t.id)}
