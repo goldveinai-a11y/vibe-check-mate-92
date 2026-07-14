@@ -417,6 +417,15 @@ const CheckoutInputSchema = z.object({
   // instead of relying solely on a localStorage anon id.
   email: z.string().email(),
   refCode: z.string().min(4).max(16).optional(),
+  // Post-close winback offer V1 — set true only when the buyer explicitly
+  // claimed the "20% off if you unlock now" popup shown on the paywall
+  // after they clicked away without paying (see paywall.$id.tsx). Reuses
+  // the same WINGMAN_COUPON_ID as the referral flow rather than a separate
+  // Stripe coupon, since both are "20% off, once" — no reason to duplicate
+  // the object. This flag is purely client-asserted (like refCode), which
+  // is fine here: worst case is someone finds a way to force it true and
+  // gets 20% off, the same exposure the referral flow already accepts.
+  winbackOffer: z.boolean().optional(),
 });
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
@@ -459,12 +468,21 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         }
       }
 
+      // Either discount path (referral or post-close winback) applies the
+      // same coupon — they're mutually exclusive in practice (a winback
+      // popup only fires when no refCode discount banner was already
+      // shown), but even if both were somehow true, Stripe just applies
+      // the coupon once.
+      const winbackApplied = data.winbackOffer === true;
+      const applyDiscount = referralApplied || winbackApplied;
+
       const metadata = {
         analysisId: data.analysisId,
         ownerAnonId: data.ownerAnonId,
         plan: data.plan,
         email: data.email,
         ...(referralApplied ? { refCode: data.refCode!.toLowerCase() } : {}),
+        ...(winbackApplied ? { winback: "true" } : {}),
       };
 
       const isSubscription = data.plan !== "single";
@@ -497,7 +515,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         // sales-tax/VAT obligations change.
         customer_email: data.email,
         metadata,
-        ...(referralApplied ? { discounts: [{ coupon: WINGMAN_COUPON_ID }] } : {}),
+        ...(applyDiscount ? { discounts: [{ coupon: WINGMAN_COUPON_ID }] } : {}),
         ...(isSubscription
           ? {
               subscription_data: {
