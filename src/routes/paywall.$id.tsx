@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock, Gift, Loader2 } from "lucide-react";
+import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock, Gift, Loader2, Check, X } from "lucide-react";
 import { createCheckoutSession, getUnlockedCount } from "@/lib/vibecheck.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
@@ -177,6 +177,76 @@ function PaywallPage() {
                 Referral code applied - 20% off if it checks out.
               </div>
             )}
+          </div>
+
+          {/* Without/With comparison - the same proven contrast pattern
+              competitors use on their paywalls, rewritten in VibeCheck's
+              own voice around what the report actually contains
+              (Compatibility Radar, quoted flags, real trend tracking)
+              instead of generic pain points. */}
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-widest text-ink/50">Without VibeCheck</p>
+              <ul className="mt-4 space-y-3 text-sm text-ink/70">
+                <li className="flex gap-2.5">
+                  <X className="mt-0.5 h-4 w-4 shrink-0 text-ink/30" />
+                  Re-reading the same texts trying to decode what they meant
+                </li>
+                <li className="flex gap-2.5">
+                  <X className="mt-0.5 h-4 w-4 shrink-0 text-ink/30" />
+                  Guessing whether it's a red flag or you're overthinking
+                </li>
+                <li className="flex gap-2.5">
+                  <X className="mt-0.5 h-4 w-4 shrink-0 text-ink/30" />
+                  Asking friends who just tell you what you want to hear
+                </li>
+                <li className="flex gap-2.5">
+                  <X className="mt-0.5 h-4 w-4 shrink-0 text-ink/30" />
+                  No idea if the vibe is actually fading, or you're imagining it
+                </li>
+              </ul>
+            </div>
+            <div className="rounded-3xl border border-pink/30 bg-pink-soft p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-widest text-pink">With VibeCheck</p>
+              <ul className="mt-4 space-y-3 text-sm text-ink/80">
+                <li className="flex gap-2.5">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+                  Every message scored across 7 chemistry dimensions
+                </li>
+                <li className="flex gap-2.5">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+                  Red flags backed by the exact quote, not a hunch
+                </li>
+                <li className="flex gap-2.5">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+                  An unbiased AI read, not a friend managing your feelings
+                </li>
+                <li className="flex gap-2.5">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+                  Real trend tracking - see if it's cooling, don't just guess
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Proof points instead of testimonials - we don't have real
+              user quotes to show yet, and inventing named reviews would be
+              fake social proof. These are either live data (same query
+              backing the badge above) or true static facts about what
+              every report contains. */}
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-border/60 bg-card p-4 text-center shadow-sm">
+              <p className="font-serif text-2xl text-ink sm:text-3xl">{unlocked ? unlocked.count.toLocaleString("en-US") : "—"}</p>
+              <p className="mt-1 text-[11px] leading-tight text-ink/60">Reports unlocked</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-4 text-center shadow-sm">
+              <p className="font-serif text-2xl text-ink sm:text-3xl">7</p>
+              <p className="mt-1 text-[11px] leading-tight text-ink/60">Chemistry axes scored</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-4 text-center shadow-sm">
+              <p className="font-serif text-2xl text-ink sm:text-3xl">100%</p>
+              <p className="mt-1 text-[11px] leading-tight text-ink/60">From your actual chat</p>
+            </div>
           </div>
 
           <div className="mt-12 grid gap-8 lg:grid-cols-2">
