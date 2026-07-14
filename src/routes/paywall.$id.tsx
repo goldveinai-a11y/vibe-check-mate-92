@@ -343,17 +343,22 @@ function PaywallPage() {
                   </div>
                 ))}
               </div>
-              {/* Rizz-differentiation angle, folded into the existing AI-chat
-                  teaser block (no new element added) - directly answers the
-                  most common negative-review complaint about reply-gen
-                  competitors: generic, repetitive, same-for-everyone lines. */}
+              {/* AI-chat teaser, with the Rizz-differentiation angle folded
+                  into the subtext (no new element added) - the heading
+                  leads with "AI chat" so the feature itself stays legible
+                  (this is a chat you can ask things in), then the subtext
+                  covers both use cases: general Q&A about the report (the
+                  original framing) and reply-help grounded in the exact
+                  conversation, which directly answers the most common
+                  negative-review complaint about reply-gen competitors:
+                  generic, repetitive, same-for-everyone lines. */}
               <div className="mt-4 rounded-3xl bg-ink p-5 text-cream sm:p-6">
                 <div className="flex items-center gap-2">
                   <MessageCircle className="h-4 w-4 text-pink" />
-                  <p className="text-sm font-medium">Plus: reply help that's actually grounded in your chat</p>
+                  <p className="text-sm font-medium">Plus: an AI chat that actually knows your conversation</p>
                 </div>
                 <p className="mt-1.5 text-xs text-cream/70">
-                  Not a database of pickup lines - every suggestion comes from this exact conversation. 10 free questions with any report, unlimited with Premium.
+                  Ask anything about your results, or get reply help grounded in this exact chat - not a database of pickup lines. 10 free questions with any report, unlimited with Premium.
                 </p>
               </div>
             </div>
