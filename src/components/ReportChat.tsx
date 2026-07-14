@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Send, Sparkles, Lock } from "lucide-react";
 import { getChatMessages, sendChatMessage, type ChatMessage } from "@/lib/vibecheck.functions";
 
 // The chat API (Claude) writes plain markdown — **bold**, and \n\n between
@@ -87,6 +88,16 @@ export function ReportChat({
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [limit, setLimit] = useState(20);
+  // "monthly"/"yearly" is marketed as "Unlimited AI chat" on the paywall
+  // (see paywall.$id.tsx TIERS copy) - there IS still a 100/report safety-net
+  // cap under the hood (see chatLimitForPlan in vibecheck-chat.server.ts),
+  // but showing a countdown to a subscriber who was sold "unlimited"
+  // undercuts that promise for no product reason. So plan drives two
+  // separate things below: the cap itself (server-enforced, unconditional)
+  // and whether the UI ever surfaces a number to the user (single tier
+  // only - that's also the only tier where hitting the cap should prompt
+  // an upgrade, since monthly/yearly are already the upgrade).
+  const [plan, setPlan] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -104,6 +115,7 @@ export function ReportChat({
     if (historyQuery.data && !hydrated) {
       setMessages(historyQuery.data.messages);
       setLimit(historyQuery.data.limit);
+      setPlan(historyQuery.data.plan);
       setHydrated(true);
     }
   }, [historyQuery.data, hydrated]);
@@ -112,6 +124,7 @@ export function ReportChat({
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length]);
 
+  const isUnlimitedPlan = plan === "monthly" || plan === "yearly";
   const questionsUsed = Math.ceil(messages.length / 2);
   const remaining = Math.max(0, limit - questionsUsed);
   const atLimit = remaining <= 0 && hydrated;
@@ -153,7 +166,13 @@ export function ReportChat({
         </div>
         <div>
           <h2 className="font-serif text-xl sm:text-2xl">Ask About Your Report</h2>
-          <p className="text-xs text-ink/50">{hydrated ? `${remaining} question${remaining === 1 ? "" : "s"} left on this report` : "Loading…"}</p>
+          <p className="text-xs text-ink/50">
+            {!hydrated
+              ? "Loading…"
+              : isUnlimitedPlan
+                ? "Unlimited questions with Premium"
+                : `${remaining} question${remaining === 1 ? "" : "s"} left on this report`}
+          </p>
         </div>
       </div>
 
@@ -186,9 +205,34 @@ export function ReportChat({
         </div>
       )}
 
-      {errorResult === "limit_reached" && (
+      {/* limit_reached messaging branches by plan:
+          - Single: this IS the intended upsell moment - the whole point of
+            capping this tier at 10 is to make "unlimited AI chat" a real
+            reason to upgrade, so show the count plus a direct CTA to the
+            paywall (monthly/yearly plans).
+          - Monthly/Yearly: this only fires if someone somehow burns through
+            the 100-message safety net in one report - a real edge case, not
+            a marketed limit. No number, no upgrade pitch (they're already on
+            the top tier) - just a soft "try again later" so "Unlimited"
+            never reads as a lie. */}
+      {errorResult === "limit_reached" && !isUnlimitedPlan && (
+        <div className="mt-4 rounded-2xl bg-pink-soft p-4 text-center">
+          <p className="text-xs text-ink/70">
+            You've used all {limit} questions on this report - Single Report includes {limit}, Premium gets unlimited.
+          </p>
+          <Link
+            to="/paywall/$id"
+            params={{ id: analysisId }}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-pink px-5 py-2.5 text-xs font-medium text-white shadow-sm transition hover:opacity-90"
+          >
+            <Lock className="h-3.5 w-3.5" />
+            Upgrade for unlimited AI chat
+          </Link>
+        </div>
+      )}
+      {errorResult === "limit_reached" && isUnlimitedPlan && (
         <p className="mt-4 rounded-2xl bg-muted/50 p-3 text-center text-xs text-ink/60">
-          You've used all {limit} questions on this report.
+          You've hit today's chat limit for this report - give it a bit and try again.
         </p>
       )}
       {errorResult && errorResult !== "limit_reached" && errorResult !== "locked" && (
