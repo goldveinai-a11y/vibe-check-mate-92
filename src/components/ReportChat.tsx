@@ -31,7 +31,7 @@ export type ReportChatContext = {
   hasSuggestedReplies: boolean;
 };
 
-type QuickChip = { emoji: string; label: string; question: string };
+type QuickChip = { emoji: string; label: string; question: string; prefill?: boolean };
 
 // Base chips are always relevant regardless of what this specific report
 // contains. Conditional chips only surface when the underlying report data
@@ -43,8 +43,19 @@ type QuickChip = { emoji: string; label: string; question: string };
 function buildQuickChips(ctx?: ReportChatContext): QuickChip[] {
   const chips: QuickChip[] = [];
 
+  // prefill (not auto-send): the old version fired a generic "suggest a
+  // reply" question with no message to reply to, so the model could only
+  // guess at context already in the report. Prefilling instead lets the
+  // user paste the actual message they received, so the suggestion is for
+  // THAT message - not a generic one. See buildSystemPrompt in
+  // vibecheck-chat.server.ts for the matching "2-3 distinct tones" instruction.
   if (ctx?.hasSuggestedReplies) {
-    chips.push({ emoji: "💬", label: "Suggest a reply", question: "Can you suggest a reply I could send back?" });
+    chips.push({
+      emoji: "💬",
+      label: "Suggest a reply",
+      question: "Suggest 2-3 different ways I could reply to this message they just sent me: ",
+      prefill: true,
+    });
   }
   chips.push({ emoji: "❤️", label: "Do they like me?", question: "Based on my scores, do they actually like me?" });
   chips.push({ emoji: "🤔", label: "Am I overthinking?", question: "Am I overthinking this, or is my read fair?" });
@@ -79,6 +90,7 @@ export function ReportChat({
   const [input, setInput] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const quickChips = buildQuickChips(context);
 
@@ -123,6 +135,15 @@ export function ReportChat({
   };
 
   const errorResult = mutation.data && "error" in mutation.data ? mutation.data.error : null;
+
+  const handleChipClick = (chip: QuickChip) => {
+    if (chip.prefill) {
+      setInput(chip.question);
+      inputRef.current?.focus();
+      return;
+    }
+    handleSend(chip.question);
+  };
 
   return (
     <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
@@ -186,7 +207,7 @@ export function ReportChat({
           {quickChips.map((chip) => (
             <button
               key={chip.label}
-              onClick={() => handleSend(chip.question)}
+              onClick={() => handleChipClick(chip)}
               disabled={mutation.isPending}
               className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border/60 bg-muted/40 px-4 py-2 text-xs text-ink/75 transition hover:bg-muted disabled:opacity-50"
             >
@@ -206,6 +227,7 @@ export function ReportChat({
           className="mt-4 flex items-center gap-2"
         >
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask something about your report…"
