@@ -267,7 +267,16 @@ function ReportPage() {
               </p>
             </ReportSection>
 
-            <ReportChat analysisId={id} ownerAnonId={ownerAnonId} />
+            <ReportChat
+              analysisId={id}
+              ownerAnonId={ownerAnonId}
+              context={{
+                hasRedFlags: report.red_flags.length > 0,
+                trajectory: realTrend?.trajectory ?? viral?.vibe_decay?.trajectory ?? "steady",
+                delusionScore: delusion.score,
+                hasSuggestedReplies: !!report.suggested_replies,
+              }}
+            />
 
             <ReportSection Icon={MessageCircle} title="Hardcore Analytics">
               <div className="space-y-3">
