@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -93,6 +93,7 @@ const TIERS: Tier[] = [
 
 function PaywallPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -102,9 +103,41 @@ function PaywallPage() {
   const emailValid = EMAIL_RE.test(email.trim());
   const { data: unlocked } = useQuery(unlockedCountQuery);
 
+  // Post-close winback offer: triggered the FIRST time someone clicks "Back
+  // to preview" without having paid — i.e. exactly the moment they were
+  // about to leave without converting. Only shown once per page visit
+  // (winbackDismissed), never re-shown after they've either claimed or
+  // declined it. Reuses the existing WINGMAN20 Stripe coupon (already live
+  // for the referral flow) rather than creating a new one - see
+  // createCheckoutSession's winbackOffer flag.
+  const [showWinback, setShowWinback] = useState(false);
+  const [winbackDismissed, setWinbackDismissed] = useState(false);
+  const [winbackActive, setWinbackActive] = useState(false);
+
   useEffect(() => {
     trackEvent("paywall_viewed", { report_id: id, paywall_variant: "default" });
   }, [id]);
+
+  const handleBackToPreviewClick = (e: React.MouseEvent) => {
+    if (!winbackDismissed && !winbackActive) {
+      e.preventDefault();
+      setShowWinback(true);
+      trackEvent("winback_offer_shown", { report_id: id });
+    }
+  };
+
+  const handleWinbackClaim = () => {
+    setWinbackActive(true);
+    setShowWinback(false);
+    trackEvent("winback_offer_claimed", { report_id: id });
+  };
+
+  const handleWinbackDecline = () => {
+    setShowWinback(false);
+    setWinbackDismissed(true);
+    trackEvent("winback_offer_declined", { report_id: id });
+    navigate({ to: "/results/$id", params: { id } });
+  };
 
   const handlePickPlan = async (planId: Plan) => {
     if (!emailValid) {
@@ -118,7 +151,7 @@ function PaywallPage() {
     setCheckoutError(null);
     setLoadingPlan(planId);
     const tier = TIERS.find((t) => t.id === planId)!;
-    trackEvent("checkout_started", { report_id: id, value: tier.priceValue, currency: "USD", plan: planId });
+    trackEvent("checkout_started", { report_id: id, value: tier.priceValue, currency: "USD", plan: planId, winback: winbackActive });
     try {
       const origin = window.location.origin;
       const successUrl = `${origin}/checkout/return?id=${id}&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email.trim())}&plan=${planId}&value=${tier.priceValue}&currency=USD`;
@@ -133,6 +166,7 @@ function PaywallPage() {
           cancelUrl,
           email: email.trim(),
           ...(refCode ? { refCode } : {}),
+          ...(winbackActive ? { winbackOffer: true } : {}),
         },
       });
       if ("error" in result) throw new Error(result.error);
@@ -147,6 +181,45 @@ function PaywallPage() {
     <main className="min-h-screen bg-cream pb-20 text-ink">
       <PaymentTestModeBanner />
       <SiteHeader unlockHref="/paywall/$id" unlockParams={{ id }} />
+
+      {/* Post-close winback offer - Superwall/Adapty pattern: a dedicated,
+          one-time offer shown ONLY to people already leaving without
+          converting, never on the main paywall (which stays full-price for
+          everyone else). No countdown timer in this v1 - small "limited
+          time" text doesn't move conversion per field data; a dedicated
+          offer moment does. */}
+      {showWinback && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-5"
+          onClick={handleWinbackDecline}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl bg-cream p-6 text-center shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="inline-flex items-center gap-2 rounded-full bg-mint-soft px-4 py-2 text-xs font-medium text-ink/80">
+              <Gift className="h-3.5 w-3.5 text-mint" />
+              One-time offer
+            </span>
+            <h3 className="font-serif mt-4 text-2xl">Wait - 20% off if you unlock now</h3>
+            <p className="mt-2 text-sm text-ink/70">
+              This only shows once. Claim it and the discount applies automatically on any plan below.
+            </p>
+            <button
+              onClick={handleWinbackClaim}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-3.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
+            >
+              Claim 20% off
+            </button>
+            <button
+              onClick={handleWinbackDecline}
+              className="mt-3 block w-full text-center text-xs text-ink/50 hover:text-ink"
+            >
+              No thanks, back to preview
+            </button>
+          </div>
+        </div>
+      )}
 
       <motion.section key="plans" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 pt-4">
         <div className="mx-auto max-w-6xl">
@@ -175,6 +248,12 @@ function PaywallPage() {
               <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-mint-soft/60 px-4 py-2 text-sm text-ink/80">
                 <Gift className="h-4 w-4 shrink-0 text-mint" />
                 Referral code applied - 20% off if it checks out.
+              </div>
+            )}
+            {winbackActive && (
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-mint-soft/60 px-4 py-2 text-sm text-ink/80">
+                <Gift className="h-4 w-4 shrink-0 text-mint" />
+                20% off applied - pick any plan below.
               </div>
             )}
           </div>
@@ -264,13 +343,17 @@ function PaywallPage() {
                   </div>
                 ))}
               </div>
+              {/* Rizz-differentiation angle, folded into the existing AI-chat
+                  teaser block (no new element added) - directly answers the
+                  most common negative-review complaint about reply-gen
+                  competitors: generic, repetitive, same-for-everyone lines. */}
               <div className="mt-4 rounded-3xl bg-ink p-5 text-cream sm:p-6">
                 <div className="flex items-center gap-2">
                   <MessageCircle className="h-4 w-4 text-pink" />
-                  <p className="text-sm font-medium">Plus: ask AI anything about your results</p>
+                  <p className="text-sm font-medium">Plus: reply help that's actually grounded in your chat</p>
                 </div>
                 <p className="mt-1.5 text-xs text-cream/70">
-                  10 free questions with any report. Unlimited with Premium.
+                  Not a database of pickup lines - every suggestion comes from this exact conversation. 10 free questions with any report, unlimited with Premium.
                 </p>
               </div>
             </div>
@@ -360,7 +443,12 @@ function PaywallPage() {
               <p className="text-center text-xs text-ink/60">
                 Apple Pay - Google Pay - Card - Link - secure checkout by Stripe
               </p>
-              <Link to="/results/$id" params={{ id }} className="block text-center text-xs text-ink/50 hover:text-ink">
+              <Link
+                to="/results/$id"
+                params={{ id }}
+                onClick={handleBackToPreviewClick}
+                className="block text-center text-xs text-ink/50 hover:text-ink"
+              >
                 &lt;- Back to preview
               </Link>
             </div>
