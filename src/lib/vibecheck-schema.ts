@@ -15,6 +15,14 @@ export const HardcoreAnalyticsSchema = z.object({
   engagement_stat: z.string(),
   timeline_changes: z.string(),
   communication_style: z.string(),
+  // The uploader's ("you") own writing-style fingerprint — structural only
+  // (sentence length, emoji use, formality, humor, directness), never
+  // verbatim quotes, since raw screenshots aren't retained after analysis
+  // (see "no receipts kept" privacy promise). Optional so reports generated
+  // before this field existed still parse cleanly. Consumed by
+  // vibecheck-chat.server.ts's reply-suggestion coach so suggested replies
+  // sound like the actual user, not a generic tone label.
+  your_voice_style: z.string().max(220).optional(),
 });
 
 export const PsychAnalysisSchema = z.object({
@@ -114,6 +122,14 @@ function clampStr(value: unknown, max: number): unknown {
 export function sanitizeReportShape(raw: unknown): unknown {
   if (!raw || typeof raw !== "object") return raw;
   const r: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+
+  const hardcoreAnalytics = r.hardcore_analytics as Record<string, unknown> | undefined;
+  if (hardcoreAnalytics && typeof hardcoreAnalytics.your_voice_style === "string") {
+    r.hardcore_analytics = {
+      ...hardcoreAnalytics,
+      your_voice_style: clampStr(hardcoreAnalytics.your_voice_style, 220),
+    };
+  }
 
   const viral = r.viral as Record<string, unknown> | undefined;
   if (viral && typeof viral === "object") {
