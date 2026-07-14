@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock, Gift, Loader2 } from "lucide-react";
-import { createCheckoutSession } from "@/lib/vibecheck.functions";
+import { createCheckoutSession, getUnlockedCount } from "@/lib/vibecheck.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { getAnonId, getStoredRefCode } from "@/lib/anon-id";
@@ -10,6 +11,18 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { trackEvent } from "@/lib/analytics";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Same live count backing the "reports unlocked" counter on the free
+// /results/$id preview page (see getUnlockedCount - real paid-analyses
+// count + a baseline floor). This page previously showed a separate,
+// hand-typed "1,217 chats analyzed" number that could never match and
+// would go stale the moment it was written. Sharing the same query means
+// both pages always show the identical, real, live number.
+const unlockedCountQuery = queryOptions({
+  queryKey: ["unlocked-count"],
+  queryFn: () => getUnlockedCount(),
+  staleTime: 60_000,
+});
 
 export const Route = createFileRoute("/paywall/$id")({
   head: () => ({
@@ -87,6 +100,7 @@ function PaywallPage() {
   const ownerAnonId = typeof window !== "undefined" ? getAnonId() : "";
   const refCode = typeof window !== "undefined" ? getStoredRefCode() : null;
   const emailValid = EMAIL_RE.test(email.trim());
+  const { data: unlocked } = useQuery(unlockedCountQuery);
 
   useEffect(() => {
     trackEvent("paywall_viewed", { report_id: id, paywall_variant: "default" });
@@ -151,10 +165,12 @@ function PaywallPage() {
               <Lock className="h-4 w-4 text-mint" />
               No receipts kept - read once, deleted for good.
             </div>
-            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-pink/40 bg-pink-soft px-4 py-2 text-xs font-medium text-pink sm:text-sm">
-              <Lock className="h-3.5 w-3.5" />
-              1,217 chats analyzed
-            </div>
+            {unlocked && (
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-pink/40 bg-pink-soft px-4 py-2 text-xs font-medium text-pink sm:text-sm">
+                <Lock className="h-3.5 w-3.5" />
+                {unlocked.count.toLocaleString("en-US")} reports unlocked
+              </div>
+            )}
             {refCode && (
               <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-mint-soft/60 px-4 py-2 text-sm text-ink/80">
                 <Gift className="h-4 w-4 shrink-0 text-mint" />
