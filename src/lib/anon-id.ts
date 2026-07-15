@@ -41,3 +41,22 @@ export function getStoredRefCode(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(REF_KEY);
 }
+
+// Sticky email on the paywall - a full browser navigation to Stripe
+// Checkout and back (via cancel_url, or the native back button) remounts
+// the page fresh, wiping plain useState. Someone who typed their email,
+// picked a plan, bailed at Stripe, and came back to try a different plan
+// shouldn't have to retype it. Not an account, not durable identity - just
+// the same lightweight localStorage convenience as anon id / ref code
+// above, scoped to this browser only.
+const EMAIL_KEY = "vibecheck_email";
+
+export function getStoredEmail(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(EMAIL_KEY);
+}
+
+export function setStoredEmail(email: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(EMAIL_KEY, email);
+}
