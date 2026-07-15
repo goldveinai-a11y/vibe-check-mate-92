@@ -2,8 +2,39 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { Send, Sparkles, Lock } from "lucide-react";
+import { Send, Sparkles, Lock, Paperclip, X } from "lucide-react";
 import { getChatMessages, sendChatMessage, type ChatMessage } from "@/lib/vibecheck.functions";
+
+// Same accepted-type/size contract as the original upload flow (see
+// fileToPrepared in upload.tsx) - reusing it here rather than inventing a
+// new one, since this is the same "read once, never stored" promise
+// extended to chat: the image goes straight into the Claude API call in
+// sendChatMessage below and is never written to Supabase or any bucket.
+type PreparedImage = { mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif"; base64: string; previewUrl: string };
+const MAX_ATTACH_BYTES = 6 * 1024 * 1024;
+
+function fileToPreparedImage(file: File): Promise<PreparedImage> {
+  return new Promise((resolve, reject) => {
+    if (file.size > MAX_ATTACH_BYTES) {
+      reject(new Error("That image is too large - try one under 6MB."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read that image."));
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const [meta, base64] = dataUrl.split(",");
+      const match = meta.match(/data:(image\/[a-z]+);base64/);
+      const mime = match?.[1] as PreparedImage["mediaType"] | undefined;
+      if (!mime || !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mime)) {
+        reject(new Error("Unsupported image type - try a PNG, JPG, WEBP, or GIF."));
+        return;
+      }
+      resolve({ mediaType: mime, base64, previewUrl: dataUrl });
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 // The chat API (Claude) writes plain markdown — **bold**, and \n\n between
 // paragraphs — but this box was rendering m.content as a raw string, so
@@ -100,8 +131,11 @@ export function ReportChat({
   const [plan, setPlan] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [hydrated, setHydrated] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<PreparedImage | null>(null);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const quickChips = buildQuickChips(context);
 
@@ -143,7 +177,20 @@ export function ReportChat({
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend(input);
+      handleSend(input, attachedImage);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    setAttachError(null);
+    try {
+      const prepared = await fileToPreparedImage(file);
+      setAttachedImage(prepared);
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : "Couldn't read that image.");
     }
   };
 
@@ -153,9 +200,22 @@ export function ReportChat({
   const atLimit = remaining <= 0 && hydrated;
 
   const mutation = useMutation({
-    mutationFn: (question: string) => sendChatMessage({ data: { id: analysisId, ownerAnonId, message: question } }),
-    onMutate: (question: string) => {
-      setMessages((cur) => [...cur, { role: "user", content: question, createdAt: new Date().toISOString() }]);
+    mutationFn: (vars: { question: string; image?: PreparedImage }) =>
+      sendChatMessage({
+        data: {
+          id: analysisId,
+          ownerAnonId,
+          message: vars.question,
+          ...(vars.image ? { image: { mediaType: vars.image.mediaType, base64: vars.image.base64 } } : {}),
+        },
+      }),
+    onMutate: (vars: { question: string; image?: PreparedImage }) => {
+      // Mirrors the fallback label the server stores when the message is
+      // image-only (see sendChatMessage) - keeps the optimistic bubble and
+      // the eventually-refetched history consistent instead of showing an
+      // empty bubble here and a "[Sent a screenshot]" one after reload.
+      const displayText = vars.question.trim() || "[Sent a screenshot]";
+      setMessages((cur) => [...cur, { role: "user", content: displayText, createdAt: new Date().toISOString() }]);
     },
     onSuccess: (result) => {
       if ("error" in result) return;
@@ -163,11 +223,13 @@ export function ReportChat({
     },
   });
 
-  const handleSend = (text: string) => {
+  const handleSend = (text: string, image?: PreparedImage | null) => {
     const trimmed = text.trim();
-    if (!trimmed || mutation.isPending || atLimit) return;
+    if ((!trimmed && !image) || mutation.isPending || atLimit) return;
     setInput("");
-    mutation.mutate(trimmed);
+    setAttachedImage(null);
+    setAttachError(null);
+    mutation.mutate({ question: trimmed, image: image ?? undefined });
   };
 
   const errorResult = mutation.data && "error" in mutation.data ? mutation.data.error : null;
@@ -178,7 +240,7 @@ export function ReportChat({
       inputRef.current?.focus();
       return;
     }
-    handleSend(chip.question);
+    handleSend(chip.question, attachedImage);
   };
 
   return (
@@ -293,33 +355,77 @@ export function ReportChat({
       )}
 
       {!atLimit && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend(input);
-          }}
-          className="mt-4 flex items-end gap-2"
-        >
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            placeholder="Ask something about your report…"
-            maxLength={400}
-            rows={1}
-            disabled={mutation.isPending || !hydrated}
-            className="max-h-40 w-full min-w-0 resize-none overflow-y-auto rounded-2xl border border-border bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition focus:border-pink disabled:opacity-60"
-          />
-          <button
-            type="submit"
-            disabled={mutation.isPending || !hydrated || !input.trim()}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-pink text-white shadow-sm transition hover:opacity-90 disabled:opacity-40"
-            aria-label="Send"
+        <>
+          {attachError && (
+            <p className="mt-3 text-xs text-destructive">{attachError}</p>
+          )}
+          {/* Preview-before-send only - the image is never shown again after
+              this point (not in the sent bubble, not on reload). It goes
+              straight into the sendChatMessage call below and is discarded
+              server-side right after the Claude API call returns, same "read
+              once" contract as the original report upload. */}
+          {attachedImage && (
+            <div className="mt-3 flex items-center gap-2 rounded-2xl bg-muted/40 p-2">
+              <img
+                src={attachedImage.previewUrl}
+                alt="Attached screenshot"
+                className="h-12 w-12 shrink-0 rounded-xl object-cover"
+              />
+              <p className="min-w-0 flex-1 truncate text-xs text-ink/60">Screenshot attached</p>
+              <button
+                type="button"
+                onClick={() => setAttachedImage(null)}
+                aria-label="Remove attached screenshot"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-ink/50 transition hover:bg-muted hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSend(input, attachedImage);
+            }}
+            className="mt-3 flex items-end gap-2"
           >
-            <Send className="h-4 w-4" />
-          </button>
-        </form>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={mutation.isPending || !hydrated}
+              aria-label="Attach a screenshot"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-cream text-ink/60 transition hover:bg-muted disabled:opacity-60"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleInputKeyDown}
+              placeholder="Ask something about your report…"
+              maxLength={400}
+              rows={1}
+              disabled={mutation.isPending || !hydrated}
+              className="max-h-40 w-full min-w-0 resize-none overflow-y-auto rounded-2xl border border-border bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition focus:border-pink disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={mutation.isPending || !hydrated || (!input.trim() && !attachedImage)}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-pink text-white shadow-sm transition hover:opacity-90 disabled:opacity-40"
+              aria-label="Send"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        </>
       )}
     </div>
   );
