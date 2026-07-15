@@ -159,7 +159,14 @@ export function ReportChat({
   };
 
   return (
-    <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
+    // Visual accent (gradient + thicker border + stronger shadow) was added
+    // in 4a68f86 to make this card stand out from the plain white
+    // ReportSection cards around it - this is the featured, paid-differentiating
+    // feature on the report page, not just another section. That accent got
+    // silently reset to a plain card in acd3019's full-file rewrite (same
+    // failure mode that dropped the chat counter - a full rewrite recreating
+    // markup from scratch instead of diffing). Restoring it here.
+    <div className="relative overflow-hidden rounded-3xl border-2 border-purple/25 bg-gradient-to-br from-purple-soft/50 via-card to-pink-soft/30 p-5 shadow-md sm:p-6">
       <div className="flex items-center gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-purple-soft text-purple-deep">
           <Sparkles className="h-5 w-5" />
