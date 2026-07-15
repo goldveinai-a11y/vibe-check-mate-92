@@ -251,10 +251,29 @@ export function ReportChat({
     // silently reset to a plain card in acd3019's full-file rewrite (same
     // failure mode that dropped the chat counter - a full rewrite recreating
     // markup from scratch instead of diffing). Restoring it here.
-    <div className="relative overflow-hidden rounded-3xl border-2 border-purple/25 bg-gradient-to-br from-purple-soft/50 via-card to-pink-soft/30 p-5 shadow-md sm:p-6">
+    //
+    // id="ask-report-chat" is the scroll target for the teaser pill added
+    // near the top of report.$id.tsx (right after the Vibe Award card) -
+    // this card sits mid-scroll behind ~8 other cards of similar visual
+    // weight, so a jump-link earlier on the page gets people here faster
+    // instead of relying on them to scroll-discover it.
+    <div id="ask-report-chat" className="relative overflow-hidden rounded-3xl border-2 border-purple/25 bg-gradient-to-br from-purple-soft/50 via-card to-pink-soft/30 p-5 shadow-md sm:p-6">
       <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-purple-soft text-purple-deep">
-          <Sparkles className="h-5 w-5" />
+        {/* Subtle pulsing glow ring behind the icon - a continuous, gentle
+            animation reads as "this is alive / interactive" in a way color
+            or borders alone can't, since the gradient-border treatment here
+            is already shared with two other "highlighted" cards on the page
+            (Vibe Award, The Verdict) and no longer reads as unique on its
+            own. Kept subtle (low opacity, slow loop) so it doesn't feel like
+            a notification badge or urgency trick. */}
+        <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-purple-soft text-purple-deep">
+          <motion.span
+            aria-hidden
+            className="absolute inset-0 rounded-xl bg-purple-soft"
+            animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <Sparkles className="relative h-5 w-5" />
         </div>
         <div>
           <h2 className="font-serif text-xl sm:text-2xl">Ask About Your Report</h2>
@@ -419,7 +438,7 @@ export function ReportChat({
             <button
               type="submit"
               disabled={mutation.isPending || !hydrated || (!input.trim() && !attachedImage)}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-pink text-white shadow-sm transition hover:opacity-90 disabled:opacity-40"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-pink text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
               aria-label="Send"
             >
               <Send className="h-4 w-4" />
