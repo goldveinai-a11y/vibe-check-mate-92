@@ -101,7 +101,7 @@ export function ReportChat({
   const [input, setInput] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const quickChips = buildQuickChips(context);
 
@@ -123,6 +123,29 @@ export function ReportChat({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length]);
+
+  // The input was a single-line pill <input> - fine for a short typed
+  // question, but the "Suggest a reply" quick chip prefills a long
+  // sentence (see buildQuickChips) that the user is meant to extend with
+  // the pasted message. On a single line that text just scrolls sideways
+  // instead of wrapping, so people couldn't see what they were about to
+  // send and hit Send on an incomplete/empty paste without realizing it.
+  // Auto-growing textarea so the full draft is always visible before
+  // sending, capped so a very long paste scrolls internally instead of
+  // pushing the send button and page around.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [input]);
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(input);
+    }
+  };
 
   const isUnlimitedPlan = plan === "monthly" || plan === "yearly";
   const questionsUsed = Math.ceil(messages.length / 2);
@@ -275,16 +298,18 @@ export function ReportChat({
             e.preventDefault();
             handleSend(input);
           }}
-          className="mt-4 flex items-center gap-2"
+          className="mt-4 flex items-end gap-2"
         >
-          <input
+          <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             placeholder="Ask something about your report…"
             maxLength={400}
+            rows={1}
             disabled={mutation.isPending || !hydrated}
-            className="w-full min-w-0 rounded-full border border-border bg-cream px-4 py-2.5 text-sm outline-none transition focus:border-pink disabled:opacity-60"
+            className="max-h-40 w-full min-w-0 resize-none overflow-y-auto rounded-2xl border border-border bg-cream px-4 py-2.5 text-sm leading-relaxed outline-none transition focus:border-pink disabled:opacity-60"
           />
           <button
             type="submit"
