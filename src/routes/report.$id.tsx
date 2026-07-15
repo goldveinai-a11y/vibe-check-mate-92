@@ -335,7 +335,7 @@ function ReportPage() {
               </div>
             </ReportSection>
 
-            <ReportSection Icon={FlagIcon} title="Red & Green Flags">
+            <ReportSection Icon={FlagIcon} title="Red & Green Flags" tone="tinted">
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-medium">
@@ -469,12 +469,32 @@ function ReportPage() {
   );
 }
 
-function ReportSection({ Icon, title, children }: { Icon: typeof Heart; title: string; children: React.ReactNode }) {
+// tone="tinted" is the "medium" tier from the hierarchy pass - a light
+// gradient wash instead of the plain white bg-card every ReportSection used
+// before. Reserved for content that's a real analytical payload (Red &
+// Green Flags), not decorative/bonus content - only ONE call site opts in
+// below, everything else keeps the plain default so the "quiet" tier stays
+// exactly as it was (zero visual regression risk for those 8 sections).
+function ReportSection({
+  Icon,
+  title,
+  children,
+  tone,
+}: {
+  Icon: typeof Heart;
+  title: string;
+  children: React.ReactNode;
+  tone?: "tinted";
+}) {
   return (
     <motion.section
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6"
+      className={
+        tone === "tinted"
+          ? "rounded-3xl border border-border/60 bg-gradient-to-br from-mint-soft/30 via-card to-destructive/5 p-5 shadow-sm sm:p-6"
+          : "rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6"
+      }
     >
       <div className="flex items-center gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-purple-soft text-purple-deep">
@@ -891,7 +911,13 @@ function VibeDecayCard({
     <motion.section
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6"
+      // Medium-tier tint (see ReportSection's tone="tinted" comment for the
+      // same reasoning) - this card carries a real forward-looking data
+      // point (trend line + weekly change), not bonus/decorative content,
+      // so it gets a light wash instead of the plain white "quiet" default.
+      // Pink ties back to the sparkline's own fill color (see
+      // DecaySparkline above) instead of introducing a new hue.
+      className="rounded-3xl border border-border/60 bg-gradient-to-br from-pink-soft/25 via-card to-purple-soft/10 p-5 shadow-sm sm:p-6"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
