@@ -177,6 +177,28 @@ function ReportPage() {
               </div>
             )}
 
+            {/* Jump-link to the AI chat card (id="ask-report-chat" in
+                ReportChat.tsx). That card sits ~8 cards down the scroll
+                behind content of identical visual weight, so it was easy to
+                miss entirely - this puts the offer in front of people right
+                after the first big "wow" moment (Vibe Award) instead of
+                relying on them to scroll-discover it later. Plain button +
+                scrollIntoView rather than an <a href="#..."> so it works
+                the same regardless of whether smooth-scroll CSS is set
+                anywhere globally. */}
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() =>
+                  document.getElementById("ask-report-chat")?.scrollIntoView({ behavior: "smooth", block: "center" })
+                }
+                className="inline-flex items-center gap-2 rounded-full border border-purple/30 bg-purple-soft/60 px-5 py-2.5 text-sm font-medium text-purple-deep shadow-sm transition hover:bg-purple-soft"
+              >
+                <Sparkles className="h-4 w-4" />
+                Got questions about this read? Ask the AI below ↓
+              </button>
+            </div>
+
             {/* Delusion Level - pure arithmetic on the 7 scores above, not a
                 new AI judgment. Gap between "feels exciting" and "actually
                 reciprocated", framed as a for-fun read like Vibe Award. */}
@@ -203,6 +225,19 @@ function ReportPage() {
                 <h3 className="font-serif text-3xl leading-tight">{viral.pop_culture_match.couple}</h3>
                 <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
                 <p className="mt-4 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
+                {/* Every other viral/shareable card on this page (Vibe Award,
+                    Their Type in 3 Words, Words That Moved the Needle) has a
+                    Share to Stories button - this one was missing it. Reuses
+                    the same handleShare + shareRef as the Vibe Award card:
+                    the default ShareCard variant already renders the
+                    pop_culture_match line (see shareData above), so no new
+                    ShareCard variant or export target is needed here. */}
+                <button
+                  onClick={handleShare}
+                  className="mx-auto mt-5 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-ink shadow-sm transition hover:bg-muted"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> Share to Stories
+                </button>
               </ReportSection>
             )}
 
