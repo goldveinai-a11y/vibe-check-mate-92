@@ -6,7 +6,14 @@ import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock, Gift, Loader
 import { createCheckoutSession, getUnlockedCount } from "@/lib/vibecheck.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
-import { getAnonId, getStoredEmail, getStoredRefCode, setStoredEmail } from "@/lib/anon-id";
+import {
+  consumeCheckoutAbandoned,
+  getAnonId,
+  getStoredEmail,
+  getStoredRefCode,
+  markCheckoutStarted,
+  setStoredEmail,
+} from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
 import { trackEvent } from "@/lib/analytics";
 
@@ -105,8 +112,21 @@ function PaywallPage() {
   const emailValid = EMAIL_RE.test(email.trim());
   const { data: unlocked } = useQuery(unlockedCountQuery);
 
+  // Checkout-abandonment winback V2 - see consumeCheckoutAbandoned in
+  // anon-id.ts. No click on this page is intercepted; this only reacts to
+  // how the page was reached. winbackActive drives the discount at
+  // checkout and persists for the rest of this page life once set; the
+  // banner has its own dismiss state so hiding it doesn't un-apply the
+  // discount.
+  const [winbackActive, setWinbackActive] = useState(false);
+  const [winbackBannerDismissed, setWinbackBannerDismissed] = useState(false);
+
   useEffect(() => {
     trackEvent("paywall_viewed", { report_id: id, paywall_variant: "default" });
+    if (consumeCheckoutAbandoned(id)) {
+      setWinbackActive(true);
+      trackEvent("winback_offer_shown", { report_id: id, trigger: "checkout_abandoned" });
+    }
   }, [id]);
 
   const handlePickPlan = async (planId: Plan) => {
@@ -121,11 +141,17 @@ function PaywallPage() {
     setCheckoutError(null);
     setLoadingPlan(planId);
     const tier = TIERS.find((t) => t.id === planId)!;
-    trackEvent("checkout_started", { report_id: id, value: tier.priceValue, currency: "USD", plan: planId });
+    trackEvent("checkout_started", { report_id: id, value: tier.priceValue, currency: "USD", plan: planId, winback: winbackActive });
     try {
       const origin = window.location.origin;
       const successUrl = `${origin}/checkout/return?id=${id}&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email.trim())}&plan=${planId}&value=${tier.priceValue}&currency=USD`;
       const cancelUrl = `${origin}/paywall/${id}`;
+      // Written right before the redirect, not on click - if the request
+      // below throws and we never actually leave the page, the flag is
+      // still fine to have set: worst case is the offer becomes available
+      // on a later visit even though checkout never truly opened, which is
+      // a harmless false positive, not a broken state.
+      markCheckoutStarted(id);
       const result = await createCheckoutSession({
         data: {
           analysisId: id,
@@ -136,6 +162,7 @@ function PaywallPage() {
           cancelUrl,
           email: email.trim(),
           ...(refCode ? { refCode } : {}),
+          ...(winbackActive ? { winbackOffer: true } : {}),
         },
       });
       if ("error" in result) throw new Error(result.error);
@@ -178,6 +205,26 @@ function PaywallPage() {
               <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-mint-soft/60 px-4 py-2 text-sm text-ink/80">
                 <Gift className="h-4 w-4 shrink-0 text-mint" />
                 Referral code applied - 20% off if it checks out.
+              </div>
+            )}
+            {/* Checkout-abandonment winback V2. Auto-applied, not a claim
+                you have to act on - the discount is already active the
+                moment this shows, so dismissing it just hides the banner,
+                it never removes the discount. Never appears from a click on
+                this page - only from having genuinely started and come back
+                from Stripe checkout. Same visual language as the refCode
+                banner above. */}
+            {winbackActive && !winbackBannerDismissed && (
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-pink/40 bg-pink-soft px-4 py-2 text-sm text-pink">
+                <Gift className="h-4 w-4 shrink-0" />
+                Welcome back - your 20% discount is already applied, just pick a plan below.
+                <button
+                  onClick={() => setWinbackBannerDismissed(true)}
+                  aria-label="Dismiss"
+                  className="ml-1 text-pink/60 transition hover:text-pink"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             )}
           </div>
