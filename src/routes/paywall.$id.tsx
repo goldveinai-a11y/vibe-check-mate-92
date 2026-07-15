@@ -6,7 +6,7 @@ import { Sparkles, PieChart, Flag, MessageCircle, Bell, Mail, Lock, Gift, Loader
 import { createCheckoutSession, getUnlockedCount } from "@/lib/vibecheck.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
-import { getAnonId, getStoredRefCode } from "@/lib/anon-id";
+import { getAnonId, getStoredEmail, getStoredRefCode, setStoredEmail } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
 import { trackEvent } from "@/lib/analytics";
 
@@ -95,7 +95,10 @@ function PaywallPage() {
   const { id } = Route.useParams();
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
+  // Hydrated from localStorage, not a fresh empty string - a full page
+  // reload (Stripe checkout + back) shouldn't force retyping the email to
+  // try a different plan. See getStoredEmail in anon-id.ts.
+  const [email, setEmail] = useState(() => (typeof window !== "undefined" ? getStoredEmail() ?? "" : ""));
   const [emailTouched, setEmailTouched] = useState(false);
   const ownerAnonId = typeof window !== "undefined" ? getAnonId() : "";
   const refCode = typeof window !== "undefined" ? getStoredRefCode() : null;
@@ -300,7 +303,10 @@ function PaywallPage() {
                   inputMode="email"
                   autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setStoredEmail(e.target.value);
+                  }}
                   onBlur={() => setEmailTouched(true)}
                   placeholder="you@example.com"
                   className={`mt-3 w-full rounded-full border bg-cream px-4 py-3 text-sm outline-none transition focus:border-pink ${
