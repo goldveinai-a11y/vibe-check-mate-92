@@ -330,7 +330,17 @@ export const getChatMessages = createServerFn({ method: "POST" })
 const SendChatInputSchema = z.object({
   id: z.string().uuid(),
   ownerAnonId: z.string().min(8).max(128),
-  message: z.string().min(1).max(400),
+  // Was .min(1) - now allowed empty when an image carries the question
+  // instead (see `image` below and the effectiveMessage fallback in the
+  // handler). Still capped at 400 either way.
+  message: z.string().max(400),
+  // Optional screenshot of the message the user wants reply help on -
+  // same schema as the original analysis upload (ImageInputSchema above).
+  // Goes straight into the answerReportQuestion Claude call below and is
+  // never written anywhere - no new storage, no new table/column. Extends
+  // the existing "read once, deleted for good" contract to chat instead of
+  // breaking it.
+  image: ImageInputSchema.optional(),
 });
 
 export const sendChatMessage = createServerFn({ method: "POST" })
@@ -339,6 +349,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { answerReportQuestion, chatLimitForPlan } = await import("./vibecheck-chat.server");
     type ChatTurn = { role: "user" | "assistant"; content: string };
+
+    if (!data.message.trim() && !data.image) return { error: "empty_message" };
 
     const { data: row, error } = await supabaseAdmin
       .from("analyses")
@@ -377,15 +389,22 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }));
     const report = JSON.parse(JSON.stringify(row.report_json)) as Report;
 
+    // An image-only send (no typed text) still needs SOME question string
+    // for the Claude call and for the persisted transcript - a blank user
+    // bubble on reload would be confusing. Same label the client shows
+    // optimistically (see ReportChat.tsx onMutate) so the optimistic bubble
+    // and the eventually-refetched history never disagree.
+    const effectiveMessage = data.message.trim() || "[Sent a screenshot]";
+
     let reply: string;
     try {
-      reply = await answerReportQuestion(report, turns, data.message);
+      reply = await answerReportQuestion(report, turns, effectiveMessage, data.image);
     } catch (err) {
       return { error: err instanceof Error ? err.message : "Chat failed" };
     }
 
     const { error: insErr } = await supabaseAdmin.from("report_chat_messages").insert([
-      { analysis_id: data.id, role: "user", content: data.message },
+      { analysis_id: data.id, role: "user", content: effectiveMessage },
       { analysis_id: data.id, role: "assistant", content: reply },
     ]);
     if (insErr) return { error: insErr.message };
