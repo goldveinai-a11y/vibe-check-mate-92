@@ -60,3 +60,35 @@ export function setStoredEmail(email: string) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(EMAIL_KEY, email);
 }
+
+// Checkout-abandonment winback V2 — set right before redirecting to Stripe
+// Checkout (see handlePickPlan in paywall.$id.tsx), read on every later
+// paywall mount. Deliberately NOT tied to any click on our own site (that
+// was V1's mistake - intercepting "Back to preview" felt like a bait and
+// switch). This only fires after someone genuinely reached Stripe and came
+// back, however they came back - Stripe's own back arrow, the browser's
+// back button, or a phone's back gesture all land back on this page and
+// all get caught here, since the flag was written before any of those
+// paths diverge. Keyed per-analysis so starting checkout on one report
+// doesn't light up the offer on an unrelated one. consumeCheckoutAbandoned
+// reads AND clears the flag in one call, so it fires exactly once per
+// abandoned attempt - a later, unrelated visit to the same paywall won't
+// re-trigger it.
+const CHECKOUT_PENDING_PREFIX = "vibecheck_checkout_pending_";
+const CHECKOUT_PENDING_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+
+export function markCheckoutStarted(analysisId: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CHECKOUT_PENDING_PREFIX + analysisId, String(Date.now()));
+}
+
+export function consumeCheckoutAbandoned(analysisId: string): boolean {
+  if (typeof window === "undefined") return false;
+  const key = CHECKOUT_PENDING_PREFIX + analysisId;
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return false;
+  window.localStorage.removeItem(key); // one-shot
+  const startedAt = Number(raw);
+  if (!Number.isFinite(startedAt)) return false;
+  return Date.now() - startedAt <= CHECKOUT_PENDING_WINDOW_MS;
+}
