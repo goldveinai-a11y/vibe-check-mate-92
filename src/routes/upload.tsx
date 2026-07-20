@@ -149,7 +149,11 @@ function UploadPage() {
 
   return (
     <main className="min-h-screen bg-cream text-ink">
-      <SiteHeader />
+      {/* No report exists yet on this page, so there's nothing to "unlock" -
+          showing the button here just links back to /upload itself (a dead
+          click). Same reasoning already applied on analyzing.$id.tsx and
+          my-reports.tsx. */}
+      <SiteHeader showUnlock={false} />
       <section className="px-5 pt-4 pb-16 sm:pb-24">
         <div className="mx-auto max-w-2xl">
           <div className="flex flex-col items-center text-center">
