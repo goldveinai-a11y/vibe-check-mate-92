@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
-import { Upload as UploadIcon, Sparkles, ShieldCheck } from "lucide-react";
+import { Upload as UploadIcon, Sparkles, ShieldCheck, ExternalLink } from "lucide-react";
 import { createAnalysis } from "@/lib/vibecheck.functions";
 import { getAnonId, rememberOwnedAnalysis, captureRefCode } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -41,15 +41,45 @@ function fileToPrepared(file: File): Promise<Prepared> {
   });
 }
 
+// Visually hidden, but NOT display:none - some locked-down in-app webviews
+// (TikTok, Instagram, Facebook) refuse to open the native file picker for
+// an input with display:none, even though the click itself is a real,
+// user-initiated <label for> click. Off-screen clip keeps it invisible
+// without triggering that restriction.
+const VISUALLY_HIDDEN_INPUT: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0,0,0,0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
+// TikTok's (and Instagram/Facebook's) in-app browser is a locked-down
+// WebView that on some app versions never implements the OS file-picker
+// delegate at all - no amount of web-side code can open a picker that the
+// host app itself never wired up. Detecting it lets us show a small,
+// non-blocking way out (open in the real browser) instead of a dead button
+// with zero feedback, which is what happens today.
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /musical_ly|TikTok|BytedanceWebview|FBAN|FBAV|Instagram|Line\//i.test(navigator.userAgent);
+}
+
 function UploadPage() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<Prepared[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [readyId, setReadyId] = useState<string | null>(null);
+  const [inAppBrowser, setInAppBrowser] = useState(false);
 
   useEffect(() => {
     captureRefCode();
     trackEvent("upload_started");
+    setInAppBrowser(isInAppBrowser());
   }, []);
 
   const onDrop = useCallback(async (accepted: File[]) => {
@@ -63,11 +93,21 @@ function UploadPage() {
     }
   }, [files.length]);
 
+  // noClick: the click-to-open behavior now comes from a real <label
+  // htmlFor> wrapping the drop zone instead of dropzone's own
+  // input.current.click() proxy - see the label/input below. A native
+  // label click is browser-native behavior; a JS-dispatched .click() is
+  // exactly the kind of programmatic trigger that strict in-app WebViews
+  // are most likely to silently swallow. Drag-and-drop (desktop) and the
+  // onDrop handler are unaffected by this - only the click-to-open path
+  // changes.
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { "image/png": [], "image/jpeg": [], "image/webp": [], "image/gif": [] },
     maxFiles: 6,
     maxSize: 6 * 1024 * 1024,
+    noClick: true,
+    noKeyboard: true,
   });
 
   const mutation = useMutation({
@@ -97,6 +137,16 @@ function UploadPage() {
     return () => clearTimeout(t);
   }, [readyId, navigate]);
 
+  const handleCopyLink = async () => {
+    if (typeof window === "undefined") return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch {
+      // clipboard unavailable in this webview either - the instructional
+      // text below still covers it, so this failing silently is fine.
+    }
+  };
+
   return (
     <main className="min-h-screen bg-cream text-ink">
       <SiteHeader />
@@ -118,14 +168,34 @@ function UploadPage() {
             </p>
           </div>
 
+          {/* Non-blocking escape hatch for TikTok/Instagram/Facebook's
+              in-app browser - only shown when detected, sits above the
+              upload box rather than gating it, since the label-based fix
+              below does work in a meaningful chunk of these WebViews. This
+              is just the safety net for the versions where it still can't. */}
+          {inAppBrowser && (
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-purple/20 bg-purple-soft/50 p-4 text-sm text-ink/80">
+              <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-purple-deep" />
+              <p className="min-w-0">
+                If tapping "Choose images" doesn't open your photos, this in-app browser is blocking it. Tap the{" "}
+                <span className="font-medium">••• menu</span> in the top corner and choose{" "}
+                <span className="font-medium">Open in Browser</span> (or Safari/Chrome), then continue from there.{" "}
+                <button onClick={handleCopyLink} className="font-medium text-purple-deep underline underline-offset-2">
+                  Copy this link
+                </button>{" "}
+                to paste it in manually.
+              </p>
+            </div>
+          )}
+
           <div className="mt-10 rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-8">
-            <div
-              {...getRootProps()}
+            <label
+              {...getRootProps({ htmlFor: "vibecheck-upload-input" })}
               className={`flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition ${
                 isDragActive ? "border-pink bg-pink-soft/40" : "border-purple-soft bg-purple-soft/25"
               }`}
             >
-              <input {...getInputProps()} />
+              <input {...getInputProps({ id: "vibecheck-upload-input", style: VISUALLY_HIDDEN_INPUT })} />
               <div className="grid h-14 w-14 place-items-center rounded-2xl bg-pink text-white shadow-sm">
                 <UploadIcon className="h-6 w-6" />
               </div>
@@ -134,7 +204,7 @@ function UploadPage() {
               <span className="mt-6 inline-flex items-center rounded-full bg-pink px-6 py-3 text-sm font-medium text-white shadow-sm">
                 Choose images
               </span>
-            </div>
+            </label>
 
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
