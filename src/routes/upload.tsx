@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
-import { Upload as UploadIcon, Sparkles, ShieldCheck, ExternalLink } from "lucide-react";
+import { Upload as UploadIcon, Sparkles, ShieldCheck, ExternalLink, Share2, Check, Copy } from "lucide-react";
 import { createAnalysis } from "@/lib/vibecheck.functions";
 import { getAnonId, rememberOwnedAnalysis, captureRefCode } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -75,6 +75,7 @@ function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [readyId, setReadyId] = useState<string | null>(null);
   const [inAppBrowser, setInAppBrowser] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   useEffect(() => {
     captureRefCode();
@@ -137,13 +138,42 @@ function UploadPage() {
     return () => clearTimeout(t);
   }, [readyId, navigate]);
 
+  const pageUrl = typeof window !== "undefined" ? window.location.href : "https://vibecheckapp.app/upload";
+  // Cast, not a bare navigator.share call - matches the pattern already
+  // used in ShareCard.tsx, since Web Share isn't in every TS lib target.
+  const shareNav = typeof navigator !== "undefined" ? (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }) : undefined;
+  const canShare = typeof shareNav?.share === "function";
+
+  // TikTok's in-app browser has been confirmed (real device test) to block
+  // BOTH the file picker (even via native <label> click) and, in some
+  // builds, the Clipboard API - so a JS clipboard write can silently no-op
+  // with zero feedback, which is exactly why the old version felt "broken."
+  // This now always shows a visible result, and the raw URL is also always
+  // rendered as a plain, long-press-selectable text field below as a
+  // zero-JS-dependent fallback that works even if every button here fails.
   const handleCopyLink = async () => {
-    if (typeof window === "undefined") return;
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(pageUrl);
+      setCopyState("copied");
     } catch {
-      // clipboard unavailable in this webview either - the instructional
-      // text below still covers it, so this failing silently is fine.
+      setCopyState("failed");
+    }
+    setTimeout(() => setCopyState("idle"), 2500);
+  };
+
+  // Web Share triggers the OS-level native share sheet (an Android/iOS
+  // system Activity), which in practice is far less likely to be blocked
+  // by a restrictive in-app WebView than either the file-input picker or
+  // the Clipboard API, since it hands off to the OS instead of running
+  // inside the webview's own JS sandbox. Tapping "Chrome"/"Safari" in that
+  // sheet reopens this exact page in the real browser.
+  const handleShare = async () => {
+    try {
+      await shareNav?.share?.({ title: "VibeCheck", url: pageUrl });
+    } catch {
+      // user cancelled the share sheet, or it's not actually supported
+      // despite the feature check - nothing to do, the fallback link field
+      // below still works.
     }
   };
 
@@ -173,22 +203,63 @@ function UploadPage() {
           </div>
 
           {/* Non-blocking escape hatch for TikTok/Instagram/Facebook's
-              in-app browser - only shown when detected, sits above the
-              upload box rather than gating it, since the label-based fix
-              below does work in a meaningful chunk of these WebViews. This
-              is just the safety net for the versions where it still can't. */}
+              in-app browser - only shown when detected. Confirmed on a real
+              TikTok in-app browser that the picker stays blocked even with
+              the native <label> click fix, and clipboard writes can fail
+              silently - so this leads with TikTok's own native "Open in
+              browser" menu, offers the OS share sheet as a second route,
+              and always shows the raw link as a plain, long-press-copyable
+              text field that has zero JS dependency as a last resort. */}
           {inAppBrowser && (
-            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-purple/20 bg-purple-soft/50 p-4 text-sm text-ink/80">
-              <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-purple-deep" />
-              <p className="min-w-0">
-                If tapping "Choose images" doesn't open your photos, this in-app browser is blocking it. Tap the{" "}
-                <span className="font-medium">••• menu</span> in the top corner and choose{" "}
-                <span className="font-medium">Open in Browser</span> (or Safari/Chrome), then continue from there.{" "}
-                <button onClick={handleCopyLink} className="font-medium text-purple-deep underline underline-offset-2">
-                  Copy this link
-                </button>{" "}
-                to paste it in manually.
-              </p>
+            <div className="mt-6 rounded-2xl border border-purple/20 bg-purple-soft/50 p-4 text-sm text-ink/80">
+              <div className="flex items-start gap-3">
+                <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-purple-deep" />
+                <p className="min-w-0">
+                  This in-app browser blocks photo uploads. Tap the{" "}
+                  <span className="font-medium">••• menu</span> in the top corner and choose{" "}
+                  <span className="font-medium">Open in Browser</span> (or Safari/Chrome) to continue there.
+                </p>
+              </div>
+
+              {canShare && (
+                <button
+                  onClick={handleShare}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-purple-deep px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share this page to open it
+                </button>
+              )}
+
+              <p className="mt-3 text-xs font-medium text-ink/60">Or copy the link manually:</p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <input
+                  readOnly
+                  value={pageUrl}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onClick={(e) => e.currentTarget.select()}
+                  className="min-w-0 flex-1 truncate rounded-full border border-purple/20 bg-white px-3 py-2 text-xs text-ink/70"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-2 text-xs font-medium text-purple-deep shadow-sm"
+                >
+                  {copyState === "copied" ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" /> Copy
+                    </>
+                  )}
+                </button>
+              </div>
+              {copyState === "failed" && (
+                <p className="mt-1.5 text-xs text-destructive">
+                  Couldn't copy automatically here - tap and hold the link above, then choose "Select all" and "Copy."
+                </p>
+              )}
             </div>
           )}
 
