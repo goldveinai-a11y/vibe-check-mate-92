@@ -19,7 +19,7 @@ ANALYSIS RULES:
 - Every quote in green_flags and red_flags MUST be an exact verbatim string from the screenshots. Do not paraphrase quotes. If you can't quote it, don't use it.
 - Give at least 2 green_flags and 2 red_flags whenever possible (up to 6 each). If truly none in a category, return 1 minimum with an honest explanation.
 - All scores are integers 0-100. Be calibrated: 60 = decent, 80+ = strong, 30- = concerning. conversation_health follows Gottman's research — high = healthy dynamic, low = toxic patterns.
-- MANDATORY GROUNDING FOR SCORES: For each of interest_score, toxicity_score, emotional_warmth, flirting_signals, and conversation_health, you MUST first identify a specific quotable behavior or a countable pattern from THIS conversation (exact phrases, response-time shifts, question-asking ratio, initiation balance, escalation/de-escalation moves, contempt/defensiveness markers, etc.) and derive the integer from that evidence. Never write the number before you can name the evidence. Two different conversations should almost never land on the exact same integer for these fields unless the underlying behavior is genuinely identical — do NOT default to a generic baseline (avoid regressing to round numbers like 70/75/80 or 8/10 unless the evidence actually points there). Vary the integer to reflect the specific evidence you just identified.
+- MANDATORY GROUNDING FOR SCORES: For EVERY score field — interest_score, reciprocity_score, emotional_warmth, response_consistency, toxicity_score, flirting_signals, and conversation_health — you MUST first identify a specific quotable behavior or a countable pattern from THIS conversation (exact phrases, response-time shifts, question-asking ratio, initiation balance, escalation/de-escalation moves, contempt/defensiveness markers, message-length delta, who-texts-first pattern, etc.) and derive the integer from that evidence. Never write a number before you can name the evidence behind it — this applies to all seven fields equally, not just some of them. Two different conversations should almost never land on the exact same integer for these fields unless the underlying behavior is genuinely identical — do NOT default to a generic baseline (avoid regressing to round numbers like 70/75/80 or 8/10 unless the evidence actually points there). Two conversations that FEEL similar at a category level (e.g., both read as "short, dismissive replies" or "flaky about plans") are NOT the same conversation — the exact message count, word choice, reply length, and timing differ every time, and every one of the seven integers must reflect that specific granularity down to the individual digit, not a memorized stereotype value for the category. If you notice you are about to output a score you would also use for a different, similar-feeling conversation, stop and re-derive it from THIS conversation's specific numbers instead.
 - hardcore_analytics MUST contain hard numbers, percentages, ratios, and timeline observations, not vague statements.
 - your_voice_style (within hardcore_analytics): describe the UPLOADER's ("you") own writing style — sentence length, emoji use, formality, directness, humor style. This is a structural fingerprint of how "you" write, e.g. "Short, direct sentences. Rarely uses emoji. Dry, understated humor. Initiates topics but keeps replies brief." NEVER include verbatim quotes here (the underlying screenshots are not retained after this analysis, so this field must stand on its own as a portable style summary). This describes "you", not "them" — do not conflate with communication_style, which describes the overall dynamic between both people.
 - psychological_analysis: attachment_style_prediction based on Bowlby & Ainsworth (Anxious / Avoidant / Secure / Disorganized) stated as a strong assumption from text patterns. gottman_patterns tracks the Four Horsemen (Criticism, Contempt, Defensiveness, Stonewalling) and Reciprocity.
@@ -116,7 +116,17 @@ export async function analyzeConversation(images: ImageInput[]): Promise<Report>
       body: JSON.stringify({
         model: "claude-sonnet-4-5",
         max_tokens: 6144,
-        temperature: 0,
+        // Was 0 (fully deterministic). At temperature 0, two conversations
+        // that read as the same *archetype* (e.g. "short, dismissive
+        // replies") were mode-collapsing onto the exact same integers for
+        // interest_score/reciprocity_score/flirting_signals even though the
+        // actual messages, word choice, and ratios differed - confirmed on
+        // two real user uploads that scored 23/18/8 on all three, identically.
+        // A moderate temperature keeps JSON structure reliable (retry-once
+        // logic below still covers malformed output) while giving the
+        // numeric fields enough room to actually reflect per-conversation
+        // evidence instead of snapping to a memorized category baseline.
+        temperature: 0.4,
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content }],
       }),
@@ -172,7 +182,7 @@ const CHECKIN_SYSTEM_PROMPT = `You are VibeCheck's scoring engine. You are looki
 
 Output ONLY the calibrated numeric scores, nothing else. Scale 0-100, integers. Calibration: 60 = decent, 80+ = strong, 30- = concerning. conversation_health follows Gottman's research — high = healthy dynamic, low = toxic patterns.
 
-MANDATORY GROUNDING: For each of interest_score, toxicity_score, emotional_warmth, flirting_signals, and conversation_health, ground the integer in a specific quotable behavior or countable pattern from THIS check-in's screenshots (exact phrases, response-time shifts, question ratio, initiation balance, contempt/defensiveness markers). Never default to a generic baseline; two different conversations should almost never share the same integer on these fields unless behavior is genuinely identical.
+MANDATORY GROUNDING: For EVERY score field — interest_score, reciprocity_score, emotional_warmth, response_consistency, toxicity_score, flirting_signals, and conversation_health — ground the integer in a specific quotable behavior or countable pattern from THIS check-in's screenshots (exact phrases, response-time shifts, question ratio, initiation balance, contempt/defensiveness markers). This applies to all seven fields equally. Never default to a generic baseline; two different conversations should almost never share the same integer on these fields unless behavior is genuinely identical. A conversation that FEELS similar to another one at a category level (e.g. both "flaky" or both "dismissive") is not the same conversation — derive every integer from THIS check-in's specific numbers, not a memorized category value.
 
 Return ONLY valid JSON matching this exact type, no prose, no markdown fences:
 type Scores = {
@@ -209,7 +219,9 @@ export async function analyzeCheckinScores(images: ImageInput[]): Promise<Scores
       body: JSON.stringify({
         model: CHECKIN_MODEL,
         max_tokens: 300,
-        temperature: 0,
+        // See analyzeConversation above for why this moved off 0 - same
+        // mode-collapse fix applies here, same reasoning.
+        temperature: 0.4,
         system: CHECKIN_SYSTEM_PROMPT,
         messages: [{ role: "user", content }],
       }),
