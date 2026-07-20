@@ -140,9 +140,27 @@ function ResultsPage() {
     overallScore,
     headline: verdict.title,
   };
-  const shareRef = useRef<HTMLDivElement>(null);
-  const handleShare = async () => {
-    if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
+
+  // Three separate export targets - one per shareable card on this page -
+  // so tapping "Share" always exports what's actually ON the card you
+  // tapped, instead of one merged card (award + score + pop-culture all
+  // glued together) regardless of which button was pressed. Each
+  // ShareCard variant only reads the fields it needs (see ShareCard.tsx),
+  // so all three can safely share the same `shareData` object.
+  const verdictShareRef = useRef<HTMLDivElement>(null);
+  const handleShareVerdict = async () => {
+    trackEvent("results_shared", { report_id: id, share_method: "verdict" });
+    if (verdictShareRef.current) await exportShareCard(verdictShareRef.current, "vibecheck-result.png");
+  };
+  const awardShareRef = useRef<HTMLDivElement>(null);
+  const handleShareAward = async () => {
+    trackEvent("results_shared", { report_id: id, share_method: "vibe_award" });
+    if (awardShareRef.current) await exportShareCard(awardShareRef.current, "vibecheck-award.png");
+  };
+  const popCultureShareRef = useRef<HTMLDivElement>(null);
+  const handleSharePopCulture = async () => {
+    trackEvent("results_shared", { report_id: id, share_method: "pop_culture" });
+    if (popCultureShareRef.current) await exportShareCard(popCultureShareRef.current, "vibecheck-match.png");
   };
 
   const [linkCopied, setLinkCopied] = useState(false);
@@ -184,7 +202,7 @@ function ResultsPage() {
             <h2 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{verdict.title}</h2>
             <p className="mt-4 pr-20 text-base leading-relaxed text-white/90">{verdict.blurb}</p>
             <button
-              onClick={handleShare}
+              onClick={handleShareVerdict}
               aria-label="Share to stories"
               className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur transition hover:bg-white/25"
             >
@@ -208,7 +226,7 @@ function ResultsPage() {
               <h3 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{viral.vibe_award.title}</h3>
               <p className="mt-3 text-base text-white/90">{viral.vibe_award.subtitle}</p>
               <button
-                onClick={handleShare}
+                onClick={handleShareAward}
                 className="mt-6 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-medium text-white backdrop-blur transition hover:bg-white/25"
               >
                 <Share2 className="h-3.5 w-3.5" />
@@ -232,7 +250,7 @@ function ResultsPage() {
               <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
               <p className="mt-4 pr-20 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
               <button
-                onClick={handleShare}
+                onClick={handleSharePopCulture}
                 aria-label="Share to stories"
                 className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-full bg-purple/15 px-3 py-1.5 text-[11px] font-medium text-purple-deep backdrop-blur transition hover:bg-purple/25"
               >
@@ -396,7 +414,9 @@ function ResultsPage() {
       </section>
 
       <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
-        <ShareCard ref={shareRef} data={shareData} />
+        <ShareCard ref={verdictShareRef} variant="verdict" data={shareData} />
+        {viral?.vibe_award && <ShareCard ref={awardShareRef} variant="award" data={shareData} />}
+        {viral?.pop_culture_match && <ShareCard ref={popCultureShareRef} variant="popculture" data={shareData} />}
       </div>
 
       <StickyUnlockBar id={id} showAfterRef={heroRef} hideNearRef={footerCtaRef} />

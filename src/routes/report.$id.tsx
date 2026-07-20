@@ -76,11 +76,6 @@ function ReportPage() {
     overallScore,
     headline: "Full Report Unlocked",
   };
-  const shareRef = useRef<HTMLDivElement>(null);
-  const handleShare = async () => {
-    trackEvent("report_shared", { report_id: id, share_method: "share_card" });
-    if (shareRef.current) await exportShareCard(shareRef.current, "vibecheck.png");
-  };
 
   // The exported ShareCard images are dead ends for the person who
   // receives them - no way back into the funnel. Copying this page's own
@@ -94,6 +89,28 @@ function ReportPage() {
     await navigator.clipboard.writeText(window.location.href);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  // Vibe Award's own "Share to Stories" button - isolated to award + score
+  // only (variant="award"). Used to fall through to the combined default
+  // "hero" ShareCard variant, which also pulled in pop_culture_match if the
+  // report happened to have one, so sharing the Award could silently
+  // include an unrelated card's content.
+  const awardShareRef = useRef<HTMLDivElement>(null);
+  const handleShareAward = async () => {
+    trackEvent("report_shared", { report_id: id, share_method: "vibe_award" });
+    if (awardShareRef.current) await exportShareCard(awardShareRef.current, "vibecheck-award.png");
+  };
+
+  // "You're Giving..." card's "Share to Stories" button - isolated to the
+  // pop-culture match + score only (variant="popculture"). This was the
+  // actual bug: it used to reuse the Vibe Award card's shareRef/handleShare,
+  // so sharing THIS card could export someone's Vibe Award title instead of
+  // the pop-culture match actually shown here.
+  const popCultureShareRef = useRef<HTMLDivElement>(null);
+  const handleSharePopCulture = async () => {
+    trackEvent("report_shared", { report_id: id, share_method: "pop_culture" });
+    if (popCultureShareRef.current) await exportShareCard(popCultureShareRef.current, "vibecheck-match.png");
   };
 
   const wordCloudShareRef = useRef<HTMLDivElement>(null);
@@ -162,7 +179,7 @@ function ReportPage() {
                 <p className="mt-3 text-base text-white/90">{viral.vibe_award.subtitle}</p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <button
-                    onClick={handleShare}
+                    onClick={handleShareAward}
                     className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-medium text-white backdrop-blur transition hover:bg-white/25"
                   >
                     <Share2 className="h-3.5 w-3.5" /> Share to Stories
@@ -225,15 +242,12 @@ function ReportPage() {
                 <h3 className="font-serif text-3xl leading-tight">{viral.pop_culture_match.couple}</h3>
                 <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from {viral.pop_culture_match.source}</div>
                 <p className="mt-4 text-sm text-ink/80">{viral.pop_culture_match.explanation}</p>
-                {/* Every other viral/shareable card on this page (Vibe Award,
-                    Their Type in 3 Words, Words That Moved the Needle) has a
-                    Share to Stories button - this one was missing it. Reuses
-                    the same handleShare + shareRef as the Vibe Award card:
-                    the default ShareCard variant already renders the
-                    pop_culture_match line (see shareData above), so no new
-                    ShareCard variant or export target is needed here. */}
+                {/* Isolated share target (variant="popculture") - see
+                    popCultureShareRef above. Used to reuse the Vibe Award
+                    card's shareRef/handleShare, which meant this button
+                    could export the wrong card entirely. */}
                 <button
-                  onClick={handleShare}
+                  onClick={handleSharePopCulture}
                   className="mx-auto mt-5 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-ink shadow-sm transition hover:bg-muted"
                 >
                   <Share2 className="h-3.5 w-3.5" /> Share to Stories
@@ -444,7 +458,12 @@ function ReportPage() {
       </section>
 
       <div style={{ position: "fixed", left: -99999, top: 0, pointerEvents: "none" }} aria-hidden>
-        <ShareCard ref={shareRef} data={shareData} />
+        {viral?.vibe_award && (
+          <ShareCard ref={awardShareRef} variant="award" data={shareData} />
+        )}
+        {viral?.pop_culture_match && (
+          <ShareCard ref={popCultureShareRef} variant="popculture" data={shareData} />
+        )}
         {viral?.viral_keywords && (
           <ShareCard
             ref={wordCloudShareRef}
