@@ -260,17 +260,27 @@ export async function exportShareCard(node: HTMLElement, filename = "vibecheck.p
   const { toPng } = await import("html-to-image");
   const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 1 });
 
-  // Try native share with file
-  try {
-    const blob = await (await fetch(dataUrl)).blob();
-    const file = new File([blob], filename, { type: "image/png" });
-    const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
-    if (nav.canShare && nav.canShare({ files: [file] })) {
-      await nav.share({ files: [file], title: "My VibeCheck" });
-      return;
+  // Only offer the native OS share sheet (AirDrop / Mail / Messages / ...)
+  // on mobile - that's where "Share to Stories" actually makes sense.
+  // Desktop Chrome/Safari also technically support navigator.share for
+  // files, but popping the macOS/Windows share panel there is confusing:
+  // a desktop user clicking "Share" expects the PNG to land in Downloads,
+  // not a picker full of Mail/Messages/AirDrop targets they didn't ask
+  // for and usually can't even use meaningfully from a laptop.
+  const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], filename, { type: "image/png" });
+      const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], title: "My VibeCheck" });
+        return;
+      }
+    } catch {
+      // fall through to download
     }
-  } catch {
-    // fall through to download
   }
 
   const link = document.createElement("a");
