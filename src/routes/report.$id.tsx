@@ -160,6 +160,15 @@ function ReportPage() {
               <CheckCircle2 className="h-3.5 w-3.5" />
               Premium Report Unlocked
             </span>
+            {/* Same reasoning as the /results/$id verdict card: this is the
+                composite score (average of the 7 metrics in Compatibility
+                Breakdown below) that the Vibe Award and You're Giving...
+                ShareCard exports both carry - without a visible anchor for
+                it here, the number in a downloaded/shared card looked
+                unexplained. */}
+            <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-purple-soft px-4 py-2 text-xs font-medium text-purple-deep">
+              {overallScore}% Overall Vibe
+            </span>
             <h1 className="font-serif mt-6 text-4xl leading-[1.05] sm:text-5xl md:text-6xl">
               Your Full Compatibility Report
             </h1>

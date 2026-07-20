@@ -195,10 +195,22 @@ function ResultsPage() {
             animate={{ opacity: 1, y: 0 }}
             className={`relative mt-8 overflow-hidden rounded-3xl ${V.bg} p-6 text-white shadow-lg sm:p-8`}
           >
-            <span className={`inline-flex items-center gap-2 rounded-full ${V.chip} px-3 py-1 text-[11px] font-semibold uppercase tracking-widest`}>
-              <V.icon className="h-3.5 w-3.5" />
-              {verdict.tag}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-2 rounded-full ${V.chip} px-3 py-1 text-[11px] font-semibold uppercase tracking-widest`}>
+                <V.icon className="h-3.5 w-3.5" />
+                {verdict.tag}
+              </span>
+              {/* Makes the "Overall Vibe" number visible on-page - this is
+                  the same composite score (average of all 7 metrics below)
+                  that every ShareCard variant exports. Without this, the
+                  score in a shared/downloaded card had no visible anchor
+                  anywhere on the page - the only score shown elsewhere is
+                  Interest Score alone, a different number, which read as
+                  an unexplained mismatch. */}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest">
+                {overallScore}% Overall Vibe
+              </span>
+            </div>
             <h2 className="font-serif mt-4 text-4xl leading-[1.05] sm:text-5xl">{verdict.title}</h2>
             <p className="mt-4 pr-20 text-base leading-relaxed text-white/90">{verdict.blurb}</p>
             <button
