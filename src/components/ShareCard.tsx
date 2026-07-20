@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { Sparkles } from "lucide-react";
 import type { ViralKeyword } from "@/lib/vibecheck-schema";
 
-export type ShareCardVariant = "hero" | "wordcloud" | "threewords" | "badge";
+export type ShareCardVariant = "hero" | "wordcloud" | "threewords" | "badge" | "verdict" | "award" | "popculture";
 
 export type ShareCardData = {
   award: { title: string; subtitle: string } | null;
@@ -117,6 +117,100 @@ export const ShareCard = forwardRef<HTMLDivElement, { data: ShareCardData; varia
             {words.map((w, i) => (
               <div key={i} className="font-serif text-7xl leading-none">{w}</div>
             ))}
+          </div>
+          {FOOTER}
+        </div>
+      );
+    }
+
+    // Isolated to JUST the headline verdict (e.g. "Red Flag Zone") + overall
+    // score — no award, no pop-culture match mixed in. Paired with the
+    // hero verdict card's own Share button on /results/$id, which used to
+    // fall through to the combined "hero" variant below (wrong card:
+    // whatever award/pop-culture happened to exist got glued on too).
+    if (variant === "verdict") {
+      return (
+        <div
+          ref={ref}
+          style={{ width: 1080, height: 1920 }}
+          className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-pink via-purple to-ink p-20 text-white"
+        >
+          {LOGO}
+          <div className="flex flex-1 flex-col items-center justify-center gap-10 text-center">
+            <div className="grid place-items-center rounded-full bg-white text-ink" style={{ width: 360, height: 360 }}>
+              <div className="text-center">
+                <div className="font-serif text-9xl leading-none">{data.overallScore}%</div>
+                <div className="mt-2 text-lg uppercase tracking-[0.3em] text-ink/60">Overall Vibe</div>
+              </div>
+            </div>
+            <div className="font-serif text-6xl leading-tight">{data.headline}</div>
+          </div>
+          {FOOTER}
+        </div>
+      );
+    }
+
+    // Isolated to JUST the Vibe Award (title + subtitle) + overall score —
+    // no pop-culture match, no verdict headline mixed in. The "badge"
+    // variant above already isolates award correctly, but it's a square
+    // profile-photo format; this is the Stories-shaped (1080x1920)
+    // equivalent for the "Share to Stories" button specifically.
+    if (variant === "award") {
+      return (
+        <div
+          ref={ref}
+          style={{ width: 1080, height: 1920 }}
+          className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-pink via-purple to-ink p-20 text-white"
+        >
+          {LOGO}
+          <div className="flex flex-1 flex-col items-center justify-center gap-10 text-center">
+            {data.award && (
+              <div className="rounded-[40px] bg-white/10 px-14 py-10 backdrop-blur-sm">
+                <div className="text-sm uppercase tracking-[0.35em] text-white/70">Vibe Award</div>
+                <div className="font-serif mt-4 text-6xl leading-[1.05]">{data.award.title}</div>
+                <div className="mt-5 text-2xl text-white/85">{data.award.subtitle}</div>
+              </div>
+            )}
+            <div className="grid place-items-center rounded-full bg-white text-ink" style={{ width: 360, height: 360 }}>
+              <div className="text-center">
+                <div className="font-serif text-9xl leading-none">{data.overallScore}%</div>
+                <div className="mt-2 text-lg uppercase tracking-[0.3em] text-ink/60">Overall Vibe</div>
+              </div>
+            </div>
+          </div>
+          {FOOTER}
+        </div>
+      );
+    }
+
+    // Isolated to JUST the pop-culture match (couple + source) + overall
+    // score — no award, no verdict headline mixed in. This is the variant
+    // that was missing entirely before: the "You're Giving..." card's
+    // Share button fell through to the combined "hero" card, so sharing a
+    // pop-culture match could silently export someone else's Vibe Award
+    // title instead.
+    if (variant === "popculture") {
+      return (
+        <div
+          ref={ref}
+          style={{ width: 1080, height: 1920 }}
+          className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-purple via-pink to-ink p-20 text-white"
+        >
+          {LOGO}
+          <div className="flex flex-1 flex-col items-center justify-center gap-10 text-center">
+            <div className="text-sm uppercase tracking-[0.35em] text-white/70">You're Giving...</div>
+            {data.popCulture && (
+              <>
+                <div className="font-serif text-7xl leading-tight">{data.popCulture.couple}</div>
+                <div className="text-2xl uppercase tracking-[0.25em] text-white/60">from {data.popCulture.source}</div>
+              </>
+            )}
+            <div className="grid place-items-center rounded-full bg-white text-ink" style={{ width: 280, height: 280 }}>
+              <div className="text-center">
+                <div className="font-serif text-8xl leading-none">{data.overallScore}%</div>
+                <div className="mt-1 text-sm uppercase tracking-[0.25em] text-ink/60">Overall Vibe</div>
+              </div>
+            </div>
           </div>
           {FOOTER}
         </div>
