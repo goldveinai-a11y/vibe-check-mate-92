@@ -139,6 +139,13 @@ function ResultsPage() {
     popCulture: viral?.pop_culture_match ?? null,
     overallScore,
     headline: verdict.title,
+    // Drives the verdict ShareCard's color (red for danger, pink for
+    // hot/warm, etc.) and its tag/blurb text - see TONE_STYLES in
+    // ShareCard.tsx. Without these the exported card fell back to a
+    // generic purple regardless of whether the verdict was good or bad.
+    tone: verdict.tone,
+    tag: verdict.tag,
+    blurb: verdict.blurb,
   };
 
   // Three separate export targets - one per shareable card on this page -
