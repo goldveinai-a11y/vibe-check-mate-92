@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
@@ -69,6 +69,19 @@ function isInAppBrowser(): boolean {
   return /musical_ly|TikTok|BytedanceWebview|FBAN|FBAV|Instagram|Line\//i.test(navigator.userAgent);
 }
 
+// Thrown by mutationFn instead of a generic Error when createAnalysis
+// returns code: "free_limit_reached" (see vibecheck.functions.ts) - lets
+// the render below tell "your one free try is used up, here's your report,
+// go unlock it" apart from an actual failure ("that screenshot didn't
+// read, try again"), which need very different copy and a different CTA.
+class FreeLimitError extends Error {
+  existingAnalysisId: string;
+  constructor(message: string, existingAnalysisId: string) {
+    super(message);
+    this.existingAnalysisId = existingAnalysisId;
+  }
+}
+
 function UploadPage() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<Prepared[]>([]);
@@ -121,7 +134,12 @@ function UploadPage() {
           images: files.map((f) => ({ mediaType: f.mediaType, base64: f.base64 })),
         },
       });
-      if ("error" in result) throw new Error(result.error);
+      if ("error" in result) {
+        if (result.code === "free_limit_reached" && result.existingAnalysisId) {
+          throw new FreeLimitError(result.error, result.existingAnalysisId);
+        }
+        throw new Error(result.error);
+      }
       rememberOwnedAnalysis(result.id);
       return result.id;
     },
@@ -326,15 +344,31 @@ function UploadPage() {
               </p>
             </div>
 
-            {mutation.isError && (
-              <p className="mt-4 text-sm text-destructive">
-                Something went sideways reading that one. Try again - if it keeps happening, swap in a clearer screenshot.
-              </p>
+            {mutation.isError && mutation.error instanceof FreeLimitError ? (
+              <div className="mt-4 rounded-2xl border border-purple/20 bg-purple-soft/50 p-4 text-sm text-ink/80">
+                <p>
+                  You've already used your free VibeCheck on this device - your first read is still sitting there
+                  waiting to be unlocked.
+                </p>
+                <Link
+                  to="/paywall/$id"
+                  params={{ id: mutation.error.existingAnalysisId }}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-purple-deep px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
+                >
+                  Go to my report
+                </Link>
+              </div>
+            ) : (
+              mutation.isError && (
+                <p className="mt-4 text-sm text-destructive">
+                  Something went sideways reading that one. Try again - if it keeps happening, swap in a clearer screenshot.
+                </p>
+              )
             )}
 
             <button
               onClick={() => mutation.mutate()}
-              disabled={files.length === 0 || mutation.isPending}
+              disabled={files.length === 0 || mutation.isPending || (mutation.isError && mutation.error instanceof FreeLimitError)}
               className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-40"
             >
               <Sparkles className="h-4 w-4" />
