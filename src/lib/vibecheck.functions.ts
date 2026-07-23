@@ -67,10 +67,63 @@ const CreateInputSchema = z.object({
 
 export const createAnalysis = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CreateInputSchema.parse(input))
-  .handler(async ({ data }): Promise<{ id: string } | { error: string }> => {
+  .handler(async ({ data }): Promise<
+    { id: string } | { error: string; code?: "free_limit_reached"; existingAnalysisId?: string }
+  > => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { analyzeConversation } = await import("./vibecheck.server");
     const { buildPreview } = await import("./vibecheck-schema");
+
+    // Free-tier abuse guard. Without this, the same device (identified by
+    // its anon id) could generate unlimited free previews - each one a
+    // real Claude Sonnet vision call we pay for - without ever converting
+    // once. Confirmed happening in GA: 2 unique devices generated 7 free
+    // previews between them, zero purchases. The free preview already
+    // feels fairly complete (full score breakdown, vibe award, pop-culture
+    // match), so nothing stops someone from just re-running new
+    // screenshots forever instead of paying.
+    //
+    // Rule: exactly one free (never-paid) analysis per anon id. Two
+    // intentional bypasses:
+    //  - An active/trialing subscriber gets unlimited uploads - that's the
+    //    literal Premium Monthly pitch ("3 days of Unlimited Chat
+    //    Uploads"), so this guard must never clash with a plan someone
+    //    already paid for.
+    //  - Anyone who has ever paid (even just the one-time Single tier) is
+    //    a proven payer, not the abuse case this guards against - blocking
+    //    a second, different analysis for them would just be lost revenue
+    //    for no anti-abuse benefit.
+    // Only "ready" analyses count toward the cap - a failed run (bad
+    // image, our own API hiccup) shouldn't burn someone's one free try.
+    //
+    // Known limitation: ownerAnonId lives in localStorage, so clearing
+    // site data or a private/incognito window resets it. This raises the
+    // bar for casual repeat abuse; it isn't a hardened device fingerprint.
+    const { data: activeSub } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id")
+      .eq("owner_anon_id", data.ownerAnonId)
+      .in("status", ["active", "trialing"])
+      .limit(1)
+      .maybeSingle();
+
+    if (!activeSub) {
+      const { data: priorReady } = await supabaseAdmin
+        .from("analyses")
+        .select("id, paid")
+        .eq("owner_anon_id", data.ownerAnonId)
+        .eq("status", "ready")
+        .order("created_at", { ascending: false });
+
+      const everPaid = (priorReady ?? []).some((r) => r.paid === true);
+      if (!everPaid && (priorReady ?? []).length >= 1) {
+        return {
+          error: "You've already used your free VibeCheck on this device.",
+          code: "free_limit_reached",
+          existingAnalysisId: priorReady![0].id as string,
+        };
+      }
+    }
 
     const { data: inserted, error: insErr } = await supabaseAdmin
       .from("analyses")
