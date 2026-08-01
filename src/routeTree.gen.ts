@@ -13,6 +13,7 @@ import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RefundRouteImport } from './routes/refund'
+import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MyReportsRouteImport } from './routes/my-reports'
 import { Route as CookiesRouteImport } from './routes/cookies'
@@ -48,6 +49,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const RefundRoute = RefundRouteImport.update({
   id: '/refund',
   path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizRoute = QuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/cookies': typeof CookiesRoute
   '/my-reports': typeof MyReportsRoute
   '/privacy': typeof PrivacyRoute
+  '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/cookies': typeof CookiesRoute
   '/my-reports': typeof MyReportsRoute
   '/privacy': typeof PrivacyRoute
+  '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
@@ -184,6 +192,7 @@ export interface FileRoutesById {
   '/cookies': typeof CookiesRoute
   '/my-reports': typeof MyReportsRoute
   '/privacy': typeof PrivacyRoute
+  '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/my-reports'
     | '/privacy'
+    | '/quiz'
     | '/refund'
     | '/reset-password'
     | '/terms'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/my-reports'
     | '/privacy'
+    | '/quiz'
     | '/refund'
     | '/reset-password'
     | '/terms'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/my-reports'
     | '/privacy'
+    | '/quiz'
     | '/refund'
     | '/reset-password'
     | '/terms'
@@ -275,6 +287,7 @@ export interface RootRouteChildren {
   CookiesRoute: typeof CookiesRoute
   MyReportsRoute: typeof MyReportsRoute
   PrivacyRoute: typeof PrivacyRoute
+  QuizRoute: typeof QuizRoute
   RefundRoute: typeof RefundRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
@@ -320,6 +333,13 @@ declare module '@tanstack/react-router' {
       path: '/refund'
       fullPath: '/refund'
       preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quiz': {
+      id: '/quiz'
+      path: '/quiz'
+      fullPath: '/quiz'
+      preLoaderRoute: typeof QuizRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -443,6 +463,7 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesRoute: CookiesRoute,
   MyReportsRoute: MyReportsRoute,
   PrivacyRoute: PrivacyRoute,
+  QuizRoute: QuizRoute,
   RefundRoute: RefundRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,

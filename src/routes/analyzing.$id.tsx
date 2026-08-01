@@ -54,6 +54,9 @@ function AnalyzingPage() {
     // comes back a minute later lands straight on their finished report
     // instead of a frozen progress bar.
     refetchOnWindowFocus: true,
+    // Опрос должен продолжаться и в свёрнутой вкладке - иначе отчёт
+    // дописывается на сервере, а страница ожидания навсегда стоит на 92%.
+    refetchIntervalInBackground: true,
   });
 
   const status = data?.status;
