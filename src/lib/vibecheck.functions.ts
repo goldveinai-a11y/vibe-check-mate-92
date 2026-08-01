@@ -166,10 +166,25 @@ export const createAnalysis = createServerFn({ method: "POST" })
     return { id: inserted.id as string };
   });
 
+const QuizAnswersSchema = z.object({
+  situation: z.string().min(1).max(120),
+  relationship: z.string().min(1).max(120),
+  duration: z.string().min(1).max(120),
+  whoTextsFirst: z.string().min(1).max(120),
+  replySpeed: z.string().min(1).max(120),
+  frustration: z.string().max(400).optional(),
+});
+
+// Images are optional now: a quiz-only run is a first-class path, not a
+// degraded one. That's what lets someone in TikTok's in-app browser - where
+// the file picker is simply unavailable - still reach a result and a
+// paywall instead of hitting a dead end. The handler enforces that at least
+// ONE evidence source is present.
 const RunAnalysisInputSchema = z.object({
   id: z.string().uuid(),
   ownerAnonId: z.string().min(8).max(128),
-  images: z.array(ImageInputSchema).min(1).max(6),
+  images: z.array(ImageInputSchema).max(6).optional(),
+  quiz: QuizAnswersSchema.optional(),
 });
 
 // The expensive half. The client fires this WITHOUT awaiting it and
@@ -199,8 +214,11 @@ export const runAnalysis = createServerFn({ method: "POST" })
     if (row.owner_anon_id !== data.ownerAnonId) return { error: "not_found" };
     if (row.status !== "processing") return { ok: true };
 
+    const images = data.images ?? [];
+    if (images.length === 0 && !data.quiz) return { error: "no_evidence" };
+
     try {
-      const report = await analyzeConversation(data.images);
+      const report = await analyzeConversation(images, data.quiz);
       const preview = buildPreview(report);
       const { error: updErr } = await supabaseAdmin
         .from("analyses")
@@ -208,6 +226,14 @@ export const runAnalysis = createServerFn({ method: "POST" })
           status: "ready",
           report_json: report as never,
           preview_json: preview as never,
+          // image_paths has always been written as [] here - we never store
+          // the actual screenshots. Reusing it as a plain count marker lets
+          // the results page tell a quiz-only ("preliminary") report from a
+          // screenshot-backed one without a schema migration, which would
+          // otherwise also require hand-patching the generated Supabase
+          // types (see AGENTS.md note 4). Still no image data, just a
+          // length.
+          image_paths: images.map((_, i) => `img-${i + 1}`),
         })
         .eq("id", data.id);
       if (updErr) return { error: updErr.message };
@@ -230,12 +256,60 @@ export const getAnalysisPreview = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin
       .from("analyses")
-      .select("id, status, preview_json, paid, error_message, created_at")
+      // image_paths comes back so the results page can tell a quiz-only
+      // ("preliminary") report from a screenshot-backed one - empty array
+      // means no screenshots were used. See runAnalysis for why this
+      // column doubles as that marker.
+      .select("id, status, preview_json, paid, error_message, created_at, image_paths")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Not found");
     return row;
+  });
+
+const ReopenInputSchema = z.object({
+  id: z.string().uuid(),
+  ownerAnonId: z.string().min(8).max(128),
+});
+
+// "Add screenshots and sharpen this read" on a preliminary (quiz-only)
+// report. Flips the row back to "processing" so the existing runAnalysis +
+// /analyzing poll flow can be reused verbatim, rather than inventing a
+// second parallel path.
+//
+// Deliberately free and NOT counted against the free-preview cap: this is
+// the same conversation being upgraded, not a new one. It's also the single
+// highest-value action a quiz-only user can take - she came from an in-app
+// browser where uploading was impossible, and this is the moment she
+// finally can. Charging or rate-limiting that would defeat the entire
+// reason quiz-only exists.
+//
+// Guarded to only ever apply to a ready, unpaid, screenshot-less row owned
+// by this device, so it can't be used to wipe a paid report or to
+// re-trigger analysis on something already backed by screenshots.
+export const reopenForScreenshots = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => ReopenInputSchema.parse(input))
+  .handler(async ({ data }): Promise<{ ok: true } | { error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: row } = await supabaseAdmin
+      .from("analyses")
+      .select("id, status, owner_anon_id, paid, image_paths")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (!row || row.owner_anon_id !== data.ownerAnonId) return { error: "not_found" };
+    if (row.paid === true) return { error: "already_paid" };
+    if (row.status !== "ready") return { error: "not_ready" };
+    if (((row.image_paths as string[] | null) ?? []).length > 0) return { error: "already_has_screenshots" };
+
+    const { error } = await supabaseAdmin
+      .from("analyses")
+      .update({ status: "processing" })
+      .eq("id", data.id);
+    if (error) return { error: error.message };
+    return { ok: true };
   });
 
 const FullInputSchema = z.object({

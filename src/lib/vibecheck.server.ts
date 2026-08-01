@@ -1,6 +1,33 @@
 import { ReportSchema, ScoresSchema, sanitizeReportShape, type Report, type Scores } from "./vibecheck-schema";
 
-const SYSTEM_PROMPT = `You are VibeCheck — a brutally perceptive AI analyst for Gen Z and Millennial daters (20-40, US/UK markets). You analyze chat conversation screenshots (dating apps, DMs, iMessage, WhatsApp) and produce a report that will be stored in the Report_JSON field of the VibeCheck table.
+// Answers from the pre-upload quiz (see routes/quiz.tsx). Every field is a
+// short option label the user picked, except `frustration`, which is free
+// text and optional. In a quiz-only run these are the ONLY evidence that
+// exists; in a screenshots run they're supporting context.
+export type QuizAnswers = {
+  situation: string;
+  relationship: string;
+  duration: string;
+  whoTextsFirst: string;
+  replySpeed: string;
+  frustration?: string;
+};
+
+function formatQuiz(quiz: QuizAnswers): string {
+  const lines = [
+    `- What's happening: ${quiz.situation}`,
+    `- Who they are to her: ${quiz.relationship}`,
+    `- How long this has been going on: ${quiz.duration}`,
+    `- Who texts first: ${quiz.whoTextsFirst}`,
+    `- How fast they reply: ${quiz.replySpeed}`,
+  ];
+  if (quiz.frustration?.trim()) {
+    lines.push(`- What frustrates her most, in her own words: "${quiz.frustration.trim()}"`);
+  }
+  return lines.join("\n");
+}
+
+const PROMPT_HEAD = `You are VibeCheck — a brutally perceptive AI analyst for Gen Z and Millennial daters (20-40, US/UK markets). You analyze a person's dating situation and produce a report that will be stored in the Report_JSON field of the VibeCheck table.
 
 CRITICAL INSTRUCTION FOR THE WORKFLOW:
 To guarantee a massive "wow effect" and prevent generic, low-value interpretations (e.g., "They seem interested"), you MUST strictly back up every single observation with hard statistical data, precise percentage calculations, dynamic timelines, and exact verbatim quotes from the screenshots. Every single field and every generated text string MUST be strictly in English.
@@ -13,7 +40,9 @@ AUDIENCE & CULTURE FIT (Gen Z / Millennials, 20-40, US/UK):
 - Formatting: clean, lowercase-leaning emphasis where natural, short punchy paragraphs, occasional bullet points. Not a high school essay.
 - No cringe: do not force slang. It must feel effortless, raw, and authentic — not an old marketer trying to be cool.
 - High-converting emotional triggers: validate their anxiety but gently call out their self-sabotage. If they sent 12 of 15 messages, say it plainly: "babe, put the phone down, you're doing gymnastics to keep this thread alive."
+`;
 
+const RULES_SCREENSHOTS = `
 ANALYSIS RULES:
 - Read the FULL conversation across all screenshots. Identify who is "them" (the person being analyzed) vs "you" (the user who uploaded).
 - Every quote in green_flags and red_flags MUST be an exact verbatim string from the screenshots. Do not paraphrase quotes. If you can't quote it, don't use it.
@@ -28,7 +57,39 @@ ANALYSIS RULES:
   * warm = a warm, genuinely interested reply. Shows effort and openness without being needy or over-explaining.
   * neutral = a lower-investment, more reserved reply. Polite and normal, but noticeably lower emotional effort than "warm" — for when the read says "pull back a little."
   * Both must sound like a real text a person would actually send — casual, short (1-3 sentences), no therapy-speak, no bullet points, matches the register of the conversation (emoji only if "them" or the user already use them in the screenshots).
+`;
 
+// Quiz-only runs have NO screenshots, so every "quote it verbatim" rule
+// above becomes impossible to satisfy honestly - and a model told to quote
+// something it cannot see will simply invent plausible-sounding messages.
+// That is the single worst failure mode for this product: a user reading
+// fabricated quotes from a real person she knows spots it instantly and
+// never trusts (or buys) anything again.
+//
+// So this variant does two things. It redefines what counts as quotable
+// evidence - her own quiz answers, which ARE real verbatim input - and it
+// bans invented conversation outright, repeatedly. It also explicitly
+// reinterprets the later "from the screenshots" phrasing in the shared
+// tail section, so the whole prompt doesn't have to be forked and kept in
+// sync twice.
+const RULES_QUIZ_ONLY = `
+ANALYSIS RULES — QUIZ-ONLY RUN (NO SCREENSHOTS PROVIDED):
+- You have NOT been given any screenshots. Your only evidence is the structured quiz answers in the user message. "Them" is the person she is describing; "you" is the user who filled in the quiz.
+- ABSOLUTE RULE — NEVER FABRICATE MESSAGES. Do not invent, imagine, reconstruct, or paraphrase anything "they" supposedly texted. You have never seen a single message from them. Inventing one is the worst possible failure here: she knows this person and will immediately see that you made it up.
+- WHEREVER ANY LATER INSTRUCTION IN THIS PROMPT SAYS "from the screenshots" or "verbatim from the conversation", read it as "from her quiz answers" instead. Her quiz answers are the only verbatim source that exists in this run.
+- quote fields in green_flags and red_flags MUST therefore contain HER OWN WORDS from the quiz — either the exact option label she selected (e.g. "Almost always me", "Sometimes a full day") or an exact phrase from her free-text answer. Never a message attributed to them.
+- Because the evidence is thinner, the report must be OBSERVABLY more careful than a screenshot-based one. Write about the PATTERN she described, not about specific exchanges. Use framing like "the pattern you're describing", "based on what you've told me", "this reads like" — never state as fact something only screenshots could confirm.
+- Scores: still integers 0-100, still calibrated (60 = decent, 80+ = strong, 30- = concerning), but derive each one from the specific combination of answers she gave — who initiates, reply latency, duration, and the situation she picked are all real behavioral signal. MANDATORY GROUNDING still applies to all seven fields: name the answer driving each number before you write it. Two different answer combinations must not produce identical integers. Avoid lazy round numbers (70/75/80) unless the answers genuinely point there.
+- Because uncertainty really is higher without message-level data, pull scores modestly toward the middle relative to how confident you'd be with screenshots — but keep them clearly differentiated between users, never a fixed baseline.
+- hardcore_analytics: build these from the answers she gave. Restate her stated ratios and latencies as concrete observations (e.g. "You told me you initiate almost every time, and their replies land in the multi-hour to next-day range — that's a two-signal asymmetry, and both signals point the same direction."). Do NOT invent message counts, percentages, or timestamps she never gave you. Percentages are only allowed where she actually supplied the underlying ratio.
+- your_voice_style: she has given you no writing samples, so do NOT describe her prose style. Describe her RELATIONAL style as revealed by her answers instead — initiation habits, tolerance for ambiguity, how much chasing she's doing. Make clear it's inferred from her answers, not from her texts.
+- suggested_replies: you do not know their last message, so write two replies that fit the SITUATION she selected and work as an opener or re-opener. Short (1-3 sentences), casual, sendable, no therapy-speak, no emoji.
+- viral_keywords: use exact phrases from her free-text answer and/or the exact option labels she selected. If she gave no free text and you cannot defend 3 distinct items from her selections alone, return fewer — never invent.
+- future_outlook: same uncompromising energy, but forecast the trajectory of the PATTERN she described rather than of specific messages.
+- END EVERY quiz-only report with a clear, natural nudge inside future_outlook that adding screenshots would sharpen this read considerably — one sentence, not a sales pitch.
+`;
+
+const PROMPT_TAIL = `
 VIRAL BLOCK (MANDATORY — this is what makes the report shareable):
 You MUST include a "viral" object with these five fields. They exist to make the report screenshot-worthy for IG Stories, TikTok, and group chats. Rules:
 - vibe_award: { title, subtitle }
@@ -92,18 +153,47 @@ type Report = {
 
 type ImageInput = { mediaType: string; base64: string };
 
-export async function analyzeConversation(images: ImageInput[]): Promise<Report> {
+export async function analyzeConversation(images: ImageInput[], quiz?: QuizAnswers): Promise<Report> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+  const hasImages = images.length > 0;
+  if (!hasImages && !quiz) {
+    throw new Error("Analysis needs either screenshots or quiz answers");
+  }
+
+  const systemPrompt = PROMPT_HEAD + (hasImages ? RULES_SCREENSHOTS : RULES_QUIZ_ONLY) + PROMPT_TAIL;
 
   const content: Array<Record<string, unknown>> = images.map((img) => ({
     type: "image",
     source: { type: "base64", media_type: img.mediaType, data: img.base64 },
   }));
-  content.push({
-    type: "text",
-    text: "Analyze this conversation. Return the JSON report exactly as specified in the system prompt. No prose, no markdown, just JSON.",
-  });
+
+  // With screenshots present the quiz is supporting context - it supplies
+  // things the images physically cannot (how long this has dragged on, what
+  // she's actually upset about), while the messages stay the primary
+  // evidence and keep owning every quote. Without screenshots, the quiz IS
+  // the evidence.
+  let instruction: string;
+  if (hasImages && quiz) {
+    instruction = `Analyze this conversation. The user also answered a short intake quiz - use it as supporting context for the situation and for what she actually cares about, but the screenshots remain your primary evidence and every quote must still come from them.
+
+Her quiz answers:
+${formatQuiz(quiz)}
+
+Return the JSON report exactly as specified in the system prompt. No prose, no markdown, just JSON.`;
+  } else if (hasImages) {
+    instruction = "Analyze this conversation. Return the JSON report exactly as specified in the system prompt. No prose, no markdown, just JSON.";
+  } else {
+    instruction = `There are NO screenshots in this run. Analyze the situation using only the quiz answers below. Do not invent any messages.
+
+Her quiz answers:
+${formatQuiz(quiz!)}
+
+Return the JSON report exactly as specified in the system prompt. No prose, no markdown, just JSON.`;
+  }
+
+  content.push({ type: "text", text: instruction });
 
   const doCall = async () => {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -126,8 +216,10 @@ export async function analyzeConversation(images: ImageInput[]): Promise<Report>
         // logic below still covers malformed output) while giving the
         // numeric fields enough room to actually reflect per-conversation
         // evidence instead of snapping to a memorized category baseline.
+        // This matters even more on quiz-only runs, where the input space is
+        // a handful of fixed option labels and collapse risk is highest.
         temperature: 0.4,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: [{ role: "user", content }],
       }),
     });
