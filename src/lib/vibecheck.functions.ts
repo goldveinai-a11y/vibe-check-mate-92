@@ -80,6 +80,8 @@ const ImageInputSchema = z.object({
 // runAnalysis request survives on the client no longer decides whether the
 // user sees their report - the poll picks it up either way, even if they
 // background the tab and come back.
+const FREE_ANALYSES_PER_DEVICE = 2;
+
 const CreateInputSchema = z.object({
   ownerAnonId: z.string().min(8).max(128),
 });
@@ -116,6 +118,15 @@ export const createAnalysis = createServerFn({ method: "POST" })
     // Known limitation: ownerAnonId lives in localStorage, so clearing
     // site data or a private/incognito window resets it. This raises the
     // bar for casual repeat abuse; it isn't a hardened device fingerprint.
+    //
+    // Set to 2, not 1, on purpose. The abuse that prompted this guard was
+    // 7 free previews across 2 devices - real, but roughly $0.35 of Claude
+    // spend. Over the same window only 3 users in total ever reached a
+    // finished report at all, so a cap of 1 was policing a rounding error
+    // while risking real users: someone whose first run half-failed, or who
+    // legitimately wants to check a second conversation, is worth far more
+    // than the few cents a tighter cap saves. Revisit once free-preview
+    // volume is high enough for the abuse to actually cost something.
     const { data: activeSub } = await supabaseAdmin
       .from("subscriptions")
       .select("id")
@@ -133,7 +144,7 @@ export const createAnalysis = createServerFn({ method: "POST" })
         .order("created_at", { ascending: false });
 
       const everPaid = (priorReady ?? []).some((r) => r.paid === true);
-      if (!everPaid && (priorReady ?? []).length >= 1) {
+      if (!everPaid && (priorReady ?? []).length >= FREE_ANALYSES_PER_DEVICE) {
         return {
           error: "You've already used your free VibeCheck on this device.",
           code: "free_limit_reached",
