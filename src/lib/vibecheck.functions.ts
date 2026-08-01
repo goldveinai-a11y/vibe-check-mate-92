@@ -60,9 +60,28 @@ const ImageInputSchema = z.object({
   base64: z.string().min(100).max(8_000_000), // ~6MB decoded
 });
 
+// createAnalysis is deliberately CHEAP and FAST - it only runs the free-tier
+// guard and inserts a "processing" row, then returns the id in well under a
+// second. The expensive Claude vision call lives in runAnalysis below.
+//
+// Why this is split: the previous single-function version held ONE http
+// request open for the entire 40-90s Claude call, and the client sat on
+// /upload behind an overlay waiting for it. On mobile - and especially in
+// TikTok's in-app webview - that request dies routinely (backgrounded tab,
+// screen lock, flaky network, platform timeouts). Confirmed in GA: 6 users
+// fired analysis_started but only 3 ever fired analysis_completed, with
+// 9 analysis_started events across those 6 users - i.e. people were
+// retrying, the signature of a failing request. Meanwhile the server
+// usually finished writing the report anyway, so we were paying for
+// reports nobody ever saw.
+//
+// Now the client gets an id immediately, navigates straight to
+// /analyzing/$id, and that page polls for status. Whether or not the
+// runAnalysis request survives on the client no longer decides whether the
+// user sees their report - the poll picks it up either way, even if they
+// background the tab and come back.
 const CreateInputSchema = z.object({
   ownerAnonId: z.string().min(8).max(128),
-  images: z.array(ImageInputSchema).min(1).max(6),
 });
 
 export const createAnalysis = createServerFn({ method: "POST" })
@@ -71,8 +90,6 @@ export const createAnalysis = createServerFn({ method: "POST" })
     { id: string } | { error: string; code?: "free_limit_reached"; existingAnalysisId?: string }
   > => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { analyzeConversation } = await import("./vibecheck.server");
-    const { buildPreview } = await import("./vibecheck-schema");
 
     // Free-tier abuse guard. Without this, the same device (identified by
     // its anon id) could generate unlimited free previews - each one a
@@ -135,7 +152,41 @@ export const createAnalysis = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (insErr || !inserted) return { error: insErr?.message ?? "Failed to create analysis" };
-    const id = inserted.id as string;
+    return { id: inserted.id as string };
+  });
+
+const RunAnalysisInputSchema = z.object({
+  id: z.string().uuid(),
+  ownerAnonId: z.string().min(8).max(128),
+  images: z.array(ImageInputSchema).min(1).max(6),
+});
+
+// The expensive half. The client fires this WITHOUT awaiting it and
+// navigates away immediately - see upload.tsx. If the request dies on the
+// client mid-flight the server still finishes and writes the row, and
+// /analyzing/$id's poll picks the result up regardless.
+//
+// Guarded so a leaked/guessed analysis id can't be used to burn Claude
+// tokens: the row must exist, belong to this anon id, AND still be in
+// "processing". Re-running a row that's already ready/failed is a no-op,
+// which also makes an accidental double-fire (React strict mode, a retry)
+// harmless rather than a double charge.
+export const runAnalysis = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => RunAnalysisInputSchema.parse(input))
+  .handler(async ({ data }): Promise<{ ok: true } | { error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { analyzeConversation } = await import("./vibecheck.server");
+    const { buildPreview } = await import("./vibecheck-schema");
+
+    const { data: row } = await supabaseAdmin
+      .from("analyses")
+      .select("id, status, owner_anon_id")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (!row) return { error: "not_found" };
+    if (row.owner_anon_id !== data.ownerAnonId) return { error: "not_found" };
+    if (row.status !== "processing") return { ok: true };
 
     try {
       const report = await analyzeConversation(data.images);
@@ -147,15 +198,15 @@ export const createAnalysis = createServerFn({ method: "POST" })
           report_json: report as never,
           preview_json: preview as never,
         })
-        .eq("id", id);
+        .eq("id", data.id);
       if (updErr) return { error: updErr.message };
-      return { id };
+      return { ok: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Analysis failed";
       await supabaseAdmin
         .from("analyses")
         .update({ status: "failed", error_message: message.slice(0, 500) })
-        .eq("id", id);
+        .eq("id", data.id);
       return { error: message };
     }
   });
