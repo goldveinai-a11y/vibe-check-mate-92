@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
@@ -29,6 +29,18 @@ import {
 import { SiteHeader } from "@/components/SiteHeader";
 import { AnalyzingOverlay } from "@/components/AnalyzingOverlay";
 import { trackEvent } from "@/lib/analytics";
+
+// Бросаем вместо обычного Error, когда createAnalysis сообщает, что
+// устройство исчерпало бесплатные разборы. Тогда UI может объяснить, что
+// произошло, и дать ссылку на уже готовый отчёт, вместо общей фразы
+// "couldn't start that one", которая читается как сломанное приложение.
+class FreeLimitError extends Error {
+  existingAnalysisId: string;
+  constructor(message: string, existingAnalysisId: string) {
+    super(message);
+    this.existingAnalysisId = existingAnalysisId;
+  }
+}
 
 export const Route = createFileRoute("/quiz")({
   head: () => ({
@@ -177,7 +189,12 @@ function QuizPage() {
 
       const ownerAnonId = getAnonId();
       const created = await createAnalysis({ data: { ownerAnonId } });
-      if ("error" in created) throw new Error(created.error);
+      if ("error" in created) {
+        if (created.code === "free_limit_reached" && created.existingAnalysisId) {
+          throw new FreeLimitError(created.error, created.existingAnalysisId);
+        }
+        throw new Error(created.error);
+      }
 
       rememberOwnedAnalysis(created.id);
       rememberQuizForAnalysis(created.id, quiz);
@@ -358,11 +375,26 @@ function QuizPage() {
                   Skip - read my answers instead
                 </button>
 
-                {mutation.isError && (
-                  <p className="mt-4 text-sm text-destructive">
-                    Couldn't start that one. Give it another go in a moment.
-                  </p>
-                )}
+                {mutation.isError &&
+                  (mutation.error instanceof FreeLimitError ? (
+                    <div className="mt-4 rounded-2xl border border-border/60 bg-card p-4 text-sm">
+                      <p className="text-ink/75">
+                        You've already used your free reads on this device - your last one is still saved and
+                        waiting for you.
+                      </p>
+                      <Link
+                        to="/results/$id"
+                        params={{ id: mutation.error.existingAnalysisId }}
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-3.5 text-sm font-medium text-white shadow-md transition hover:opacity-90"
+                      >
+                        See my VibeCheck
+                      </Link>
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-destructive">
+                      Couldn't start that one. Give it another go in a moment.
+                    </p>
+                  ))}
 
                 <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-ink/45">
                   <Check className="h-3.5 w-3.5 text-mint" />

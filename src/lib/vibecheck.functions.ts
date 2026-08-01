@@ -135,7 +135,29 @@ export const createAnalysis = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
 
-    if (!activeSub) {
+    // Anon id живёт в localStorage и меняется при смене устройства, браузера
+    // или очистке данных сайта. Из-за этого активный подписчик выглядит как
+    // новый аноним и упирается в бесплатный лимит, от которого он платит,
+    // чтобы быть свободным. Поэтому дополнительно проверяем подписку по
+    // подтверждённому email из сессии Supabase - той же устойчивой
+    // идентичности, которую checkEntitlement использует в этом же файле.
+    let subscriberBypass = Boolean(activeSub);
+    if (!subscriberBypass) {
+      const { getVerifiedEmail } = await import("./optional-auth.server");
+      const verifiedEmail = await getVerifiedEmail();
+      if (verifiedEmail) {
+        const { data: subByEmail } = await supabaseAdmin
+          .from("subscriptions")
+          .select("id")
+          .eq("email", verifiedEmail)
+          .in("status", ["active", "trialing"])
+          .limit(1)
+          .maybeSingle();
+        subscriberBypass = Boolean(subByEmail);
+      }
+    }
+
+    if (!subscriberBypass) {
       const { data: priorReady } = await supabaseAdmin
         .from("analyses")
         .select("id, paid")
