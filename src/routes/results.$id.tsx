@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 import { InterestDonut } from "@/components/InterestDonut";
 import { StickyUnlockBar } from "@/components/StickyUnlockBar";
+import { AddScreenshotsCard } from "@/components/AddScreenshotsCard";
 import { trackEvent } from "@/lib/analytics";
 
 const previewQuery = (id: string) =>
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/results/$id")({
       <div>
         <h1 className="font-serif text-3xl">Something went sideways</h1>
         <p className="mt-2 text-sm text-ink/60">{error.message}</p>
-        <Link to="/upload" className="mt-6 inline-block rounded-full bg-pink px-6 py-3 text-white">Try again</Link>
+        <Link to="/quiz" className="mt-6 inline-block rounded-full bg-pink px-6 py-3 text-white">Try again</Link>
       </div>
     </main>
   ),
@@ -106,7 +107,7 @@ function ResultsPage() {
           <p className="mt-2 text-sm text-ink/60">
             Something went sideways on our end - not your screenshots. Give it another go.
           </p>
-          <Link to="/upload" className="mt-6 inline-block rounded-full bg-pink px-6 py-3 text-white">Try again</Link>
+          <Link to="/quiz" className="mt-6 inline-block rounded-full bg-pink px-6 py-3 text-white">Try again</Link>
         </div>
       </main>
     );
@@ -129,8 +130,15 @@ function ResultsPage() {
     (s.interest_score + s.reciprocity_score + s.emotional_warmth + s.response_consistency + s.flirting_signals + (100 - s.toxicity_score) + s.conversation_health) / 7,
   );
 
+  // A quiz-only ("preliminary") report has no screenshots behind it.
+  // runAnalysis records that by writing one marker entry per image into
+  // image_paths, so an empty array means the read came from her answers
+  // alone. See vibecheck.functions.ts for why that existing column doubles
+  // as the marker rather than a new one requiring a migration.
+  const isPreliminary = ((data.image_paths as string[] | null) ?? []).length === 0;
+
   useEffect(() => {
-    trackEvent("results_viewed", { report_id: id, compatibility_score: overallScore });
+    trackEvent("results_viewed", { report_id: id, compatibility_score: overallScore, preliminary: isPreliminary });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -229,6 +237,13 @@ function ResultsPage() {
               Share
             </button>
           </motion.div>
+
+          {/* Sits directly under the verdict, before any shareable card, so
+              it's the first thing read after the result itself. Placing it
+              lower would bury the one action that turns a quiz-only reader
+              into someone holding a screenshot-backed report - and that
+              upgrade is precisely what makes the paywall worth paying. */}
+          {isPreliminary && <AddScreenshotsCard id={id} />}
 
           {viral?.vibe_award && (
             <motion.div
