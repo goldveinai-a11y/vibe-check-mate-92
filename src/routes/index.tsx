@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { captureRefCode } from "@/lib/anon-id";
+import { QUIZ_STEP_ONE, saveQuizDraft } from "@/lib/quiz";
 import {
   Sparkles,
   Heart,
@@ -26,9 +27,22 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     captureRefCode();
   }, []);
+
+  // Answering question 1 here IS starting the quiz - there's no separate
+  // "begin" step. Tapping a concrete answer reads as answering a question;
+  // tapping a "Start" button reads as committing to a process. With 73% of
+  // visitors gone inside 10 seconds, removing that moment of commitment
+  // matters more than any wording change on a button.
+  const startQuiz = (answer: string) => {
+    saveQuizDraft({ situation: answer });
+    trackEvent("quiz_started", { situation: answer });
+    navigate({ to: "/quiz" });
+  };
 
   return (
     <main className="min-h-screen bg-cream text-ink">
@@ -47,33 +61,37 @@ function Landing() {
           </h1>
 
           <p className="mt-5 max-w-xl text-base text-ink/70 sm:text-lg">
-            Upload your chat screenshots and let VibeCheck decode the vibe. Get an instant compatibility score and honest insights into where things really stand.
+            Answer six quick questions and get an honest read on where you actually stand — no more re-reading the
+            thread at 1am, no more asking three friends for four different opinions.
           </p>
 
-          <p className="mt-3 max-w-xl text-sm italic text-ink/50 sm:text-base">
-            No more re-reading the thread at 1am. No more asking three friends for four different opinions.
-          </p>
+          {/* Question 1 of the quiz, inline. See startQuiz above for why
+              this replaced a "Start Your VibeCheck" button entirely. */}
+          <div className="mt-9 w-full max-w-md">
+            <p className="text-sm font-medium uppercase tracking-wide text-ink/45">Question 1 of 6</p>
+            <h2 className="font-serif mt-2 text-2xl sm:text-3xl">{QUIZ_STEP_ONE.question}</h2>
+            <div className="mt-5 grid gap-3">
+              {QUIZ_STEP_ONE.options?.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => startQuiz(opt)}
+                  className="w-full rounded-2xl border border-border/60 bg-card px-5 py-4 text-left text-base shadow-sm transition hover:border-pink hover:bg-pink-soft/30"
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          {/* Tracked so the landing -> upload step is measurable. Without this
-              there is a total blind spot between first_visit and
-              upload_started: when 303 users produce only 42 upload_started,
-              there's no way to tell whether people clicked and dropped off en
-              route, or never clicked at all - two very different problems with
-              two very different fixes. `position` separates the hero CTA from
-              the identical one in the closing section, so we can also see how
-              much of the intent depends on scrolling the whole page. */}
-          <Link
-            to="/upload"
-            onClick={() => trackEvent("cta_clicked", { position: "hero" })}
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-pink px-8 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"
-          >
-            <Heart className="h-4 w-4 fill-white" />
-            Start Your VibeCheck
-          </Link>
-
-          <div className="mt-6 flex items-center gap-2 text-sm text-ink/60">
-            <Lock className="h-4 w-4 text-mint" />
-            Private &amp; secure — screenshots are never stored or shared
+          <div className="mt-6 flex flex-col items-center gap-2 text-sm text-ink/60">
+            <span className="inline-flex items-center gap-2">
+              <Lock className="h-4 w-4 text-mint" />
+              Private &amp; secure — screenshots are never stored or shared
+            </span>
+            {/* Saying it plainly. The old page never used the word "free"
+                anywhere near the entry point, so nothing told a first-time
+                visitor she could get a result without paying. */}
+            <span className="font-medium text-ink/70">Your first read is free</span>
           </div>
 
           <div className="mt-10 h-px w-full max-w-md bg-border/70" />
@@ -228,10 +246,10 @@ function Landing() {
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl">Ready to find out where you really stand?</h2>
           <p className="mt-4 text-base text-ink/70">
-            It only takes a few screenshots. Your vibe check is one tap away.
+            Six quick questions. Screenshots optional. Your first read is free.
           </p>
           <Link
-            to="/upload"
+            to="/quiz"
             onClick={() => trackEvent("cta_clicked", { position: "footer" })}
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-pink px-8 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"
           >
