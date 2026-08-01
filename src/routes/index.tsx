@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -53,8 +54,17 @@ function Landing() {
             No more re-reading the thread at 1am. No more asking three friends for four different opinions.
           </p>
 
+          {/* Tracked so the landing -> upload step is measurable. Without this
+              there is a total blind spot between first_visit and
+              upload_started: when 303 users produce only 42 upload_started,
+              there's no way to tell whether people clicked and dropped off en
+              route, or never clicked at all - two very different problems with
+              two very different fixes. `position` separates the hero CTA from
+              the identical one in the closing section, so we can also see how
+              much of the intent depends on scrolling the whole page. */}
           <Link
             to="/upload"
+            onClick={() => trackEvent("cta_clicked", { position: "hero" })}
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-pink px-8 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"
           >
             <Heart className="h-4 w-4 fill-white" />
@@ -222,6 +232,7 @@ function Landing() {
           </p>
           <Link
             to="/upload"
+            onClick={() => trackEvent("cta_clicked", { position: "footer" })}
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-pink px-8 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"
           >
             <Heart className="h-4 w-4 fill-white" />
