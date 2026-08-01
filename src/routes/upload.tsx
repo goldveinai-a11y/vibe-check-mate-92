@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMutation } from "@tanstack/react-query";
 import { Upload as UploadIcon, Sparkles, ShieldCheck, ExternalLink, Share2, Check, Copy } from "lucide-react";
-import { createAnalysis } from "@/lib/vibecheck.functions";
+import { createAnalysis, runAnalysis } from "@/lib/vibecheck.functions";
 import { getAnonId, rememberOwnedAnalysis, captureRefCode } from "@/lib/anon-id";
 import { SiteHeader } from "@/components/SiteHeader";
 import { AnalyzingOverlay } from "@/components/AnalyzingOverlay";
@@ -86,7 +86,6 @@ function UploadPage() {
   const navigate = useNavigate();
   const [files, setFiles] = useState<Prepared[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [readyId, setReadyId] = useState<string | null>(null);
   const [inAppBrowser, setInAppBrowser] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
@@ -128,12 +127,9 @@ function UploadPage() {
     mutationFn: async () => {
       trackEvent("analysis_started");
       const ownerAnonId = getAnonId();
-      const result = await createAnalysis({
-        data: {
-          ownerAnonId,
-          images: files.map((f) => ({ mediaType: f.mediaType, base64: f.base64 })),
-        },
-      });
+      // Fast call - just reserves a row and returns its id. Returns in well
+      // under a second, so the button is only in its pending state briefly.
+      const result = await createAnalysis({ data: { ownerAnonId } });
       if ("error" in result) {
         if (result.code === "free_limit_reached" && result.existingAnalysisId) {
           throw new FreeLimitError(result.error, result.existingAnalysisId);
@@ -141,20 +137,35 @@ function UploadPage() {
         throw new Error(result.error);
       }
       rememberOwnedAnalysis(result.id);
+
+      // Deliberately NOT awaited. This is the slow Claude call (40-90s).
+      // We kick it off and immediately navigate to /analyzing/$id, which
+      // polls for the result. Router navigation here is client-side, so
+      // this in-flight request survives the navigation - and even if it
+      // doesn't (backgrounded tab, dropped mobile connection), the server
+      // still finishes and the poll picks the report up anyway. That
+      // decoupling is the whole point: whether the user sees their report
+      // no longer depends on one long-lived request staying alive.
+      void runAnalysis({
+        data: {
+          id: result.id,
+          ownerAnonId,
+          images: files.map((f) => ({ mediaType: f.mediaType, base64: f.base64 })),
+        },
+      }).catch(() => {
+        // Swallowed on purpose - /analyzing/$id owns all failure UI now.
+        // It sees status "failed" (written by the server) or trips its own
+        // stall timeout, and shows a retry there. Surfacing an error here
+        // would double-report the same failure on a page the user has
+        // already left.
+      });
+
       return result.id;
     },
     onSuccess: (id) => {
-      setReadyId(id);
+      navigate({ to: "/analyzing/$id", params: { id } });
     },
   });
-
-  useEffect(() => {
-    if (!readyId) return;
-    const t = setTimeout(() => {
-      navigate({ to: "/analyzing/$id", params: { id: readyId } });
-    }, 2200);
-    return () => clearTimeout(t);
-  }, [readyId, navigate]);
 
   const pageUrl = typeof window !== "undefined" ? window.location.href : "https://vibecheckapp.app/upload";
   // Cast, not a bare navigator.share call - matches the pattern already
@@ -347,15 +358,21 @@ function UploadPage() {
             {mutation.isError && mutation.error instanceof FreeLimitError ? (
               <div className="mt-4 rounded-2xl border border-purple/20 bg-purple-soft/50 p-4 text-sm text-ink/80">
                 <p>
-                  You've already used your free VibeCheck on this device - your first read is still sitting there
-                  waiting to be unlocked.
+                  You've already used your free VibeCheck on this device - your first read is still saved and
+                  waiting for you.
                 </p>
+                {/* Points at /results (the free preview), not /paywall. If an
+                    earlier run finished server-side but the client lost the
+                    connection, the user never actually saw their preview -
+                    dropping them straight on a paywall for a report they've
+                    never laid eyes on would be baffling. /results shows them
+                    what they got and offers the unlock from there. */}
                 <Link
-                  to="/paywall/$id"
+                  to="/results/$id"
                   params={{ id: mutation.error.existingAnalysisId }}
                   className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-purple-deep px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
                 >
-                  Go to my report
+                  See my VibeCheck
                 </Link>
               </div>
             ) : (
@@ -377,11 +394,15 @@ function UploadPage() {
           </div>
         </div>
       </section>
+      {/* Only covers the brief createAnalysis round-trip now. The real wait
+          happens on /analyzing/$id, which we navigate to as soon as the id
+          comes back - so this is a sub-second flash rather than the 40-90s
+          hold it used to be. */}
       <AnimatePresence>
-        {(mutation.isPending || readyId) && (
+        {mutation.isPending && (
           <AnalyzingOverlay
             thumbs={files.map((f) => ({ previewUrl: f.previewUrl, name: f.name }))}
-            done={!!readyId}
+            done={false}
           />
         )}
       </AnimatePresence>
