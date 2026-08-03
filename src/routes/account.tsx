@@ -177,7 +177,11 @@ function AccountPage() {
             <div className="mt-6 rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6">
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
                 <Sparkles className="h-4 w-4" />
-                {data.subscription.plan === "yearly" ? "Premium Yearly" : "Premium Monthly"}
+                {data.subscription.plan === "yearly"
+                  ? "Premium Yearly"
+                  : data.subscription.plan === "weekly"
+                    ? "Premium Weekly"
+                    : "Premium Monthly"}
               </div>
               <p className="mt-2 text-sm text-ink/80">
                 Status: <span className="font-medium capitalize">{data.subscription.status}</span>
