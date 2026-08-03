@@ -10,7 +10,7 @@ async function markAnalysisPaid(session: Record<string, unknown>) {
     .from("analyses")
     .update({
       paid: true,
-      plan: metadata.plan as "single" | "monthly" | "yearly",
+      plan: metadata.plan as "single" | "monthly" | "yearly" | "weekly",
       stripe_session_id: (session.id as string) ?? null,
       stripe_subscription_id: (session.subscription as string) ?? null,
       // Belt-and-suspenders: createCheckoutSession already writes this at
@@ -44,7 +44,7 @@ async function upsertSubscription(sub: Record<string, unknown>, env: StripeEnv) 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const metadata = (sub.metadata ?? {}) as Record<string, string>;
   const ownerAnonId = metadata.ownerAnonId ?? null;
-  const plan = (metadata.plan ?? "monthly") as "monthly" | "yearly";
+  const plan = (metadata.plan ?? "monthly") as "monthly" | "yearly" | "weekly";
   const status = sub.status as string;
   const items = (sub.items as { data: Array<{ current_period_end?: number }> } | undefined)?.data ?? [];
   const item = items[0];
