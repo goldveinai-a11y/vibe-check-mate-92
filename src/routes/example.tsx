@@ -13,6 +13,7 @@ import {
   Brain,
   Sparkles,
   Copy,
+  CheckCircle2,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -230,6 +231,86 @@ function ExamplePage() {
             </p>
           </div>
 
+          {/* The AI chat. Genuinely the most under-sold thing in the whole
+              product - it exists, it's good, and it was mentioned nowhere
+              in any marketing surface. It's also the answer to the biggest
+              objection a one-off report has: "but my situation is more
+              specific than that". */}
+          <div className="mt-5 rounded-3xl border border-purple/25 bg-purple-soft/40 p-6 shadow-sm sm:p-8">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white">
+                <Sparkles className="h-5 w-5 text-purple-deep" />
+              </div>
+              <div>
+                <h3 className="font-serif text-2xl leading-tight">Ask About Your Report</h3>
+                <p className="text-xs text-ink/55">Follow-up questions, answered from your actual data</p>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-pink px-4 py-3 text-sm text-white">
+                Am I overthinking this, or is my read fair?
+              </div>
+              <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm leading-relaxed text-ink/85 shadow-sm">
+                Your read is fair - it's literally in the data. You sent 9 of 13 messages (69%), and they've never
+                once asked you a follow-up question or brought up a topic. So it's less "do they like me" and more
+                "they like me, but I'm carrying this entire conversation." That gap burns people out in 4-6 weeks
+                if it doesn't shift.
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {["Suggest a reply", "Do they like me?", "What happens next?", "I'm spiralling"].map((chip) => (
+                <span
+                  key={chip}
+                  className="rounded-full border border-purple/25 bg-white px-3.5 py-1.5 text-xs font-medium text-ink/70"
+                >
+                  {chip}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Their type + decay */}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
+                <Sparkles className="h-4 w-4" />
+                Their type in 3 words
+              </div>
+              <div className="mt-4 flex flex-col gap-2">
+                {["affectionate", "conversationally passive", "emoji-fluent"].map((w) => (
+                  <span
+                    key={w}
+                    className="rounded-full bg-purple-soft px-4 py-2 text-center font-serif text-lg text-purple-deep"
+                  >
+                    {w}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
+                  Vibe decay trajectory
+                </span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-ink/50">
+                  AI-predicted
+                </span>
+              </div>
+              <div className="mt-4 rounded-2xl bg-muted/40 p-4">
+                <p className="text-[10px] uppercase tracking-widest text-ink/50">Weekly change</p>
+                <p className="font-serif text-4xl leading-none">-8%</p>
+                <p className="mt-1 text-xs text-ink/60">Cooling</p>
+              </div>
+              <div className="mt-2 rounded-2xl bg-muted/40 p-4">
+                <p className="text-[10px] uppercase tracking-widest text-ink/50">Window</p>
+                <p className="font-serif text-2xl leading-tight">3-5 weeks</p>
+              </div>
+            </div>
+          </div>
+
           {/* Forecast */}
           <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
             <h3 className="font-serif text-2xl">If nothing changes</h3>
@@ -265,6 +346,19 @@ function ExamplePage() {
                 One person always reaching, one always retreating, both pretending that's just how it is.
               </p>
             </div>
+          </div>
+
+          {/* The closing beat of the real report. Worth reproducing here
+              because it names the actual thing being sold - not advice,
+              not a score, but the end of not knowing. */}
+          <div className="mt-5 rounded-3xl border border-border/60 bg-card p-8 text-center shadow-sm">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-mint text-white">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <h3 className="font-serif mt-4 text-2xl">Loop closed.</h3>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-ink/70">
+              You know exactly where you stand. Whatever happens next, you're not walking in blind anymore.
+            </p>
           </div>
 
           {/* CTA */}

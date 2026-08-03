@@ -228,6 +228,7 @@ function Landing() {
               "Hard numbers: who initiates, reply times",
               "Forecast if nothing changes",
               "Two replies written for you to send",
+              "An AI you can ask follow-up questions",
             ].map((item) => (
               <div key={item} className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-mint" />
