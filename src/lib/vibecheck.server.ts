@@ -17,14 +17,21 @@ export type QuizAnswers = {
 function formatQuiz(quiz: QuizAnswers): string {
   const lines = [
     `- What's happening: ${quiz.situation}`,
-    `- Who they are to her: ${quiz.relationship}`,
+    `- Who he is to her: ${quiz.relationship}`,
     `- How long this has been going on: ${quiz.duration}`,
     `- Who texts first: ${quiz.whoTextsFirst}`,
-    `- How fast they reply: ${quiz.replySpeed}`,
+    `- How fast he replies: ${quiz.replySpeed}`,
   ];
   if (quiz.frustration?.trim()) {
     lines.push(`- What frustrates her most, in her own words: "${quiz.frustration.trim()}"`);
   }
+  // The quiz asks about "him" throughout, so the person being analysed is
+  // male unless a name says otherwise. Stated explicitly because the
+  // report prompt otherwise defaults to "they", which then clashes with
+  // the gendered wording she just answered.
+  lines.push(
+    `- Refer to the person being analysed as "he/him" unless the name below suggests otherwise. Do not write "they" about this one person.`,
+  );
   if (quiz.theirName?.trim()) {
     // Using the name throughout is the cheapest personalisation available:
     // "Jake replies in bursts" reads as a report about her actual person,

@@ -55,14 +55,25 @@ export type QuizStep = {
 // tapping "Start" reads as committing to a process. With 73% of visitors
 // leaving inside 10 seconds, removing that one moment of commitment is
 // worth more than any copy change on the button itself.
+// "He", not "they". Singular "they" is perfectly normal English for this
+// audience, so it wasn't wrong - but it was answering the wrong question.
+// Search demand is overwhelmingly gendered ("does HE like me", "why did HE
+// stop texting"), which means an ad matching that query and then landing
+// someone on a quiz asking about "them" breaks message match at the exact
+// moment of arrival. It also reads a shade more clinical, which is the
+// wrong register for a product about how someone feels at 1am.
+//
+// The cost - people whose person isn't a "he" - is largely covered by the
+// optional name field on the screenshot step: once a name is given, the
+// report uses it instead of any pronoun at all.
 export const QUIZ_STEP_ONE: QuizStep = {
   key: "situation",
-  question: "What's going on with them?",
+  question: "What's going on with him?",
   options: [
-    "They went quiet on me",
+    "He went quiet on me",
     "Hot and cold",
-    "They never make plans",
-    "I can't read them",
+    "He never makes plans",
+    "I can't read him",
     SITUATION_OTHER,
   ],
 };
@@ -79,7 +90,7 @@ export const SITUATION_DETAIL_STEP: QuizStep = {
 export const QUIZ_STEPS_REST: QuizStep[] = [
   {
     key: "relationship",
-    question: "Who are they to you?",
+    question: "Who is he to you?",
     options: ["A crush", "Talking stage", "We're dating", "My ex"],
   },
   {
@@ -90,11 +101,11 @@ export const QUIZ_STEPS_REST: QuizStep[] = [
   {
     key: "whoTextsFirst",
     question: "Who texts first?",
-    options: ["Almost always me", "Pretty even", "Usually them"],
+    options: ["Almost always me", "Pretty even", "Usually him"],
   },
   {
     key: "replySpeed",
-    question: "How fast do they reply?",
+    question: "How fast does he reply?",
     options: ["Within minutes", "A few hours", "Sometimes a full day", "Never know what to expect"],
   },
   {
