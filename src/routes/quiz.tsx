@@ -17,6 +17,8 @@ import { getAnonId, rememberOwnedAnalysis, captureRefCode } from "@/lib/anon-id"
 import {
   QUIZ_STEP_ONE,
   QUIZ_STEPS_REST,
+  SITUATION_OTHER,
+  SITUATION_DETAIL_STEP,
   TOTAL_QUIZ_STEPS,
   readQuizDraft,
   saveQuizDraft,
@@ -30,10 +32,10 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { AnalyzingOverlay } from "@/components/AnalyzingOverlay";
 import { trackEvent } from "@/lib/analytics";
 
-// Бросаем вместо обычного Error, когда createAnalysis сообщает, что
-// устройство исчерпало бесплатные разборы. Тогда UI может объяснить, что
-// произошло, и дать ссылку на уже готовый отчёт, вместо общей фразы
-// "couldn't start that one", которая читается как сломанное приложение.
+// Thrown instead of a bare Error when createAnalysis reports the device
+// has used up its free reads, so the UI can say what actually happened and
+// point at the existing report - rather than the generic "couldn't start
+// that one", which reads as a broken app and sends people away for good.
 class FreeLimitError extends Error {
   existingAnalysisId: string;
   constructor(message: string, existingAnalysisId: string) {
@@ -98,6 +100,7 @@ function QuizPage() {
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Partial<QuizAnswers>>({});
   const [freeText, setFreeText] = useState("");
+  const [theirName, setTheirName] = useState("");
   const [showScreenshots, setShowScreenshots] = useState(false);
   const [files, setFiles] = useState<Prepared[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -119,6 +122,14 @@ function QuizPage() {
     if (!draft.situation) {
       setSteps([QUIZ_STEP_ONE, ...QUIZ_STEPS_REST]);
       setStepsBehind(0);
+    } else if (draft.situation === SITUATION_OTHER) {
+      // She picked "Something else" on the landing page, so question 1 is
+      // effectively unanswered - ask for it in her own words first. This
+      // step REPLACES question 1 rather than adding to the count, so the
+      // progress bar still reads the same length.
+      setSteps([SITUATION_DETAIL_STEP, ...QUIZ_STEPS_REST]);
+      setStepsBehind(0);
+      setFreeText("");
     }
     trackEvent("quiz_opened", { answered: Object.keys(draft).length });
   }, []);
@@ -132,6 +143,12 @@ function QuizPage() {
     setAnswers(next);
     saveQuizDraft({ [key]: value });
     trackEvent("quiz_step_answered", { step: displayStep, question: key });
+    // The free-text box is shared between the "Something else" detail step
+    // and the final frustration step. Without clearing it here, whatever
+    // she typed to describe her situation would still be sitting in the
+    // box several screens later and get submitted again as her
+    // frustration.
+    if (key === "situation") setFreeText("");
 
     if (stepIndex + 1 < steps.length) {
       setStepIndex(stepIndex + 1);
@@ -179,7 +196,11 @@ function QuizPage() {
 
   const mutation = useMutation({
     mutationFn: async (withScreenshots: boolean) => {
-      const quiz = { ...answers, frustration: freeText.trim() || undefined };
+      const quiz = {
+        ...answers,
+        frustration: freeText.trim() || undefined,
+        theirName: theirName.trim() || undefined,
+      };
       if (!isQuizComplete(quiz)) throw new Error("Quiz is incomplete");
 
       trackEvent("analysis_started", {
@@ -284,11 +305,16 @@ function QuizPage() {
                       rows={3}
                       className="w-full resize-none rounded-2xl border border-border/60 bg-card px-5 py-4 text-base shadow-sm outline-none focus:border-pink"
                     />
+                    {/* Only the frustration step is skippable. The
+                        "Something else" detail step IS question 1, so
+                        letting it through empty would send an analysis with
+                        no situation at all. */}
                     <button
                       onClick={() => commit(step.key, freeText.trim())}
-                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"
+                      disabled={!step.optional && !freeText.trim()}
+                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90 disabled:opacity-40"
                     >
-                      {freeText.trim() ? "Continue" : "Skip this one"}
+                      {freeText.trim() ? "Continue" : step.optional ? "Skip this one" : "Continue"}
                       <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
@@ -309,7 +335,25 @@ function QuizPage() {
                   back. Skip it and you'll still get a read based on your answers.
                 </p>
 
-                <div className="mt-8 rounded-3xl border border-border/60 bg-card p-5 shadow-sm">
+                {/* Name lives here rather than as its own quiz step - it
+                    costs no extra screen, and by this point she's already
+                    invested six answers so a one-word optional field reads
+                    as personalisation, not as another hurdle. */}
+                <div className="mt-6">
+                  <label htmlFor="their-name" className="text-sm font-medium text-ink/75">
+                    What do you call them?
+                  </label>
+                  <input
+                    id="their-name"
+                    value={theirName}
+                    onChange={(e) => setTheirName(e.target.value)}
+                    maxLength={40}
+                    placeholder="Optional - first name or nickname"
+                    className="mt-2 w-full rounded-2xl border border-border/60 bg-card px-5 py-3.5 text-base shadow-sm outline-none focus:border-pink"
+                  />
+                </div>
+
+                <div className="mt-5 rounded-3xl border border-border/60 bg-card p-5 shadow-sm">
                   <label
                     {...getRootProps({ htmlFor: "vibecheck-quiz-upload" })}
                     className={`flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition ${
@@ -377,15 +421,15 @@ function QuizPage() {
 
                 {mutation.isError &&
                   (mutation.error instanceof FreeLimitError ? (
-                    <div className="mt-4 rounded-2xl border border-border/60 bg-card p-4 text-sm">
-                      <p className="text-ink/75">
-                        You've already used your free reads on this device - your last one is still saved and
-                        waiting for you.
+                    <div className="mt-4 rounded-2xl border border-purple/20 bg-purple-soft/50 p-4 text-sm text-ink/80">
+                      <p>
+                        You've already used your free reads on this device - your last one is still saved and waiting
+                        for you.
                       </p>
                       <Link
                         to="/results/$id"
                         params={{ id: mutation.error.existingAnalysisId }}
-                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-3.5 text-sm font-medium text-white shadow-md transition hover:opacity-90"
+                        className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-purple-deep px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
                       >
                         See my VibeCheck
                       </Link>
