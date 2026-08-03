@@ -48,7 +48,7 @@ function AccountPage() {
       trackEvent("login", { login_method: "returning_session" });
       setState("loading");
       try {
-        const result = await getMyReports();
+        const result = await getMyReports({ data: { ownerAnonId: getAnonId() } });
         if (cancelled) return;
         setData(result);
         setState("ready");
@@ -109,7 +109,7 @@ function AccountPage() {
         alert("Couldn't rename that report - try refreshing the page.");
         return;
       }
-      const refreshed = await getMyReports();
+      const refreshed = await getMyReports({ data: { ownerAnonId: getAnonId() } });
       setData(refreshed);
       setEditingId(null);
       setEditValue("");
@@ -212,7 +212,9 @@ function AccountPage() {
               </p>
               <button
                 onClick={async () => {
-                  const link = `${window.location.origin}/upload?ref=${referral.code}`;
+                  // /quiz, not /upload - a referred friend should land on
+                  // the live funnel, not the bare upload page.
+                  const link = `${window.location.origin}/quiz?ref=${referral.code}`;
                   await navigator.clipboard.writeText(link);
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
@@ -232,7 +234,7 @@ function AccountPage() {
 
           {/* Analyze another chat */}
           <Link
-            to="/upload"
+            to="/quiz"
             className="mt-6 flex items-center justify-center gap-2 rounded-full bg-pink px-6 py-4 text-sm font-medium text-white shadow-md transition hover:opacity-90"
           >
             <Heart className="h-4 w-4 fill-white" />
