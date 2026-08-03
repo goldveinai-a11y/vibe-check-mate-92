@@ -54,8 +54,13 @@ function AnalyzingPage() {
     // comes back a minute later lands straight on their finished report
     // instead of a frozen progress bar.
     refetchOnWindowFocus: true,
-    // Опрос должен продолжаться и в свёрнутой вкладке - иначе отчёт
-    // дописывается на сервере, а страница ожидания навсегда стоит на 92%.
+    // Without this the poll SILENTLY STOPS the moment the tab loses focus -
+    // react-query pauses interval refetching in the background by default.
+    // Caught in testing: the report finished server-side, but the page sat
+    // at 92% indefinitely because the tab wasn't focused while it ran, and
+    // the poll never resumed. On mobile, where switching apps mid-wait is
+    // completely normal, that default would have stranded a large share of
+    // users on a progress bar for a report that was already done.
     refetchIntervalInBackground: true,
   });
 
@@ -111,8 +116,12 @@ function AnalyzingPage() {
               <p className="mt-2 max-w-sm text-sm text-ink/60">
                 Nothing was charged and this one doesn't count against you - give it another go.
               </p>
+              {/* Back to /quiz, not /upload - the quiz is the live entry
+                  point now, and dropping someone onto the bare upload page
+                  after a failure means asking for screenshots again with
+                  none of the context they already gave. */}
               <Link
-                to="/upload"
+                to="/quiz"
                 className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"
               >
                 <Sparkles className="h-4 w-4" />
