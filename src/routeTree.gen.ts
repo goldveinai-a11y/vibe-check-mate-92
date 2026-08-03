@@ -9,79 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AccountRouteImport } from './routes/account'
-import { Route as CookiesRouteImport } from './routes/cookies'
-import { Route as ExampleRouteImport } from './routes/example'
-import { Route as MyReportsRouteImport } from './routes/my-reports'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as QuizRouteImport } from './routes/quiz'
-import { Route as RefundRouteImport } from './routes/refund'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ScienceRouteImport } from './routes/science'
-import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UploadRouteImport } from './routes/upload'
-import { Route as AnalyzingIdRouteImport } from './routes/analyzing.$id'
-import { Route as CheckinIdRouteImport } from './routes/checkin.$id'
-import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
-import { Route as CompareIdRouteImport } from './routes/compare.$id'
-import { Route as PaywallIdRouteImport } from './routes/paywall.$id'
-import { Route as ReportIdRouteImport } from './routes/report.$id'
-import { Route as ResultsIdRouteImport } from './routes/results.$id'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ScienceRouteImport } from './routes/science'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RefundRouteImport } from './routes/refund'
+import { Route as QuizRouteImport } from './routes/quiz'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as MyReportsRouteImport } from './routes/my-reports'
+import { Route as ExampleRouteImport } from './routes/example'
+import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as VsSlugRouteImport } from './routes/vs.$slug'
-import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
-import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
-import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as ResultsIdRouteImport } from './routes/results.$id'
+import { Route as ReportIdRouteImport } from './routes/report.$id'
+import { Route as PaywallIdRouteImport } from './routes/paywall.$id'
+import { Route as CompareIdRouteImport } from './routes/compare.$id'
+import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
+import { Route as CheckinIdRouteImport } from './routes/checkin.$id'
+import { Route as AnalyzingIdRouteImport } from './routes/analyzing.$id'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountRoute = AccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CookiesRoute = CookiesRouteImport.update({
-  id: '/cookies',
-  path: '/cookies',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExampleRoute = ExampleRouteImport.update({
-  id: '/example',
-  path: '/example',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyReportsRoute = MyReportsRouteImport.update({
-  id: '/my-reports',
-  path: '/my-reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QuizRoute = QuizRouteImport.update({
-  id: '/quiz',
-  path: '/quiz',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RefundRoute = RefundRouteImport.update({
-  id: '/refund',
-  path: '/refund',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScienceRoute = ScienceRouteImport.update({
-  id: '/science',
-  path: '/science',
+const UploadRoute = UploadRouteImport.update({
+  id: '/upload',
+  path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -89,44 +44,54 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UploadRoute = UploadRouteImport.update({
-  id: '/upload',
-  path: '/upload',
+const ScienceRoute = ScienceRouteImport.update({
+  id: '/science',
+  path: '/science',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyzingIdRoute = AnalyzingIdRouteImport.update({
-  id: '/analyzing/$id',
-  path: '/analyzing/$id',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CheckinIdRoute = CheckinIdRouteImport.update({
-  id: '/checkin/$id',
-  path: '/checkin/$id',
+const RefundRoute = RefundRouteImport.update({
+  id: '/refund',
+  path: '/refund',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CheckoutReturnRoute = CheckoutReturnRouteImport.update({
-  id: '/checkout/return',
-  path: '/checkout/return',
+const QuizRoute = QuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompareIdRoute = CompareIdRouteImport.update({
-  id: '/compare/$id',
-  path: '/compare/$id',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PaywallIdRoute = PaywallIdRouteImport.update({
-  id: '/paywall/$id',
-  path: '/paywall/$id',
+const MyReportsRoute = MyReportsRouteImport.update({
+  id: '/my-reports',
+  path: '/my-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReportIdRoute = ReportIdRouteImport.update({
-  id: '/report/$id',
-  path: '/report/$id',
+const ExampleRoute = ExampleRouteImport.update({
+  id: '/example',
+  path: '/example',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResultsIdRoute = ResultsIdRouteImport.update({
-  id: '/results/$id',
-  path: '/results/$id',
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VsSlugRoute = VsSlugRouteImport.update({
@@ -134,26 +99,61 @@ const VsSlugRoute = VsSlugRouteImport.update({
   path: '/vs/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicPaymentsWebhookRoute =
-  ApiPublicPaymentsWebhookRouteImport.update({
-    id: '/api/public/payments/webhook',
-    path: '/api/public/payments/webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
-  id: '/lovable/email/auth/preview',
-  path: '/lovable/email/auth/preview',
+const ResultsIdRoute = ResultsIdRouteImport.update({
+  id: '/results/$id',
+  path: '/results/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
-  id: '/lovable/email/auth/webhook',
-  path: '/lovable/email/auth/webhook',
+const ReportIdRoute = ReportIdRouteImport.update({
+  id: '/report/$id',
+  path: '/report/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaywallIdRoute = PaywallIdRouteImport.update({
+  id: '/paywall/$id',
+  path: '/paywall/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareIdRoute = CompareIdRouteImport.update({
+  id: '/compare/$id',
+  path: '/compare/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutReturnRoute = CheckoutReturnRouteImport.update({
+  id: '/checkout/return',
+  path: '/checkout/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckinIdRoute = CheckinIdRouteImport.update({
+  id: '/checkin/$id',
+  path: '/checkin/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyzingIdRoute = AnalyzingIdRouteImport.update({
+  id: '/analyzing/$id',
+  path: '/analyzing/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
     path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -346,74 +346,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account': {
-      id: '/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AccountRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cookies': {
-      id: '/cookies'
-      path: '/cookies'
-      fullPath: '/cookies'
-      preLoaderRoute: typeof CookiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/example': {
-      id: '/example'
-      path: '/example'
-      fullPath: '/example'
-      preLoaderRoute: typeof ExampleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-reports': {
-      id: '/my-reports'
-      path: '/my-reports'
-      fullPath: '/my-reports'
-      preLoaderRoute: typeof MyReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/quiz': {
-      id: '/quiz'
-      path: '/quiz'
-      fullPath: '/quiz'
-      preLoaderRoute: typeof QuizRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/refund': {
-      id: '/refund'
-      path: '/refund'
-      fullPath: '/refund'
-      preLoaderRoute: typeof RefundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/science': {
-      id: '/science'
-      path: '/science'
-      fullPath: '/science'
-      preLoaderRoute: typeof ScienceRouteImport
+    '/upload': {
+      id: '/upload'
+      path: '/upload'
+      fullPath: '/upload'
+      preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -423,60 +360,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/upload': {
-      id: '/upload'
-      path: '/upload'
-      fullPath: '/upload'
-      preLoaderRoute: typeof UploadRouteImport
+    '/science': {
+      id: '/science'
+      path: '/science'
+      fullPath: '/science'
+      preLoaderRoute: typeof ScienceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analyzing/$id': {
-      id: '/analyzing/$id'
-      path: '/analyzing/$id'
-      fullPath: '/analyzing/$id'
-      preLoaderRoute: typeof AnalyzingIdRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/checkin/$id': {
-      id: '/checkin/$id'
-      path: '/checkin/$id'
-      fullPath: '/checkin/$id'
-      preLoaderRoute: typeof CheckinIdRouteImport
+    '/refund': {
+      id: '/refund'
+      path: '/refund'
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/checkout/return': {
-      id: '/checkout/return'
-      path: '/checkout/return'
-      fullPath: '/checkout/return'
-      preLoaderRoute: typeof CheckoutReturnRouteImport
+    '/quiz': {
+      id: '/quiz'
+      path: '/quiz'
+      fullPath: '/quiz'
+      preLoaderRoute: typeof QuizRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compare/$id': {
-      id: '/compare/$id'
-      path: '/compare/$id'
-      fullPath: '/compare/$id'
-      preLoaderRoute: typeof CompareIdRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/paywall/$id': {
-      id: '/paywall/$id'
-      path: '/paywall/$id'
-      fullPath: '/paywall/$id'
-      preLoaderRoute: typeof PaywallIdRouteImport
+    '/my-reports': {
+      id: '/my-reports'
+      path: '/my-reports'
+      fullPath: '/my-reports'
+      preLoaderRoute: typeof MyReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/report/$id': {
-      id: '/report/$id'
-      path: '/report/$id'
-      fullPath: '/report/$id'
-      preLoaderRoute: typeof ReportIdRouteImport
+    '/example': {
+      id: '/example'
+      path: '/example'
+      fullPath: '/example'
+      preLoaderRoute: typeof ExampleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/results/$id': {
-      id: '/results/$id'
-      path: '/results/$id'
-      fullPath: '/results/$id'
-      preLoaderRoute: typeof ResultsIdRouteImport
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/vs/$slug': {
@@ -486,18 +437,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/payments/webhook': {
-      id: '/api/public/payments/webhook'
-      path: '/api/public/payments/webhook'
-      fullPath: '/api/public/payments/webhook'
-      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+    '/results/$id': {
+      id: '/results/$id'
+      path: '/results/$id'
+      fullPath: '/results/$id'
+      preLoaderRoute: typeof ResultsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/auth/preview': {
-      id: '/lovable/email/auth/preview'
-      path: '/lovable/email/auth/preview'
-      fullPath: '/lovable/email/auth/preview'
-      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+    '/report/$id': {
+      id: '/report/$id'
+      path: '/report/$id'
+      fullPath: '/report/$id'
+      preLoaderRoute: typeof ReportIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/paywall/$id': {
+      id: '/paywall/$id'
+      path: '/paywall/$id'
+      fullPath: '/paywall/$id'
+      preLoaderRoute: typeof PaywallIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/$id': {
+      id: '/compare/$id'
+      path: '/compare/$id'
+      fullPath: '/compare/$id'
+      preLoaderRoute: typeof CompareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/return': {
+      id: '/checkout/return'
+      path: '/checkout/return'
+      fullPath: '/checkout/return'
+      preLoaderRoute: typeof CheckoutReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkin/$id': {
+      id: '/checkin/$id'
+      path: '/checkin/$id'
+      fullPath: '/checkin/$id'
+      preLoaderRoute: typeof CheckinIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analyzing/$id': {
+      id: '/analyzing/$id'
+      path: '/analyzing/$id'
+      fullPath: '/analyzing/$id'
+      preLoaderRoute: typeof AnalyzingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/auth/webhook': {
@@ -507,11 +500,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
