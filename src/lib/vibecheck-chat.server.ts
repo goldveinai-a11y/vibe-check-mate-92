@@ -20,7 +20,7 @@ const SINGLE_CHAT_LIMIT = 10;
 const SUBSCRIBER_CHAT_LIMIT = 100;
 
 export function chatLimitForPlan(plan: string | null): number {
-  return plan === "monthly" || plan === "yearly" ? SUBSCRIBER_CHAT_LIMIT : SINGLE_CHAT_LIMIT;
+  return plan === "monthly" || plan === "yearly" || plan === "weekly" ? SUBSCRIBER_CHAT_LIMIT : SINGLE_CHAT_LIMIT;
 }
 
 export const CHAT_MESSAGE_MAX_LEN = 400;

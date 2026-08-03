@@ -41,7 +41,7 @@ export const Route = createFileRoute("/paywall/$id")({
   component: PaywallPage,
 });
 
-type Plan = "single" | "monthly" | "yearly";
+type Plan = "single" | "monthly" | "yearly" | "weekly";
 
 const FEATURES: Array<{ Icon: typeof PieChart; title: string; body: string }> = [
   { Icon: PieChart, title: "Compatibility Breakdown", body: "A category-by-category look at emotional, playful, and communication chemistry with clear scores." },
@@ -62,6 +62,9 @@ type Tier = {
   annualNote?: string;
   savingsBadge?: string;
   highlight?: boolean;
+  // Kept in the catalog (existing subscribers, Stripe prices and checkout
+  // logic all still reference these plans) but not rendered on the paywall.
+  hidden?: boolean;
 };
 
 const TIERS: Tier[] = [
@@ -75,6 +78,17 @@ const TIERS: Tier[] = [
     cta: "Get Only This Report - $1.99",
   },
   {
+    id: "weekly",
+    name: "Premium Weekly",
+    price: "$4",
+    cents: ".99",
+    priceValue: 4.99,
+    sub: "Unlimited chat uploads and unlimited AI chat about your results. Charged $4.99 today, renews every week. Cancel anytime.",
+    cta: "Get Unlimited - $4.99",
+    badge: "MOST POPULAR",
+    highlight: true,
+  },
+  {
     id: "monthly",
     name: "Premium Monthly",
     price: "$4",
@@ -82,8 +96,7 @@ const TIERS: Tier[] = [
     priceValue: 4.99,
     sub: "Get this report instantly + unlock 3 days of Unlimited Chat Uploads and unlimited AI chat about your results. Renews at $9.99/mo. Cancel anytime.",
     cta: "Get Report + Free Trial - $4.99",
-    badge: "MOST POPULAR",
-    highlight: true,
+    hidden: true,
   },
   {
     id: "yearly",
@@ -95,6 +108,7 @@ const TIERS: Tier[] = [
     cta: "Get Annual Access - $39.99",
     annualNote: "$3.33 / mo (billed annually)",
     savingsBadge: "SAVE 67%",
+    hidden: true,
   },
 ];
 
@@ -365,7 +379,7 @@ function PaywallPage() {
                 )}
               </div>
 
-              {TIERS.map((t) => (
+              {TIERS.filter((t) => !t.hidden).map((t) => (
                 <div
                   key={t.id}
                   className={`relative rounded-3xl border bg-card p-5 shadow-sm sm:p-6 ${
