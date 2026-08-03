@@ -68,25 +68,36 @@ const VERDICT_STYLES = {
   danger: { bg: "bg-destructive", chip: "bg-white/15", icon: AlertTriangle },
 };
 
-function ScoreBar({ label, value, Icon, tone = "pink" }: { label: string; value: number; Icon: typeof Heart; tone?: "pink" | "mint" | "purple" | "danger" }) {
+function ScoreBar({ label, value, Icon, tone = "pink", locked = false }: { label: string; value: number; Icon: typeof Heart; tone?: "pink" | "mint" | "purple" | "danger"; locked?: boolean }) {
   const barColor = { pink: "bg-pink", mint: "bg-mint", purple: "bg-purple", danger: "bg-destructive" }[tone];
   const chipColor = { pink: "text-pink", mint: "text-mint", purple: "text-purple", danger: "text-destructive" }[tone];
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+    <div className="relative rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className={`h-4 w-4 ${chipColor}`} />
           <span className="text-sm font-medium text-ink/80">{label}</span>
         </div>
-        <span className={`font-serif text-xl ${chipColor}`}>{value}%</span>
+        {locked ? (
+          <span className="inline-flex items-center gap-1 text-ink/35">
+            <Lock className="h-3.5 w-3.5" />
+            <span className="font-serif text-xl blur-[5px] select-none">{value}%</span>
+          </span>
+        ) : (
+          <span className={`font-serif text-xl ${chipColor}`}>{value}%</span>
+        )}
       </div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className={`h-full ${barColor}`}
-        />
+        {locked ? (
+          <div className="h-full w-full bg-gradient-to-r from-muted-foreground/20 to-muted-foreground/5" />
+        ) : (
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${value}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className={`h-full ${barColor}`}
+          />
+        )}
       </div>
     </div>
   );
@@ -304,13 +315,22 @@ function ResultsPage() {
             </p>
           </div>
 
+          {/* Two open, four locked. Previously all six numbers were given
+              away here, which meant the free preview answered the question
+              she came with - and a resolved question doesn't convert. Two
+              are enough to prove the read is real and specific; the four
+              that carry the most emotional weight (is he flirting, is this
+              toxic, is this healthy) are exactly the ones worth paying to
+              see. Note the values still travel to the client inside
+              preview_json - if that ever needs to be a hard boundary rather
+              than a UI one, trim them in buildPreview instead. */}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <ScoreBar label="Reciprocity" value={s.reciprocity_score} Icon={Users} tone="pink" />
             <ScoreBar label="Emotional Warmth" value={s.emotional_warmth} Icon={Heart} tone="pink" />
-            <ScoreBar label="Flirting Signals" value={s.flirting_signals} Icon={Flame} tone="purple" />
-            <ScoreBar label="Response Consistency" value={s.response_consistency} Icon={TrendingUp} tone="mint" />
-            <ScoreBar label="Conversation Health" value={s.conversation_health} Icon={Activity} tone="mint" />
-            <ScoreBar label="Toxicity Level" value={s.toxicity_score} Icon={AlertTriangle} tone="danger" />
+            <ScoreBar label="Flirting Signals" value={s.flirting_signals} Icon={Flame} tone="purple" locked />
+            <ScoreBar label="Response Consistency" value={s.response_consistency} Icon={TrendingUp} tone="mint" locked />
+            <ScoreBar label="Conversation Health" value={s.conversation_health} Icon={Activity} tone="mint" locked />
+            <ScoreBar label="Toxicity Level" value={s.toxicity_score} Icon={AlertTriangle} tone="danger" locked />
           </div>
 
           <div className="mt-5 rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm">
@@ -383,6 +403,45 @@ function ResultsPage() {
             </div>
           )}
 
+          {/* The single most valuable thing behind the paywall, and until
+              now it wasn't promised anywhere on this page - not even as one
+              of the six locked cards below. Everything else here is
+              analysis, which is interesting; this is the only part that is
+              a TOOL. It's also the one thing the group chat genuinely
+              cannot produce: friends will tell her how she should feel,
+              they won't hand her a sentence to paste into the thread. */}
+          <div className="mt-8 overflow-hidden rounded-3xl bg-ink p-6 text-white shadow-lg sm:p-8">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/60">
+              <MessageCircle className="h-4 w-4" />
+              Written and waiting
+            </div>
+            <h3 className="font-serif mt-3 text-2xl leading-tight sm:text-3xl">
+              We wrote exactly what to send back
+            </h3>
+            <p className="mt-2 text-sm text-white/70">
+              Two versions - one warm, one that pulls back. Copy, paste, done.
+            </p>
+
+            <div className="relative mt-5 space-y-2">
+              <div className="rounded-2xl rounded-br-md bg-white/10 p-3.5">
+                <p className="select-none text-sm leading-relaxed text-white/80 blur-[4px]">
+                  hey, was actually thinking about what you said the other day
+                </p>
+              </div>
+              <div className="rounded-2xl rounded-br-md bg-white/10 p-3.5">
+                <p className="select-none text-sm leading-relaxed text-white/80 blur-[4px]">
+                  no worries, let me know when things calm down on your end
+                </p>
+              </div>
+              <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-ink">
+                  <Lock className="h-3 w-3" />
+                  Unlock to read
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-10 flex flex-col items-center text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-pink-soft px-4 py-2 text-xs font-medium text-ink/80">
               <Lock className="h-3.5 w-3.5" />
@@ -395,11 +454,11 @@ function ResultsPage() {
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <LockedCard title="Hardcore Analytics" items={["Initiative ratio", "Engagement % breakdown", "Timeline shifts over the chat", "Communication style verdict"]} />
             <LockedCard title={`All ${preview.red_flags_count} Red Flags`} items={["Verbatim quote receipts", "Why each is a pattern", "Which ones are dealbreakers"]} />
+            <LockedCard title="The 4 Locked Scores" items={["Flirting signals", "Response consistency", "Conversation health", "Toxicity level"]} />
             <LockedCard title="Psychological Analysis" items={["Attachment style prediction", "Gottman Four Horsemen check", "Power dynamic read"]} />
             <LockedCard title="Future Outlook" items={["3-5 sentence forecast", "What happens if nothing changes", "The one move that flips it"]} />
-            <LockedCard title="Their Type in 3 Words" items={["The 3 words that define them", "Why they land that way", "How to work with (or around) it"]} />
+            <LockedCard title="Hardcore Analytics" items={["Initiative ratio", "Engagement % breakdown", "Timeline shifts over the chat", "Communication style verdict"]} />
             <LockedCard title="Vibe Decay Trajectory" items={["Weekly % interest change", "Cooling / rising / nose-diving", "Realistic window if nothing changes"]} />
           </div>
 
