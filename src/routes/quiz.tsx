@@ -387,13 +387,24 @@ function QuizPage() {
                     </div>
                   )}
 
-                  <div className="mt-5 flex items-start gap-3 rounded-2xl bg-mint-soft/60 p-4 text-sm text-ink/80">
-                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-mint text-white">
-                      <ShieldCheck className="h-4 w-4" />
+                  {/* This is the moment of maximum fear on the whole site -
+                      she is about to hand over screenshots of a real
+                      person's private messages. One quiet line of small
+                      print wasn't carrying that weight, so the promise is
+                      spelled out as three specific commitments rather than
+                      one vague reassurance. */}
+                  <div className="mt-5 rounded-2xl bg-mint-soft/60 p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-mint text-white">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      Zero receipts kept
                     </div>
-                    <p className="min-w-0">
-                      Zero receipts kept: read once, deleted the second your report is ready.
-                    </p>
+                    <ul className="mt-3 space-y-1.5 text-sm text-ink/75">
+                      <li>Read once, then deleted - the second your report is ready.</li>
+                      <li>Never stored, never shared, never used to train anything.</li>
+                      <li>Nothing is ever sent to the person in the screenshots.</li>
+                    </ul>
                   </div>
 
                   <button

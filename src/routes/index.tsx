@@ -130,10 +130,16 @@ function Landing() {
             </div>
           </div>
 
+          {/* "Private & secure" is what every product claims and nobody
+              believes. A specific action - read once, then deleted - is a
+              claim that can be checked, and it's the one thing standing
+              between a visitor and handing over someone else's private
+              messages. The "not required" line matters just as much: it
+              removes the barrier entirely rather than reassuring about it. */}
           <div className="mt-6 flex flex-col items-center gap-2 text-sm text-ink/60">
             <span className="inline-flex items-center gap-2">
               <Lock className="h-4 w-4 text-mint" />
-              Private &amp; secure — screenshots are never stored or shared
+              Screenshots are read once, then deleted — and they're optional anyway
             </span>
             {/* Saying it plainly. The old page never used the word "free"
                 anywhere near the entry point, so nothing told a first-time
