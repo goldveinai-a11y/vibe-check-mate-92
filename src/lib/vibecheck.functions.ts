@@ -200,6 +200,7 @@ const QuizAnswersSchema = z.object({
   whoTextsFirst: z.string().min(1).max(120),
   replySpeed: z.string().min(1).max(120),
   frustration: z.string().max(400).optional(),
+  theirName: z.string().max(40).optional(),
 });
 
 // Images are optional now: a quiz-only run is a first-class path, not a

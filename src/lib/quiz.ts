@@ -21,7 +21,25 @@ export type QuizAnswers = {
   whoTextsFirst: string;
   replySpeed: string;
   frustration?: string;
+  // Optional, collected on the screenshot step rather than as its own
+  // question so it costs no extra step. Worth having: a report that says
+  // "Jake replies in bursts" lands far harder than "they reply in bursts",
+  // and it's also what makes a history list of several reports readable
+  // instead of three rows all titled "Chief Logistics Officer".
+  theirName?: string;
 };
+
+// Escape hatch on question 1. Without it, anyone whose situation isn't one
+// of the four listed hits a dead end on the very first tap - and the four
+// options, while they cover the common cases (ghosting, hot/cold, no
+// plans, unreadable), miss plenty: a fight, someone else in the picture,
+// outright manipulation. Extending the list to 7-8 options would just
+// trade a coverage problem for a choice-paralysis problem on the most
+// important screen on the site, so instead this one option opens a free
+// text field on /quiz and overwrites `situation` with whatever she types.
+// It doubles as free VOC research: the answers here are a direct list of
+// the pains the fixed options are missing.
+export const SITUATION_OTHER = "Something else";
 
 export type QuizStep = {
   key: keyof QuizAnswers;
@@ -40,7 +58,22 @@ export type QuizStep = {
 export const QUIZ_STEP_ONE: QuizStep = {
   key: "situation",
   question: "What's going on with them?",
-  options: ["They went quiet on me", "Hot and cold", "They never make plans", "I can't read them"],
+  options: [
+    "They went quiet on me",
+    "Hot and cold",
+    "They never make plans",
+    "I can't read them",
+    SITUATION_OTHER,
+  ],
+};
+
+// Shown on /quiz only when SITUATION_OTHER was picked, replacing the
+// canned answer with her own words. Not part of the step count - it
+// substitutes for question 1 rather than adding to it.
+export const SITUATION_DETAIL_STEP: QuizStep = {
+  key: "situation",
+  question: "Tell me what's going on",
+  placeholder: "One line is enough - what's actually bothering you?",
 };
 
 export const QUIZ_STEPS_REST: QuizStep[] = [

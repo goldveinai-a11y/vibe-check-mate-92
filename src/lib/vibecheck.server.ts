@@ -11,6 +11,7 @@ export type QuizAnswers = {
   whoTextsFirst: string;
   replySpeed: string;
   frustration?: string;
+  theirName?: string;
 };
 
 function formatQuiz(quiz: QuizAnswers): string {
@@ -23,6 +24,14 @@ function formatQuiz(quiz: QuizAnswers): string {
   ];
   if (quiz.frustration?.trim()) {
     lines.push(`- What frustrates her most, in her own words: "${quiz.frustration.trim()}"`);
+  }
+  if (quiz.theirName?.trim()) {
+    // Using the name throughout is the cheapest personalisation available:
+    // "Jake replies in bursts" reads as a report about her actual person,
+    // "they reply in bursts" reads as a template.
+    lines.push(
+      `- What she calls them: ${quiz.theirName.trim()} - USE THIS NAME throughout the report instead of "them" or "they" wherever it reads naturally.`,
+    );
   }
   return lines.join("\n");
 }
