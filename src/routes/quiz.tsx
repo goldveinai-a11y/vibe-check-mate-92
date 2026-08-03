@@ -331,7 +331,7 @@ function QuizPage() {
               >
                 <h1 className="font-serif text-3xl leading-tight sm:text-4xl">Almost there.</h1>
                 <p className="mt-3 text-base text-ink/70">
-                  Adding screenshots lets us read their actual messages - what they meant, and exactly what to say
+                  Adding screenshots lets us read his actual messages - what he meant, and exactly what to say
                   back. Skip it and you'll still get a read based on your answers.
                 </p>
 
@@ -341,7 +341,7 @@ function QuizPage() {
                     as personalisation, not as another hurdle. */}
                 <div className="mt-6">
                   <label htmlFor="their-name" className="text-sm font-medium text-ink/75">
-                    What do you call them?
+                    What do you call him?
                   </label>
                   <input
                     id="their-name"
