@@ -194,7 +194,7 @@ export function ReportChat({
     }
   };
 
-  const isUnlimitedPlan = plan === "monthly" || plan === "yearly";
+  const isUnlimitedPlan = plan === "monthly" || plan === "yearly" || plan === "weekly";
   const questionsUsed = Math.ceil(messages.length / 2);
   const remaining = Math.max(0, limit - questionsUsed);
   const atLimit = remaining <= 0 && hydrated;
