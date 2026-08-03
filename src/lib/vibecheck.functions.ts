@@ -102,8 +102,8 @@ export const createAnalysis = createServerFn({ method: "POST" })
     // match), so nothing stops someone from just re-running new
     // screenshots forever instead of paying.
     //
-    // Rule: exactly one free (never-paid) analysis per anon id. Two
-    // intentional bypasses:
+    // Rule: at most FREE_ANALYSES_PER_DEVICE free (never-paid) analyses per
+    // anon id. Two intentional bypasses:
     //  - An active/trialing subscriber gets unlimited uploads - that's the
     //    literal Premium Monthly pitch ("3 days of Unlimited Chat
     //    Uploads"), so this guard must never clash with a plan someone
@@ -135,12 +135,17 @@ export const createAnalysis = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
 
-    // Anon id живёт в localStorage и меняется при смене устройства, браузера
-    // или очистке данных сайта. Из-за этого активный подписчик выглядит как
-    // новый аноним и упирается в бесплатный лимит, от которого он платит,
-    // чтобы быть свободным. Поэтому дополнительно проверяем подписку по
-    // подтверждённому email из сессии Supabase - той же устойчивой
-    // идентичности, которую checkEntitlement использует в этом же файле.
+    // The anon id alone is not enough to recognise a paying subscriber. It
+    // lives in localStorage, so it changes whenever someone switches
+    // browser or device, or clears site data - at which point an ACTIVE
+    // subscriber looks exactly like a fresh anonymous visitor and gets
+    // blocked by a free-tier cap they're paying to be exempt from. Hit
+    // during testing by a live Premium Monthly subscriber, which is about
+    // the worst possible person to block.
+    //
+    // So fall back to the verified email on their Supabase session, the
+    // same durable identity checkEntitlement uses to survive device
+    // switches everywhere else in this file.
     let subscriberBypass = Boolean(activeSub);
     if (!subscriberBypass) {
       const { getVerifiedEmail } = await import("./optional-auth.server");
@@ -168,7 +173,7 @@ export const createAnalysis = createServerFn({ method: "POST" })
       const everPaid = (priorReady ?? []).some((r) => r.paid === true);
       if (!everPaid && (priorReady ?? []).length >= FREE_ANALYSES_PER_DEVICE) {
         return {
-          error: "You've already used your free VibeCheck on this device.",
+          error: "You've already used your free VibeChecks on this device.",
           code: "free_limit_reached",
           existingAnalysisId: priorReady![0].id as string,
         };
