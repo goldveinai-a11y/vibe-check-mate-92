@@ -14,6 +14,8 @@ import {
   Sparkles,
   Copy,
   CheckCircle2,
+  Quote,
+  Share2,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -57,6 +59,27 @@ const SCORES = [
 const BAR = { pink: "bg-pink", mint: "bg-mint", purple: "bg-purple", danger: "bg-destructive" };
 const TEXT = { pink: "text-pink", mint: "text-mint", purple: "text-purple", danger: "text-destructive" };
 
+// Radar axes. Toxicity is inverted (100 - value) so that, as the caption
+// under the chart says, higher genuinely is better on every axis - a raw
+// toxicity score would point the wrong way and quietly make a bad
+// conversation look like a good one.
+const SEVEN_AXES = [
+  { label: "Interest", value: 34 },
+  { label: "Reciprocity", value: 28 },
+  { label: "Warmth", value: 41 },
+  { label: "Flirting", value: 37 },
+  { label: "Consistency", value: 22 },
+  { label: "Health", value: 39 },
+  { label: "Non-toxic", value: 74 },
+];
+
+function pointOnRadar(index: number, ratio: number): string {
+  // Start at 12 o'clock and go clockwise, matching the in-app chart.
+  const angle = (Math.PI * 2 * index) / SEVEN_AXES.length - Math.PI / 2;
+  const radius = 90 * ratio;
+  return `${(110 + radius * Math.cos(angle)).toFixed(1)},${(110 + radius * Math.sin(angle)).toFixed(1)}`;
+}
+
 function ExamplePage() {
   return (
     <main className="min-h-screen bg-cream text-ink">
@@ -65,7 +88,12 @@ function ExamplePage() {
       <section className="px-5 pt-4 pb-16">
         <div className="mx-auto max-w-2xl">
           <div className="text-center">
-            <span className="inline-flex items-center gap-2 rounded-full bg-purple-soft px-4 py-2 text-xs font-medium text-purple-deep">
+            <span className="inline-flex items-center gap-2 rounded-full bg-mint px-4 py-2 text-xs font-medium text-white">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Premium Report Unlocked
+            </span>
+            <br />
+            <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-purple-soft px-4 py-2 text-xs font-medium text-purple-deep">
               <Sparkles className="h-3.5 w-3.5" />
               Example report
             </span>
@@ -113,6 +141,82 @@ function ExamplePage() {
             ))}
           </div>
 
+          {/* Seven-axis radar, same as the real report. Built inline as SVG
+              rather than pulled from the app's chart component, because a
+              marketing page shouldn't take a dependency on report internals
+              that will keep changing. */}
+          <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 text-center shadow-sm">
+            <h3 className="font-serif text-2xl">The shape of it</h3>
+            <svg viewBox="0 0 220 220" className="mx-auto mt-4 h-56 w-56" role="img" aria-label="Seven-axis compatibility radar">
+              {[1, 0.75, 0.5, 0.25].map((r) => (
+                <polygon
+                  key={r}
+                  points={SEVEN_AXES.map((_, i) => pointOnRadar(i, r)).join(" ")}
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-border"
+                  strokeWidth="1"
+                />
+              ))}
+              <polygon
+                points={SEVEN_AXES.map((a, i) => pointOnRadar(i, a.value / 100)).join(" ")}
+                className="fill-pink/25 stroke-pink"
+                strokeWidth="2"
+              />
+              {SEVEN_AXES.map((a, i) => {
+                const [x, y] = pointOnRadar(i, a.value / 100).split(",").map(Number);
+                return <circle key={a.label} cx={x} cy={y} r="3" className="fill-pink" />;
+              })}
+            </svg>
+            <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
+              {SEVEN_AXES.map((a) => (
+                <div key={a.label} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-ink/55">{a.label}</span>
+                  <span className="shrink-0 font-medium text-purple-deep">{a.value}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-sm text-ink/55">Higher is better across all seven axes.</p>
+          </div>
+
+          {/* Viral keywords */}
+          <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-pink">
+              <Quote className="h-4 w-4" />
+              The words moving the needle
+            </div>
+            <div className="mt-4 space-y-4">
+              {[
+                {
+                  word: "sometime",
+                  type: "red" as const,
+                  impact: "Appears three times, never once with a day attached. This is the whole pattern in one word.",
+                },
+                {
+                  word: "miss talking to you",
+                  type: "beige" as const,
+                  impact: "Real warmth, but it landed at 11:40pm and was never followed up. Feels bigger than it is.",
+                },
+                {
+                  word: "how'd the thing go",
+                  type: "green" as const,
+                  impact: "He retained a detail from four days earlier without being reminded. Genuinely a good sign.",
+                },
+              ].map((k) => (
+                <div key={k.word}>
+                  <span
+                    className={`font-serif text-2xl ${
+                      k.type === "green" ? "text-mint" : k.type === "beige" ? "text-ink/60" : "text-destructive"
+                    }`}
+                  >
+                    "{k.word}"
+                  </span>
+                  <p className="mt-1 text-sm text-ink/75">{k.impact}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Hard numbers */}
           <div className="mt-5 rounded-3xl bg-ink p-6 text-white shadow-lg">
             <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-white/60">
@@ -136,7 +240,30 @@ function ExamplePage() {
                 He asks a follow-up question in 11% of his replies. Above 40% is what genuine curiosity usually
                 looks like.
               </li>
+              <li>
+                <span className="font-medium text-white">Communication style:</span> asymmetric engagement with
+                avoidant leaning - high emotional expressiveness, low conversational reciprocity.
+              </li>
             </ul>
+          </div>
+
+          {/* your_voice_style. One of the very few parts of the report that
+              is about HER rather than about him, and it was missing from
+              this page entirely - which quietly made the product look like
+              it only analyses the other person. */}
+          <div className="mt-5 rounded-3xl border border-purple/25 bg-purple-soft/40 p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
+              <Brain className="h-4 w-4" />
+              Your voice style
+            </div>
+            <h3 className="font-serif mt-3 text-xl leading-tight">
+              Warm, generous, and doing most of the structural work
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-ink/75">
+              Long, layered messages with multiple threads in one send. You ask questions constantly, mirror their
+              energy upward rather than matching it, and reliably rescue any silence longer than a day. That's a
+              generous way to text - and it's exactly why the imbalance here is invisible from the inside.
+            </p>
           </div>
 
           {/* Flags */}
@@ -151,6 +278,18 @@ function ExamplePage() {
             <p className="mt-2 text-sm text-ink/80">
               Unprompted callback to something you mentioned four days earlier. Low effort to send, but it means he
               retained it - a genuinely good sign in an otherwise thin thread.
+            </p>
+          </div>
+
+          <div className="mt-3 rounded-3xl border border-mint/40 bg-mint-soft p-5 shadow-sm">
+            <span className="rounded-full bg-mint px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+              Green Flag
+            </span>
+            <h4 className="font-serif mt-3 text-xl">He closes warmly, every time</h4>
+            <p className="mt-2 text-sm italic text-ink/70">"sleep well, talk tomorrow x"</p>
+            <p className="mt-2 text-sm text-ink/80">
+              Every conversation ends with warmth rather than trailing off. It costs him nothing, but people who are
+              fully checked out don't bother with the sign-off - they just stop replying.
             </p>
           </div>
 
@@ -308,6 +447,24 @@ function ExamplePage() {
                 <p className="text-[10px] uppercase tracking-widest text-ink/50">Window</p>
                 <p className="font-serif text-2xl leading-tight">3-5 weeks</p>
               </div>
+              <div className="mt-2 rounded-2xl bg-muted/40 p-4">
+                <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-ink/50">
+                  <span>Trend</span>
+                  <span>3-5 weeks</span>
+                </div>
+                <svg viewBox="0 0 120 40" className="mt-2 h-12 w-full" role="img" aria-label="Declining trend line">
+                  <polyline
+                    points="0,8 24,12 48,15 72,22 96,28 120,34"
+                    fill="none"
+                    className="stroke-pink"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+              <p className="mt-3 text-xs text-ink/60">
+                Real check-ins replace this estimate as you add them over time.
+              </p>
             </div>
           </div>
 
@@ -334,6 +491,16 @@ function ExamplePage() {
               <p className="mt-2 text-sm text-white/85">
                 Six words per message and somehow still keeping you up at night.
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium">
+                  <Share2 className="h-3 w-3" />
+                  Share to Stories
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium">
+                  <Award className="h-3 w-3" />
+                  Save as Profile Badge
+                </span>
+              </div>
             </div>
             <div className="rounded-3xl border border-purple/20 bg-purple-soft p-6 shadow-sm">
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-purple-deep">
@@ -359,6 +526,25 @@ function ExamplePage() {
             <p className="mx-auto mt-2 max-w-sm text-sm text-ink/70">
               You know exactly where you stand. Whatever happens next, you're not walking in blind anymore.
             </p>
+          </div>
+
+          {/* The actions that close out a real report. Included because
+              they're part of what someone is buying - the report isn't a
+              dead end, it's something you can revisit, compare and share. */}
+          <div className="mt-4 flex flex-col gap-2">
+            {[
+              { Icon: Users, label: "Compare Vibes with a friend" },
+              { Icon: Sparkles, label: "Analyze another chat" },
+              { Icon: Copy, label: "Send this report to a friend" },
+            ].map((a) => (
+              <span
+                key={a.label}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-border/60 bg-card px-5 py-3 text-sm font-medium text-ink/75"
+              >
+                <a.Icon className="h-4 w-4" />
+                {a.label}
+              </span>
+            ))}
           </div>
 
           {/* CTA */}

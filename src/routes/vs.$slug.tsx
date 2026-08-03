@@ -60,31 +60,53 @@ function VersusPage() {
             <p className="mt-4 text-base text-ink/70">{c.summary}</p>
           </div>
 
-          <div className="mt-8 rounded-3xl bg-ink p-6 text-white shadow-lg sm:p-8">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">
-              The short version
-            </p>
-            <p className="font-serif mt-3 text-2xl leading-tight sm:text-3xl">{c.difference}</p>
+          {/* Split into two halves so the contrast is visual, not just
+              textual - the thing they do, dimmed; the thing we do, bright.
+              The old single grey paragraph made both sides read as equally
+              weighted, which is the opposite of what a comparison page is
+              for. */}
+          <div className="mt-8 overflow-hidden rounded-3xl bg-ink text-white shadow-lg">
+            <div className="border-b border-white/10 p-6 sm:p-8">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/40">
+                {c.name} answers
+              </p>
+              <p className="font-serif mt-2 text-2xl leading-tight text-white/55">{c.difference.split(". ")[0]}.</p>
+            </div>
+            <div className="bg-pink p-6 sm:p-8">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-white/70">
+                VibeCheck answers
+              </p>
+              <p className="font-serif mt-2 text-2xl leading-tight sm:text-3xl">
+                {c.difference.split(". ").slice(1).join(". ")}
+              </p>
+            </div>
           </div>
 
-          {/* Comparison table */}
-          <div className="mt-8 overflow-hidden rounded-3xl border border-border/60">
-            <div className="grid grid-cols-[1fr_1fr] bg-muted/40 text-xs font-semibold uppercase tracking-widest text-ink/55 sm:grid-cols-[1.1fr_1fr_1fr]">
-              <div className="hidden px-4 py-3 sm:block" />
-              <div className="px-4 py-3 text-purple-deep">VibeCheck</div>
-              <div className="border-l border-border/60 px-4 py-3">{c.name}</div>
-            </div>
+          {/* One card per comparison point, ours always first and visually
+              dominant. The earlier version was a real two-column table,
+              which collapsed into an unreadable mess on a phone - a full
+              width label strip, then two thin columns of grey text with
+              nothing marking which side was ours. Since almost all traffic
+              here is mobile, the card layout IS the layout; on wider
+              screens the two halves simply sit side by side. */}
+          <div className="mt-8 space-y-3">
             {c.rows.map((row) => (
-              <div key={row.feature} className="border-t border-border/60">
-                <div className="bg-muted/20 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink/50 sm:hidden">
-                  {row.feature}
-                </div>
-                <div className="grid grid-cols-[1fr_1fr] text-sm sm:grid-cols-[1.1fr_1fr_1fr]">
-                  <div className="hidden px-4 py-3.5 text-xs font-medium uppercase tracking-wide text-ink/50 sm:block">
-                    {row.feature}
+              <div key={row.feature} className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-ink/45">{row.feature}</p>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-purple/25 bg-purple-soft/50 p-4">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-purple-deep">
+                      <Check className="h-3.5 w-3.5" />
+                      VibeCheck
+                    </div>
+                    <p className="mt-2 text-[15px] font-medium leading-snug text-ink">{row.us}</p>
                   </div>
-                  <div className="px-4 py-3.5 font-medium text-ink/85">{row.us}</div>
-                  <div className="border-l border-border/60 px-4 py-3.5 text-ink/60">{row.them}</div>
+
+                  <div className="rounded-2xl border border-border/50 bg-muted/25 p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-ink/40">{c.name}</p>
+                    <p className="mt-2 text-[15px] leading-snug text-ink/55">{row.them}</p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -93,8 +115,8 @@ function VersusPage() {
           {/* The honest half. Load-bearing: a comparison page that claims
               to win everything reads as an ad and converts badly. */}
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-sm">
-              <h2 className="font-serif text-xl">Pick {c.name} if…</h2>
+            <div className="order-2 rounded-3xl border border-border/50 bg-muted/25 p-5 sm:order-1">
+              <h2 className="font-serif text-xl text-ink/70">Pick {c.name} if…</h2>
               <ul className="mt-4 space-y-3">
                 {c.betterForThem.map((item) => (
                   <li key={item} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-sm text-ink/75">
@@ -104,8 +126,10 @@ function VersusPage() {
                 ))}
               </ul>
             </div>
-            <div className="rounded-3xl border border-purple/25 bg-purple-soft/40 p-5 shadow-sm">
-              <h2 className="font-serif text-xl">Pick VibeCheck if…</h2>
+            {/* Ours first on mobile - on a phone these stack, and the one
+                people read is the one on top. */}
+            <div className="order-1 rounded-3xl border-2 border-purple/30 bg-purple-soft/60 p-5 shadow-sm sm:order-2">
+              <h2 className="font-serif text-xl text-purple-deep">Pick VibeCheck if…</h2>
               <ul className="mt-4 space-y-3">
                 {c.betterForUs.map((item) => (
                   <li key={item} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-sm text-ink/80">
