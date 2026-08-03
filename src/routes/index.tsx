@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Flame,
+  FileText,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -152,7 +153,9 @@ function Landing() {
         <div className="mx-auto max-w-2xl">
           <div className="text-center">
             <h2 className="font-serif text-3xl sm:text-4xl">Here's what you get</h2>
-            <p className="mt-3 text-base text-ink/70">A straight read, with the receipts.</p>
+            <p className="mt-3 text-base text-ink/70">
+              A straight read, with the receipts - eleven sections of it.
+            </p>
           </div>
 
           <div className="mt-8 rounded-3xl border border-border/60 bg-card p-4 shadow-lg sm:p-5">
@@ -194,12 +197,49 @@ function Landing() {
               <p className="mt-1 select-none text-sm italic text-ink/60 blur-[3px]">
                 "the exact quote from their messages"
               </p>
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card to-transparent" />
             </div>
+
+            {/* The mockup stops mid-card on purpose. Without this the
+                snippet above reads as the ENTIRE product - two cards and a
+                score - which badly undersells a report that runs eight
+                more sections. A hard cut plus a count is the clearest way
+                to say "this keeps going" without pasting the whole thing
+                onto the landing page. */}
+            <div className="relative -mt-8 h-16">
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/90 to-transparent" />
+            </div>
+            <p className="-mt-2 text-center text-xs font-medium uppercase tracking-widest text-ink/45">
+              + 8 more sections
+            </p>
           </div>
 
+          <div className="mt-6 grid gap-x-6 gap-y-2 text-sm text-ink/70 sm:grid-cols-2">
+            {[
+              "Every red flag, with the exact quote",
+              "Their attachment style, explained",
+              "Gottman pattern breakdown",
+              "Hard numbers: who initiates, reply times",
+              "Forecast if nothing changes",
+              "Two replies written for you to send",
+            ].map((item) => (
+              <div key={item} className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-mint" />
+                <span className="min-w-0">{item}</span>
+              </div>
+            ))}
+          </div>
+
+          <Link
+            to="/example"
+            onClick={() => trackEvent("cta_clicked", { position: "see_example" })}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full border border-purple/30 bg-purple-soft/50 px-6 py-3.5 text-sm font-medium text-purple-deep transition hover:bg-purple-soft"
+          >
+            <FileText className="h-4 w-4" />
+            See a full example report
+          </Link>
+
           <p className="mt-4 text-center text-xs text-ink/50">
-            Example report. Yours is built from your own answers.
+            Example only. Yours is built from your own answers.
           </p>
         </div>
       </section>
