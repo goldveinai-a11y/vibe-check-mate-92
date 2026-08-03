@@ -24,6 +24,20 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/")({
+  // The landing page had no head block at all, so it inherited whatever the
+  // root route set - meaning the one page most likely to be shared, linked
+  // or indexed had no title or description of its own. Written in the
+  // decoder framing rather than the old "compatibility score" one.
+  head: () => ({
+    meta: [
+      { title: "VibeCheck - decode what they actually meant" },
+      {
+        name: "description",
+        content:
+          "Six quick questions and an honest read on where you stand: their real interest level, the red flags, and what their messages actually mean. First read free.",
+      },
+    ],
+  }),
   component: Landing,
 });
 
@@ -63,9 +77,12 @@ function Landing() {
       {/* Hero */}
       <section className="px-5 pt-6 pb-14 sm:pt-10 sm:pb-20">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+          {/* "Insights" is what a B2B dashboard sells. What she actually
+              wants is a decoder for one specific person's behaviour, so the
+              badge says that instead. */}
           <span className="inline-flex items-center gap-2 rounded-full bg-purple-soft px-4 py-2 text-xs font-medium text-purple-deep sm:text-sm">
             <Sparkles className="h-3.5 w-3.5" />
-            AI-powered relationship insights
+            Decode what they actually meant
           </span>
 
           {/* Names the moment instead of the category. The old headline
@@ -187,6 +204,45 @@ function Landing() {
         </div>
       </section>
 
+      {/* Names the real competitor out loud. It isn't another app - it's the
+          group chat, which is free, instant, and emotionally satisfying.
+          Pretending that comparison isn't happening doesn't stop her making
+          it; the only honest way to win it is to be clear about the one
+          thing friends structurally cannot do, which is be neutral about
+          someone they've already decided they hate. */}
+      <section className="px-5 pb-16 sm:pb-24">
+        <div className="mx-auto max-w-2xl">
+          <div className="text-center">
+            <h2 className="font-serif text-3xl sm:text-4xl">Why not just ask your friends?</h2>
+            <p className="mt-3 text-base text-ink/70">
+              Do both. They're just answering a different question.
+            </p>
+          </div>
+
+          <div className="mt-8 overflow-hidden rounded-3xl border border-border/60">
+            <div className="grid grid-cols-2 bg-muted/40 text-xs font-semibold uppercase tracking-widest text-ink/55">
+              <div className="px-4 py-3">The group chat</div>
+              <div className="border-l border-border/60 px-4 py-3 text-purple-deep">VibeCheck</div>
+            </div>
+            {[
+              ["Tells you what you want to hear", "Tells you what the pattern shows"],
+              ["Three friends, four opinions", "One straight answer"],
+              ["Only knows your side of it", "Reads the behaviour itself"],
+              ["Already decided he's the worst", "No stake in the outcome"],
+            ].map(([friends, us]) => (
+              <div key={us} className="grid grid-cols-2 border-t border-border/60 text-sm">
+                <div className="px-4 py-3.5 text-ink/60">{friends}</div>
+                <div className="border-l border-border/60 px-4 py-3.5 font-medium text-ink/85">{us}</div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-5 text-center text-base italic text-ink/65">
+            Your friends love you. That's exactly why they're the wrong people to ask.
+          </p>
+        </div>
+      </section>
+
       {/* How it works */}
       <section className="px-5 pb-16 sm:pb-24">
         <div className="mx-auto max-w-6xl">
@@ -300,7 +356,7 @@ function Landing() {
       {/* Final CTA */}
       <section className="bg-purple-soft px-5 py-16 sm:py-24">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl">Ready to find out where you really stand?</h2>
+          <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl">Ready to stop guessing?</h2>
           <p className="mt-4 text-base text-ink/70">
             Six quick questions. Screenshots optional. Your first read is free.
           </p>
