@@ -629,7 +629,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     return { reply, remaining: limit - (questionsUsed + 1) };
   });
 
-const PlanEnum = z.enum(["single", "monthly", "yearly"]);
+const PlanEnum = z.enum(["single", "monthly", "yearly", "weekly"]);
 
 // Wingman referral V1 — one shared coupon, "give 20% off" to whoever
 // clicked a friend's link. The coupon itself (id WINGMAN20, 20% off,
@@ -676,7 +676,9 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         ? "vibecheck_single"
         : data.plan === "monthly"
           ? "vibecheck_monthly"
-          : "vibecheck_yearly";
+          : data.plan === "weekly"
+            ? "vibecheck_weekly"
+            : "vibecheck_yearly";
       const prices = await stripe.prices.list({ lookup_keys: [priceLookup] });
       if (!prices.data.length) return { error: `Price ${priceLookup} not found` };
       const price = prices.data[0];
