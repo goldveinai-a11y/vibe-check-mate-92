@@ -8,6 +8,13 @@ interface Props {
   unlockParams?: { id: string };
 }
 
+// Nav is deliberately three items. "Upload" is gone - the quiz is the
+// entry point now, and a menu item pointing at the bare upload page sent
+// people around the funnel rather than through it. "Example report" earns
+// its slot because "what do I actually get" is the question standing
+// between a visitor and a purchase; the research page is one level down in
+// the footer, since that's something people seek out rather than something
+// worth spending nav space on.
 export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Props) {
   const [open, setOpen] = useState(false);
   return (
@@ -20,7 +27,7 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
 
         <nav className="hidden items-center gap-8 md:flex">
           <Link to="/" className="text-sm text-ink/80 transition hover:text-ink">Home</Link>
-          <Link to="/upload" className="text-sm text-ink/80 transition hover:text-ink">Upload</Link>
+          <Link to="/example" className="text-sm text-ink/80 transition hover:text-ink">Example report</Link>
           <Link to="/my-reports" className="text-sm text-ink/80 transition hover:text-ink">My Reports</Link>
         </nav>
 
@@ -35,11 +42,14 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
                 Unlock Full Report
               </Link>
             ) : (
+              // No report exists yet in this branch, so there is nothing to
+              // unlock - send people to the quiz to make one instead of to
+              // a page that can't do anything for them.
               <Link
-                to="/upload"
+                to="/quiz"
                 className="rounded-full bg-pink px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:opacity-90 sm:text-sm"
               >
-                Unlock Full Report
+                Start a check
               </Link>
             )
           )}
@@ -58,7 +68,8 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
         <div className="border-t border-border/40 bg-cream md:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-5 py-3">
             <Link to="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">Home</Link>
-            <Link to="/upload" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">Upload</Link>
+            <Link to="/example" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">Example report</Link>
+            <Link to="/science" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">The research</Link>
             <Link to="/my-reports" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">My Reports</Link>
           </div>
         </div>

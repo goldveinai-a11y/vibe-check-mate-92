@@ -15,9 +15,15 @@ export function SiteFooter() {
           <span className="text-base font-semibold text-ink">VibeCheck</span>
         </Link>
 
+        {/* /quiz replaces /upload as the entry point, and the research page
+            lives here rather than in the main nav - it's a page people go
+            looking for when they're weighing up whether to trust this, not
+            something to put in front of someone who just arrived. */}
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-ink/70">
           <Link to="/" className="transition hover:text-ink">Home</Link>
-          <Link to="/upload" className="transition hover:text-ink">Upload</Link>
+          <Link to="/quiz" className="transition hover:text-ink">Start a check</Link>
+          <Link to="/example" className="transition hover:text-ink">Example report</Link>
+          <Link to="/science" className="transition hover:text-ink">The research</Link>
           <Link to="/my-reports" className="transition hover:text-ink">My Reports</Link>
         </nav>
 
