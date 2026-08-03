@@ -47,7 +47,7 @@ export function StickyUnlockBar({ id, showAfterRef, hideNearRef }: Props) {
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-widest text-ink/50">Full report</div>
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl leading-none text-ink">$4.99</span>
+            <span className="font-serif text-xl leading-none text-ink">$1.99</span>
             <span className="text-xs text-ink/50 line-through">$9.99</span>
           </div>
         </div>

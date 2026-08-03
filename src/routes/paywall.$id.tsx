@@ -68,11 +68,11 @@ const TIERS: Tier[] = [
   {
     id: "single",
     name: "Single Report",
-    price: "$4",
+    price: "$1",
     cents: ".99",
-    priceValue: 4.99,
+    priceValue: 1.99,
     sub: "One-time deep analysis of this single chat, plus 10 AI chat questions about your results. No subscription, no future access.",
-    cta: "Get Only This Report - $4.99",
+    cta: "Get Only This Report - $1.99",
   },
   {
     id: "monthly",
