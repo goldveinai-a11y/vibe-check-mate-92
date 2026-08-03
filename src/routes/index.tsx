@@ -84,7 +84,7 @@ function Landing() {
               badge says that instead. */}
           <span className="inline-flex items-center gap-2 rounded-full bg-purple-soft px-4 py-2 text-xs font-medium text-purple-deep sm:text-sm">
             <Sparkles className="h-3.5 w-3.5" />
-            Decode what they actually meant
+            AI analysis of your real chat
           </span>
 
           {/* Names the moment instead of the category. The old headline
@@ -92,13 +92,25 @@ function Landing() {
               product is about; this describes what she is doing at 1am with
               her phone in her hand, which is the state someone arriving from
               a TikTok ad is actually in. */}
+          {/* Angle moved from "he's not texting back" to "is this toxic".
+              Search data forced it: every toxic/narcissist/controlling query
+              we appeared for got clicked (100% CTR), every "does he like me"
+              query got zero - and the toxic side has 10-30x the volume
+              ("toxic marriage" 110k/mo vs the low-thousands on crush terms).
+              Mild anxiety gets googled once and forgotten; suspecting your
+              relationship is bad for you is something people carry for
+              months and actively look for help with. */}
           <h1 className="font-serif mt-8 text-[42px] leading-[1.05] sm:text-6xl md:text-7xl">
-            Stop re-reading the thread at 1am
+            Is it toxic — or are you overthinking it?
           </h1>
 
+          {/* Says what this actually IS before the questions start. Without
+              this line the page reads as one more magazine quiz: the whole
+              story about an AI reading a real conversation was sitting below
+              the fold, where 76% of visitors never reached it. */}
           <p className="mt-5 max-w-xl text-base text-ink/70 sm:text-lg">
-            Six quick questions and you'll know where you actually stand — no more asking three friends for four
-            different opinions.
+            An AI reads your actual conversation and names the pattern — control, breadcrumbing, stonewalling —
+            with the exact quotes that prove it. Six questions to start. Screenshots optional.
           </p>
 
           {unlocked && (
