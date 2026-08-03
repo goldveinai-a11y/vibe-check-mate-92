@@ -889,20 +889,56 @@ export type MyReportsResult = z.infer<typeof MyReportsResultSchema>;
 // "My Reports" account page: it's what makes a purchase (or subscription)
 // findable again from a brand-new device, instead of being stranded behind
 // a localStorage id that only ever lived in one browser.
+const MyReportsInputSchema = z.object({
+  ownerAnonId: z.string().min(8).max(128).optional(),
+});
+
 export const getMyReports = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<MyReportsResult> => {
+  .inputValidator((input: unknown) => MyReportsInputSchema.parse(input ?? {}))
+  .handler(async ({ data, context }): Promise<MyReportsResult> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const email = (context.claims as { email?: string }).email?.toLowerCase();
     if (!email) throw new Error("No verified email on this session");
 
-    const { data: analyses, error } = await supabaseAdmin
+    // Reports are matched on email OR this device's anon id, not email
+    // alone. The email column is only ever written when someone reaches
+    // checkout (createCheckoutSession / saveEmail), so a free preview that
+    // never got that far had no email attached and was invisible here -
+    // a logged-in user could run an analysis and then not find it in their
+    // own account, which reads as data loss. Quiz-only runs made this much
+    // more common, since the whole point is that people now reach a report
+    // without going near a payment screen.
+    //
+    // Two queries merged in JS rather than a PostgREST .or() filter: the
+    // email goes into that filter as a raw string, and .or() parses commas
+    // and parentheses as syntax, so building it by hand is a quoting bug
+    // waiting to happen.
+    const byEmail = await supabaseAdmin
       .from("analyses")
       .select("id, created_at, status, plan, paid, preview_json, custom_label")
       .eq("email", email)
       .order("created_at", { ascending: false })
       .limit(50);
-    if (error) throw new Error(error.message);
+    if (byEmail.error) throw new Error(byEmail.error.message);
+
+    let analyses = byEmail.data ?? [];
+
+    if (data.ownerAnonId) {
+      const byDevice = await supabaseAdmin
+        .from("analyses")
+        .select("id, created_at, status, plan, paid, preview_json, custom_label")
+        .eq("owner_anon_id", data.ownerAnonId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (!byDevice.error && byDevice.data) {
+        const seen = new Set(analyses.map((a) => a.id as string));
+        analyses = [...analyses, ...byDevice.data.filter((a) => !seen.has(a.id as string))].sort(
+          (a, b) => new Date(b.created_at as string).getTime() - new Date(a.created_at as string).getTime(),
+        );
+      }
+    }
+
 
     const { data: subs } = await supabaseAdmin
       .from("subscriptions")
@@ -1031,15 +1067,41 @@ export const createBillingPortalSession = createServerFn({ method: "POST" })
       return { error: "No subscription found for this account" };
     }
 
-    try {
-      const stripe = createStripeClient(data.environment);
-      const session = await stripe.billingPortal.sessions.create({
-        customer: sub.stripe_customer_id as string,
+    const customerId = sub.stripe_customer_id as string;
+
+    // A Stripe customer id only exists inside the mode it was created in,
+    // and nothing about the id itself says which one that was - test and
+    // live ids look identical. The subscriptions table doesn't record the
+    // mode either, so a subscription bought while the app was pointed at
+    // one environment throws "No such customer" forever once the app is
+    // pointed at the other. Confirmed on a real live subscriber.
+    //
+    // Rather than a migration to store the mode, just try the other
+    // environment when the first one says the customer doesn't exist. It's
+    // one extra API call on a page nobody opens often, and it makes the
+    // button work regardless of which mode the subscription came from.
+    const other = data.environment === "live" ? "sandbox" : "live";
+
+    const openPortal = async (env: "sandbox" | "live") => {
+      const stripe = createStripeClient(env);
+      return stripe.billingPortal.sessions.create({
+        customer: customerId,
         return_url: data.returnUrl,
       });
+    };
+
+    try {
+      const session = await openPortal(data.environment);
       return { url: session.url };
     } catch (err) {
-      return { error: getStripeErrorMessage(err) };
+      const message = getStripeErrorMessage(err);
+      if (!/no such customer/i.test(message)) return { error: message };
+      try {
+        const session = await openPortal(other);
+        return { url: session.url };
+      } catch (fallbackErr) {
+        return { error: getStripeErrorMessage(fallbackErr) };
+      }
     }
   });
 
