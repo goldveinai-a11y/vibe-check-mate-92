@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Flame,
   FileText,
+  Plus,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -390,6 +391,54 @@ function Landing() {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      {/* FAQ. Ordered by how much each objection actually blocks a
+          purchase, not by how comfortable it is to answer - privacy first,
+          because uploading someone else's private messages is the single
+          biggest thing standing between a visitor and trying this, and
+          "can they find out" is a real fear nobody was addressing anywhere
+          on the site. */}
+      <section className="px-5 pb-16 sm:pb-24">
+        <div className="mx-auto max-w-2xl">
+          <h2 className="font-serif text-center text-3xl sm:text-4xl">Questions people actually ask</h2>
+          <div className="mt-8 divide-y divide-border/50 border-y border-border/50">
+            {[
+              {
+                q: "Is this actually private?",
+                a: "Yes, and specifically: your screenshots are read once to build your report, then deleted. They're never stored, never shown to anyone, and never used to train anything. The report itself lives at a link only you have.",
+              },
+              {
+                q: "Can they find out I did this?",
+                a: "No. Nothing is sent to anyone, nothing is posted, and the other person is never contacted in any way. This is entirely between you and the page.",
+              },
+              {
+                q: "Do I need screenshots?",
+                a: "No. Six questions is enough for a full read. Screenshots make it sharper - we can quote their actual messages and write you a reply that answers what they really said - but plenty of people skip that step and still get something useful.",
+              },
+              {
+                q: "How accurate can it really be?",
+                a: "It reads patterns - who initiates, how fast replies come, how effort is distributed, which behaviours match known attachment and conflict patterns. It's very good at that. It cannot read minds, and it only sees what you show it. Treat it as a sharp second opinion, not a verdict.",
+              },
+              {
+                q: "What do I get for free?",
+                a: "A complete read: your verdict, interest score, the strongest flag we found, and hard numbers on the dynamic. The full report adds every remaining flag with exact quotes, the psychological breakdown, the forecast, and two replies written for you to send.",
+              },
+              {
+                q: "Am I signing up for a subscription?",
+                a: "Only if you choose one. There's a one-time option for a single report, and a subscription for people checking more than one conversation. Subscriptions are managed and cancelled through Stripe, not by emailing us.",
+              },
+            ].map((item) => (
+              <details key={item.q} className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left">
+                  <span className="font-medium text-ink">{item.q}</span>
+                  <Plus className="h-4 w-4 shrink-0 text-ink/40 transition group-open:rotate-45" />
+                </summary>
+                <p className="mt-3 pr-8 text-sm leading-relaxed text-ink/70">{item.a}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
