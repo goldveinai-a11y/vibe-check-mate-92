@@ -46,10 +46,15 @@ export function StickyUnlockBar({ id, showAfterRef, hideNearRef }: Props) {
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-widest text-ink/50">Full report</div>
-          <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl leading-none text-ink">$1.99</span>
-            <span className="text-xs text-ink/50 line-through">$9.99</span>
-          </div>
+          {/* No struck-through anchor price. It used to show $9.99 crossed
+              out, which was wrong on two counts once the report dropped to
+              $1.99: $9.99 is the MONTHLY SUBSCRIPTION price, never what a
+              single report cost, and the implied 80% discount reads as
+              made-up rather than generous. $1.99 is a low price on its own
+              and doesn't need propping up - and an invented anchor is
+              exactly the kind of small dishonesty the rest of this product
+              avoids. */}
+          <div className="font-serif text-xl leading-none text-ink">$1.99</div>
         </div>
         <Link
           to="/paywall/$id"
