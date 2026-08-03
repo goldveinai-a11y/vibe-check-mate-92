@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Heart, Check, X, Scale } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { getCompetitor } from "@/lib/competitors";
+import { getCompetitor, type Competitor } from "@/lib/competitors";
 import { trackEvent } from "@/lib/analytics";
 
 // One route, one page per competitor, all driven from lib/competitors.ts.
@@ -90,7 +90,7 @@ function VersusPage() {
               here is mobile, the card layout IS the layout; on wider
               screens the two halves simply sit side by side. */}
           <div className="mt-8 space-y-3">
-            {c.rows.map((row) => (
+            {c.rows.map((row: Competitor["rows"][number]) => (
               <div key={row.feature} className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-ink/45">{row.feature}</p>
 
@@ -118,7 +118,7 @@ function VersusPage() {
             <div className="order-2 rounded-3xl border border-border/50 bg-muted/25 p-5 sm:order-1">
               <h2 className="font-serif text-xl text-ink/70">Pick {c.name} if…</h2>
               <ul className="mt-4 space-y-3">
-                {c.betterForThem.map((item) => (
+                {c.betterForThem.map((item: string) => (
                   <li key={item} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-sm text-ink/75">
                     <X className="mt-0.5 h-4 w-4 shrink-0 text-ink/30" />
                     <span className="min-w-0">{item}</span>
@@ -131,7 +131,7 @@ function VersusPage() {
             <div className="order-1 rounded-3xl border-2 border-purple/30 bg-purple-soft/60 p-5 shadow-sm sm:order-2">
               <h2 className="font-serif text-xl text-purple-deep">Pick VibeCheck if…</h2>
               <ul className="mt-4 space-y-3">
-                {c.betterForUs.map((item) => (
+                {c.betterForUs.map((item: string) => (
                   <li key={item} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 text-sm text-ink/80">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-mint" />
                     <span className="min-w-0">{item}</span>
