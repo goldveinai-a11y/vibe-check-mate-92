@@ -34,6 +34,8 @@
 // job as the full read (Sonnet, once, at the end) and doesn't need the same
 // model. At ~10-15 turns per user the model choice is the difference
 // between a rounding error and a real line item.
+import { minorFlagFor, MINOR_INSTRUCTION } from "./safety";
+
 const INTAKE_MODEL = "claude-haiku-4-5-20251001";
 
 // Hard stop. Not a paywall — a runaway guard. A conversation that hasn't
@@ -76,6 +78,8 @@ export type IntakeResult = {
   slots: IntakeSlots;
   ready: boolean;
   safetyConcern: boolean;
+  // Set in code from the transcript, never inferred by the model.
+  minor: boolean;
 };
 
 const REQUIRED_SLOTS: Array<keyof IntakeSlots> = [
@@ -250,6 +254,16 @@ export async function runIntakeTurn(
       ? `\n\n## Already known (do not ask about these again)\n${known}`
       : "\n\n## Already known\nNothing yet. This is the opening of the conversation.");
 
+  // Deterministic, not inferred. A model at temperature 0.6 should not be
+  // the only thing standing between a fifteen-year-old and an adult read,
+  // and the flag is sticky: it is computed over the whole transcript, so a
+  // later turn that happens not to mention school cannot clear it.
+  const isMinor = minorFlagFor(
+    history.filter((h) => h.role === "user").map((h) => h.content),
+    message,
+  );
+  const finalSystemPrompt = isMinor ? systemPrompt + MINOR_INSTRUCTION : systemPrompt;
+
   const currentContent: Msg["content"] = images?.length
     ? [
         ...images.map(
@@ -278,7 +292,7 @@ export async function runIntakeTurn(
       model: INTAKE_MODEL,
       max_tokens: 700,
       temperature: 0.6,
-      system: systemPrompt,
+      system: finalSystemPrompt,
       messages,
     }),
   });
@@ -298,7 +312,13 @@ export async function runIntakeTurn(
     // A malformed turn must never dead-end the conversation. Falling back to
     // the raw text keeps her talking; the slots simply don't advance this
     // turn and the next one picks them up.
-    return { reply: raw.trim() || "Say that again?", slots: {}, ready: false, safetyConcern: false };
+    return {
+      reply: raw.trim() || "Say that again?",
+      slots: {},
+      ready: false,
+      safetyConcern: false,
+      minor: isMinor,
+    };
   }
 
   const merged: IntakeSlots = { ...knownSlots, ...(parsed.slots ?? {}) };
@@ -313,5 +333,6 @@ export async function runIntakeTurn(
     // needs, and the report is what we're actually shipping.
     ready: Boolean(parsed.ready) && slotsComplete(merged),
     safetyConcern: Boolean(parsed.safetyConcern),
+    minor: isMinor,
   };
 }
