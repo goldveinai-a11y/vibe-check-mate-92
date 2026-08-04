@@ -103,6 +103,8 @@ ANALYSIS RULES — QUIZ-ONLY RUN (NO SCREENSHOTS PROVIDED):
 - viral_keywords: use exact phrases from her free-text answer and/or the exact option labels she selected. If she gave no free text and you cannot defend 3 distinct items from her selections alone, return fewer — never invent.
 - future_outlook: same uncompromising energy, but forecast the trajectory of the PATTERN she described rather than of specific messages.
 - END EVERY quiz-only report with a clear, natural nudge inside future_outlook that adding screenshots would sharpen this read considerably — one sentence, not a sales pitch.
+- self_mirror: build it from her ANSWERS, not from imagined messages. "You told me you initiate almost every time" is evidence. Anything about her word choice, message length or tone is not — you have never seen her write.
+- prediction: still mandatory and still falsifiable, but the claim must follow from the rhythm she actually described (who initiates, how fast he replies, how long this has run). Do not invent a specific behaviour you have no basis for. When the answers genuinely don't support a sharp claim, predict the thing they DO support — e.g. if she says he replies unpredictably, "his next reply gap will be longer than a day at least once in this window" is honest; "he won't name a day" is not, unless plans came up in her answers.
 `;
 
 const PROMPT_TAIL = `
@@ -127,6 +129,34 @@ You MUST include a "viral" object with these five fields. They exist to make the
   * weekly_delta_pct = an integer between -40 and +20 representing estimated weekly change in engagement/interest if current patterns continue. Negative = decline.
   * range = a soft window like "2-4 weeks", "1-2 months", "already fizzled" — NEVER an exact day count and NEVER a specific date. If trajectory is "rising" or "steady", range describes stability window ("stable for 4-6 weeks").
   * verdict = one uncompromising line (max 30 words). No exact-day promises.
+
+SAFETY CHECK (MANDATORY — run this FIRST, before writing anything else):
+Screen the evidence against the eight Duluth Power & Control categories: coercion and threats; intimidation; emotional abuse; isolation; minimising, denying and blaming; using children; economic abuse; asserting privilege. Also screen for fear of the other person, and for any reference to physical harm.
+- safety.concern = true ONLY if the evidence actually supports it. A partner who is dismissive, avoidant, flaky, defensive, or who blame-shifts in arguments is NOT this. Over-triggering is its own harm: it tells someone in a bad-but-ordinary relationship that she is in danger, and it makes the flag meaningless when it matters.
+- safety.categories = the Duluth category names that apply, in plain words. Empty array when concern is false.
+- safety.note = when concern is true, 2-3 plain sentences naming what you saw, with no scores, no jokes and no analysis-speak, ending by pointing at a domestic abuse helpline rather than at this product. When concern is false, return an empty string.
+- WHEN safety.concern IS TRUE: omit self_mirror entirely, keep vibe_award and pop_culture_match strictly factual and non-comedic, and keep future_outlook free of any suggestion that she manage, fix or wait out the other person's behaviour.
+
+SELF MIRROR — the second line of analysis (MANDATORY unless safety.concern is true):
+Every other product analyses HIM. This field analyses HER. It is the single most valuable part of the report, and also the easiest to get wrong.
+- title: 3-8 words naming her own pattern, not his. e.g. "You negotiate before you ask", "You rescue every silence".
+- observation: what she actually does, with the evidence. Her message lengths, her initiation timing, her pre-apologising, how her behaviour changes as an exchange goes on. Ground it in her own messages (screenshots run) or her own answers (quiz run).
+- mechanic: how that behaviour keeps the dynamic running — as MECHANICS, never as fault. "This teaches him that effort is optional" is mechanics. "You're letting him walk over you" is blame. Never use "you should", never moralise, never imply she caused his behaviour.
+- If the honest answer is that she is doing very little to sustain it, say that plainly rather than manufacturing a flaw. A false mirror is worse than none.
+
+PREDICTION — a dated, falsifiable claim (MANDATORY):
+End the report by committing to something checkable. This is not a flourish; a read that cannot be wrong cannot be trusted when it is right.
+- claim: ONE sentence about OBSERVABLE BEHAVIOUR of the person being analysed, in the future, that she can verify by looking at her phone. e.g. "He won't name a specific day for plans." / "He'll go quiet for at least two days after the next disagreement." / "He'll bring warmth back within 24 hours of the next argument, without addressing what it was about."
+- window_days: an integer 5-21. Choose from the actual rhythm in the evidence — if their loop runs every 8-10 days, don't pick 21.
+- falsifier: one sentence stating exactly what would prove you WRONG. e.g. "He names an actual day and time within the window."
+- HARD BANS. A prediction must never be about:
+  * feelings, intentions or love ("he'll realise he misses you", "he does care")
+  * relationship outcomes ("you'll break up", "he'll commit", "he'll come back")
+  * anything about safety, harm, or another person's wellbeing
+  * anything she cannot check herself
+  * anything unfalsifiable ("things will stay complicated", "you'll keep feeling unsure")
+- The claim must be specific enough that it could genuinely fail. If you would be unsurprised either way, it is not a prediction — rewrite it.
+- Derive it from the evidence in THIS run and nothing else. Do not hedge it into safety; a wrong prediction is an acceptable outcome and a vague one is not.
 
 OUTPUT: Return ONLY valid JSON matching this exact TypeScript type. No prose before or after. No markdown code fences.
 
@@ -164,6 +194,21 @@ type Report = {
     their_type_in_3_words: [string, string, string];
     viral_keywords: Array<{ word: string; type: "red_flag" | "green_flag" | "beige_flag"; impact: string }>;
     vibe_decay: { trajectory: "rising" | "steady" | "cooling" | "nose-diving"; weekly_delta_pct: number; range: string; verdict: string };
+  };
+  safety: {
+    concern: boolean;              // true only on real Duluth-category evidence
+    categories: string[];          // empty when concern is false
+    note: string;                  // empty string when concern is false
+  };
+  self_mirror: {                   // OMIT this key entirely when safety.concern is true
+    title: string;                 // her own pattern, 3-8 words
+    observation: string;           // what she does, with evidence
+    mechanic: string;              // how it sustains the dynamic — mechanics, never blame
+  };
+  prediction: {
+    claim: string;                 // observable future behaviour, checkable on her phone
+    window_days: number;           // integer 5-21
+    falsifier: string;             // exactly what would prove this wrong
   };
 };`;
 
@@ -221,7 +266,12 @@ Return the JSON report exactly as specified in the system prompt. No prose, no m
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-5",
-        max_tokens: 6144,
+        // Raised from 6144 when safety, self_mirror and prediction were
+        // added. Three more fields is roughly 250-350 extra output tokens,
+        // and a report truncated mid-JSON fails schema parsing entirely —
+        // the retry then burns a second full Sonnet call to hit the same
+        // ceiling. Cheap insurance against an expensive failure.
+        max_tokens: 7168,
         // Was 0 (fully deterministic). At temperature 0, two conversations
         // that read as the same *archetype* (e.g. "short, dismissive
         // replies") were mode-collapsing onto the exact same integers for

@@ -65,6 +65,61 @@ export const SuggestedRepliesSchema = z.object({
   neutral: z.string().min(1).max(300),
 });
 
+// A dated, falsifiable claim about observable behaviour, generated at the
+// end of every report.
+//
+// Why this exists: the report used to end on "Loop closed" - which is a
+// literal instruction to stop thinking about it. That's the correct
+// emotional beat and a catastrophic commercial one, because it closes the
+// exact Zeigarnik loop the /science page cites as the reason people come
+// back. This replaces closure with an open question that has a date on it.
+//
+// The second reason matters more than the first: a prediction that can be
+// publicly wrong is the only structural defence against sycophancy. A model
+// that never commits to anything can always agree with the user; a model
+// that has to post a checkable claim has to mean it.
+export const PredictionSchema = z.object({
+  // "He won't name a specific day." Observable, binary, checkable by
+  // looking at her phone.
+  claim: z.string().min(1).max(200),
+  window_days: z.number().int().min(5).max(21),
+  // What would prove the prediction wrong. Stated separately so the claim
+  // can't hide behind vagueness - if you can't write the falsifier, the
+  // claim wasn't a prediction, it was a horoscope.
+  falsifier: z.string().min(1).max(200),
+});
+
+// The second line of analysis: her, not him.
+//
+// Every competitor analyses the other person. But the question underneath
+// "what is he doing" is almost always "am I losing my mind" - and a product
+// that only ever describes him can't answer it. Commercially this is also
+// the single biggest LTV lever available: a report about him dies when the
+// relationship does, a read on her own pattern outlives it.
+//
+// Deliberately NOT rendered when safety.concern is true - see the prompt.
+// "Here's what you're doing that keeps this going" is a useful mirror in a
+// bad dynamic and straightforward victim-blaming in an abusive one.
+export const SelfMirrorSchema = z.object({
+  title: z.string().min(1).max(80),
+  observation: z.string().min(1).max(340),
+  mechanic: z.string().min(1).max(340),
+});
+
+// Duluth Power & Control routing. When coercion, threats, intimidation,
+// isolation or financial control show up, the product stops being clever
+// and points at real help.
+//
+// This is not a disclaimer bolted on for cover. A scoring engine that hands
+// someone a "Toxicity 74%" badge and a pop-culture joke while she's
+// describing being threatened is doing active harm, and no amount of
+// footnote fixes that. The scores still compute; the presentation changes.
+export const SafetySchema = z.object({
+  concern: z.boolean(),
+  categories: z.array(z.string().min(1).max(60)).max(8),
+  note: z.string().max(400),
+});
+
 export const ViralSchema = z.object({
   vibe_award: VibeAwardSchema,
   pop_culture_match: PopCultureMatchSchema,
@@ -82,6 +137,12 @@ export const ReportSchema = z.object({
   future_outlook: z.string(),
   suggested_replies: SuggestedRepliesSchema.optional(),
   viral: ViralSchema.optional(),
+  // All three optional so every report generated before these fields
+  // existed still parses. The UI falls back to the old ending when
+  // prediction is missing.
+  prediction: PredictionSchema.optional(),
+  self_mirror: SelfMirrorSchema.optional(),
+  safety: SafetySchema.optional(),
 });
 
 // Shape of `analyses.preview_json` as built by buildPreview() below — the
@@ -95,6 +156,20 @@ export type PreviewJson = {
   red_flag_preview: { title: string } | null;
   green_flags_count: number;
   red_flags_count: number;
+  // Deliberately given away in full on the free page rather than held back
+  // for the paid report.
+  //
+  // The prediction is not premium content, it's the return mechanism - and
+  // the email that makes it work can only be collected from people who
+  // haven't paid yet, because everyone who pays already hands over an
+  // address at checkout. Putting it behind the paywall would mean the only
+  // addresses we ever hold belong to the people we least need to bring
+  // back. It also costs nothing: it's one sentence the model already wrote.
+  prediction?: { claim: string; window_days: number; falsifier: string } | null;
+  // Safety travels with the preview too - the free page renders scores and
+  // a verdict, and those need suppressing in exactly the same situations
+  // the full report does.
+  safety?: { concern: boolean; categories: string[]; note: string } | null;
   viral_preview?: {
     vibe_award: { title: string; subtitle: string };
     pop_culture_match: { couple: string; source: string; explanation: string };
@@ -186,6 +261,38 @@ export function sanitizeReportShape(raw: unknown): unknown {
     };
   }
 
+  const prediction = r.prediction as Record<string, unknown> | undefined;
+  if (prediction) {
+    r.prediction = {
+      ...prediction,
+      claim: clampStr(prediction.claim, 200),
+      falsifier: clampStr(prediction.falsifier, 200),
+    };
+  }
+
+  const selfMirror = r.self_mirror as Record<string, unknown> | undefined;
+  if (selfMirror) {
+    r.self_mirror = {
+      ...selfMirror,
+      title: clampStr(selfMirror.title, 80),
+      observation: clampStr(selfMirror.observation, 340),
+      mechanic: clampStr(selfMirror.mechanic, 340),
+    };
+  }
+
+  const safety = r.safety as Record<string, unknown> | undefined;
+  if (safety) {
+    r.safety = { ...safety, note: clampStr(safety.note, 400) };
+  }
+
+  // Hard invariant, enforced in code rather than trusted to the prompt:
+  // never show someone a breakdown of what SHE is doing to sustain the
+  // pattern while she is describing coercion. The model is told this too,
+  // but a rule this consequential shouldn't depend on the model obeying.
+  if (safety && safety.concern === true) {
+    delete r.self_mirror;
+  }
+
   return r;
 }
 
@@ -195,6 +302,22 @@ export type Scores = z.infer<typeof ScoresSchema>;
 export type Viral = z.infer<typeof ViralSchema>;
 export type ViralKeyword = z.infer<typeof ViralKeywordSchema>;
 export type SuggestedReplies = z.infer<typeof SuggestedRepliesSchema>;
+export type Prediction = z.infer<typeof PredictionSchema>;
+export type SelfMirror = z.infer<typeof SelfMirrorSchema>;
+export type Safety = z.infer<typeof SafetySchema>;
+
+// The date a prediction becomes checkable. Kept here rather than in the
+// page so the report page, any future email, and the check-in flow all
+// compute the same day from the same two inputs.
+export function predictionDueDate(createdAtIso: string, windowDays: number): Date {
+  const d = new Date(createdAtIso);
+  d.setDate(d.getDate() + windowDays);
+  return d;
+}
+
+export function formatPredictionDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+}
 
 // "Delusion Level" — NOT a new AI judgment, just arithmetic on scores the
 // model already produced. It's the gap between how exciting a conversation
@@ -214,6 +337,7 @@ export function computeDelusionLevel(scores: Scores): { score: number; label: st
 }
 
 export function buildPreview(report: Report) {
+  const safetyConcern = report.safety?.concern === true;
   return {
     scores: report.scores,
     initiative_stat: report.hardcore_analytics.initiative_stat,
@@ -223,7 +347,11 @@ export function buildPreview(report: Report) {
       : null,
     green_flags_count: report.green_flags.length,
     red_flags_count: report.red_flags.length,
-    viral_preview: report.viral
+    prediction: report.prediction ?? null,
+    safety: report.safety ?? null,
+    // Same suppression rule as the full report: no award, no pop-culture
+    // pairing, no shareable badge when the safety router has fired.
+    viral_preview: !safetyConcern && report.viral
       ? {
           vibe_award: report.viral.vibe_award,
           pop_culture_match: report.viral.pop_culture_match,

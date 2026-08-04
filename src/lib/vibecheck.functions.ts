@@ -629,7 +629,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     return { reply, remaining: limit - (questionsUsed + 1) };
   });
 
-const PlanEnum = z.enum(["single", "monthly", "yearly", "weekly"]);
+const PlanEnum = z.enum(["single", "monthly", "yearly"]);
 
 // Wingman referral V1 — one shared coupon, "give 20% off" to whoever
 // clicked a friend's link. The coupon itself (id WINGMAN20, 20% off,
@@ -676,9 +676,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         ? "vibecheck_single"
         : data.plan === "monthly"
           ? "vibecheck_monthly"
-          : data.plan === "weekly"
-            ? "vibecheck_weekly"
-            : "vibecheck_yearly";
+          : "vibecheck_yearly";
       const prices = await stripe.prices.list({ lookup_keys: [priceLookup] });
       if (!prices.data.length) return { error: `Price ${priceLookup} not found` };
       const price = prices.data[0];
@@ -785,14 +783,28 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 const SaveEmailInputSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
+  // Added when this started being called from the free report page rather
+  // than only from checkout. Without it, anyone holding a report id could
+  // attach their own address to it and receive the prediction follow-up
+  // about a stranger's relationship. Ids are UUIDs and hard to guess, but
+  // "hard to guess" is not an access control, and the failure mode here is
+  // mailing someone else's private situation to a third party.
+  ownerAnonId: z.string().min(8).max(128),
 });
 
 export const saveEmail = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => SaveEmailInputSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("analyses")
+      .select("id")
+      .eq("id", data.id)
+      .eq("owner_anon_id", data.ownerAnonId)
+      .maybeSingle();
+    if (!row) return { ok: false as const };
     await supabaseAdmin.from("analyses").update({ email: data.email }).eq("id", data.id);
-    return { ok: true };
+    return { ok: true as const };
   });
 
 const EstablishCheckoutSessionInputSchema = z.object({
