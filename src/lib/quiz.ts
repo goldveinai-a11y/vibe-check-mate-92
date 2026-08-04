@@ -66,14 +66,22 @@ export type QuizStep = {
 // The cost - people whose person isn't a "he" - is largely covered by the
 // optional name field on the screenshot step: once a name is given, the
 // report uses it instead of any pronoun at all.
+// Options rewritten around the toxic/control angle rather than the
+// crush/ghosting one. Every toxic-adjacent search term we showed up for
+// was clicked; every "does he like me" term was not. These are the
+// situations people are actually typing into Google at volume - and they
+// describe a problem someone lives with, not a passing worry.
+//
+// "He went quiet on me" stays, because ghosting sits at the mild end of
+// the same spectrum and it's the widest net of the five.
 export const QUIZ_STEP_ONE: QuizStep = {
   key: "situation",
   question: "What's going on with him?",
   options: [
+    "I end up apologising every time",
+    "Hot and cold, constantly",
+    "I walk on eggshells around him",
     "He went quiet on me",
-    "Hot and cold",
-    "He never makes plans",
-    "I can't read him",
     SITUATION_OTHER,
   ],
 };
