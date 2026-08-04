@@ -172,23 +172,6 @@ function Landing() {
             ))}
           </div>
 
-          {/* Names the wider problems out loud. Someone searching "am I the
-              toxic one" or "relationship OCD" needs to see their exact words
-              here to believe they're in the right place - the old page only
-              ever talked about decoding texts. */}
-          <div className="mt-5 flex max-w-md flex-wrap justify-center gap-2 text-xs text-ink/55">
-            {[
-              "Toxic relationships",
-              "Am I the toxic one?",
-              "Avoidant partners",
-              "Relationship OCD",
-              "Toxic marriage",
-            ].map((t) => (
-              <span key={t} className="rounded-full border border-border/50 px-3 py-1.5">
-                {t}
-              </span>
-            ))}
-          </div>
 
           {/* "Private & secure" is what every product claims and nobody
               believes. A specific action - read once, then deleted - is a
@@ -519,6 +502,36 @@ function Landing() {
                 </summary>
                 <p className="mt-3 pr-8 text-sm leading-relaxed text-ink/70">{item.a}</p>
               </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Topic tags, moved down here from under the chat.
+          Up top they sat next to the conversational openers and the two
+          were doing different jobs in the same visual language: "I walk on
+          eggshells" is something you SAY to start talking, "Toxic marriage"
+          is something you TYPED INTO GOOGLE. Mixing them made the openers
+          read as categories rather than as sentences, which is the exact
+          confusion the whole rebuild was meant to remove. Down here they
+          do the one job they're good at — telling someone who searched a
+          specific term that this page is about their thing. */}
+      <section className="px-5 pb-4">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-xs uppercase tracking-widest text-ink/40">People come here about</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm text-ink/55">
+            {[
+              "Toxic relationships",
+              "Am I the toxic one?",
+              "Avoidant partners",
+              "Relationship OCD",
+              "Toxic marriage",
+              "Walking on eggshells",
+              "Blame-shifting",
+            ].map((t) => (
+              <span key={t} className="rounded-full border border-border/50 px-3.5 py-1.5">
+                {t}
+              </span>
             ))}
           </div>
         </div>
