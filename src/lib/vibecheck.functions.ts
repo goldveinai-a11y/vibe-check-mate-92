@@ -276,6 +276,13 @@ const RunAnalysisInputSchema = z.object({
   ownerAnonId: z.string().min(8).max(128),
   images: z.array(ImageInputSchema).max(6).optional(),
   quiz: QuizAnswersSchema.optional(),
+  // Carried from the intake so the report is not written blind to what the
+  // conversation already established. Without these the read prints "the
+  // part about you" at someone the intake has just decided not to say that
+  // to, and prices a report for someone it has just flagged as possibly
+  // under 18.
+  tier: z.enum(["T0", "T1", "T2", "T3"]).optional(),
+  minor: z.boolean().optional(),
 });
 
 // The expensive half. The client fires this WITHOUT awaiting it and
@@ -692,7 +699,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     return { reply, remaining: limit - (questionsUsed + 1) };
   });
 
-const PlanEnum = z.enum(["single", "monthly", "yearly"]);
+// "weekly" is the plan the paywall actually sells. It was missing here,
+// which meant every click on the $4.99 card failed zod validation before
+// it ever reached Stripe and surfaced as a generic "Something went wrong".
+// monthly and yearly stay in the enum even though the paywall no longer
+// renders them - existing subscribers still resolve through this path.
+const PlanEnum = z.enum(["single", "monthly", "yearly", "weekly"]);
 
 // Wingman referral V1 — one shared coupon, "give 20% off" to whoever
 // clicked a friend's link. The coupon itself (id WINGMAN20, 20% off,
@@ -739,7 +751,9 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         ? "vibecheck_single"
         : data.plan === "monthly"
           ? "vibecheck_monthly"
-          : "vibecheck_yearly";
+          : data.plan === "weekly"
+            ? "vibecheck_weekly"
+            : "vibecheck_yearly";
       const prices = await stripe.prices.list({ lookup_keys: [priceLookup] });
       if (!prices.data.length) return { error: `Price ${priceLookup} not found` };
       const price = prices.data[0];
