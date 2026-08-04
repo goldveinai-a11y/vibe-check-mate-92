@@ -144,7 +144,7 @@ function Landing() {
           <div className="mt-9 w-full max-w-lg text-left">
             <IntakeChat
               seed={seed}
-              onStarted={() => trackEvent("intake_started", { seeded: Boolean(seed) })}
+              onStarted={() => { if (seed) trackEvent("chip_clicked", { chip_text: seed }); }}
             />
           </div>
 
