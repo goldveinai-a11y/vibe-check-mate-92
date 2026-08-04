@@ -99,7 +99,15 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seed]);
 
-  const handOff = async (finalSlots: IntakeSlots, images: Array<{ mediaType: string; base64: string }>) => {
+  // The tier travels with the handoff. The intake decides per turn whether
+  // it may name what she is doing to sustain the dynamic, and on T1/T2 it
+  // may not — but the report generator used to be told none of that and
+  // printed the self-mirror anyway.
+  const handOff = async (
+    finalSlots: IntakeSlots,
+    images: Array<{ mediaType: string; base64: string }>,
+    tier?: "T0" | "T1" | "T2" | "T3",
+  ) => {
     setHandingOff(true);
     try {
       const { createAnalysis, runAnalysis } = await import("@/lib/vibecheck.functions");
@@ -125,7 +133,13 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       // takes 40-90s and holding the request open for it is what used to
       // make half of all analyses look like failures.
       void runAnalysis({
-        data: { id: created.id, ownerAnonId: anonId, quiz, images: images.length ? images : undefined },
+        data: {
+        id: created.id,
+        ownerAnonId: anonId,
+        quiz,
+        images: images.length ? images : undefined,
+        ...(tier ? { tier } : {}),
+      },
       }).catch(() => {});
 
       trackEvent("intake_completed", {
@@ -179,7 +193,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       }
       if (res.ready) {
         // Let her read the closing line before the screen changes.
-        setTimeout(() => void handOff(res.slots, images), 1600);
+        setTimeout(() => void handOff(res.slots, images, res.tier), 1600);
       }
     } catch {
       setError("That didn't send. Try again.");
