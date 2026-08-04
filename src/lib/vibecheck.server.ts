@@ -250,7 +250,32 @@ type Report = {
 
 type ImageInput = { mediaType: string; base64: string };
 
-export async function analyzeConversation(images: ImageInput[], quiz?: QuizAnswers): Promise<Report> {
+// The intake decides, turn by turn, whether it is allowed to name what she
+// is doing to sustain the dynamic — and on a fear branch (T1) or a
+// coercive-control branch (T2) it is explicitly forbidden to. The report
+// never knew that. It suppressed self_mirror only on safety.concern, which
+// T1 and T2 deliberately do not set, so the read printed "the part about
+// you" at exactly the people the conversation had just decided not to say
+// it to. Same rule, same reason, now applied on both sides of the handoff.
+export type IntakeTier = "T0" | "T1" | "T2" | "T3";
+
+function tierOverride(tier?: IntakeTier): string {
+  if (tier !== "T1" && tier !== "T2") return "";
+  return `
+
+OVERRIDE — the intake flagged a fear dynamic or markers of coercive control in this conversation.
+
+Omit self_mirror entirely, exactly as you would if safety.concern were true. Adapting your behaviour to a volatile or controlling person is a rational response to that person, not a flaw in her, and reflecting it back as something she is doing wrong is both inaccurate and harmful. Do not smuggle it into another section either.
+
+Everything else in the report stays as normal.
+`;
+}
+
+export async function analyzeConversation(
+  images: ImageInput[],
+  quiz?: QuizAnswers,
+  tier?: IntakeTier,
+): Promise<Report> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
 
@@ -321,7 +346,7 @@ Return the JSON report exactly as specified in the system prompt. No prose, no m
         // This matters even more on quiz-only runs, where the input space is
         // a handful of fixed option labels and collapse risk is highest.
         temperature: 0.4,
-        system: systemPrompt,
+        system: systemPrompt + tierOverride(tier),
         messages: [{ role: "user", content }],
       }),
     });
