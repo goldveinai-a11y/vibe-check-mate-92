@@ -35,8 +35,6 @@
 // model. At ~10-15 turns per user the model choice is the difference
 // between a rounding error and a real line item.
 import {
-  minorFlagFor,
-  MINOR_INSTRUCTION,
   sessionTier,
   looksIdiomatic,
   T3_IDIOM_NOTE,
@@ -88,8 +86,7 @@ export type IntakeResult = {
   slots: IntakeSlots;
   ready: boolean;
   safetyConcern: boolean;
-  // Both set in code from the transcript, never inferred by the model.
-  minor: boolean;
+  // Set in code from the transcript, never inferred by the model.
   tier: Tier;
 };
 
@@ -285,7 +282,6 @@ async function runIntakeTurnOnce(
   // and the flag is sticky: it is computed over the whole transcript, so a
   // later turn that happens not to mention school cannot clear it.
   const userTurns = history.filter((h) => h.role === "user").map((h) => h.content);
-  const isMinor = minorFlagFor(userTurns, message);
   const tier = sessionTier(userTurns, message);
 
   // The tier instruction is a floor under the prompt, not a replacement for
@@ -308,8 +304,7 @@ async function runIntakeTurnOnce(
   // position the model weighs most heavily: last.
   const turnInstruction =
     TIER_INSTRUCTIONS[tier] +
-    (tier === "T3" && looksIdiomatic(message) ? T3_IDIOM_NOTE : "") +
-    (isMinor ? MINOR_INSTRUCTION : "");
+    (tier === "T3" && looksIdiomatic(message) ? T3_IDIOM_NOTE : "");
 
   const turnText = turnInstruction
     ? (message || "(she attached screenshots of the conversation)") +
@@ -373,7 +368,6 @@ async function runIntakeTurnOnce(
       slots: {},
       ready: false,
       safetyConcern: false,
-      minor: isMinor,
       tier,
     };
   }
@@ -390,7 +384,6 @@ async function runIntakeTurnOnce(
     // needs, and the report is what we're actually shipping.
     ready: Boolean(parsed.ready) && slotsComplete(merged),
     safetyConcern: Boolean(parsed.safetyConcern),
-    minor: isMinor,
     tier,
   };
 }
