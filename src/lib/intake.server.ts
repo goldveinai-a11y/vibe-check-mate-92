@@ -34,7 +34,16 @@
 // job as the full read (Sonnet, once, at the end) and doesn't need the same
 // model. At ~10-15 turns per user the model choice is the difference
 // between a rounding error and a real line item.
-import { minorFlagFor, MINOR_INSTRUCTION } from "./safety";
+import {
+  minorFlagFor,
+  MINOR_INSTRUCTION,
+  sessionTier,
+  looksIdiomatic,
+  TIER_INSTRUCTIONS,
+  validateReply,
+  retryInstruction,
+  type Tier,
+} from "./safety";
 
 const INTAKE_MODEL = "claude-haiku-4-5-20251001";
 
@@ -78,8 +87,9 @@ export type IntakeResult = {
   slots: IntakeSlots;
   ready: boolean;
   safetyConcern: boolean;
-  // Set in code from the transcript, never inferred by the model.
+  // Both set in code from the transcript, never inferred by the model.
   minor: boolean;
+  tier: Tier;
 };
 
 const REQUIRED_SLOTS: Array<keyof IntakeSlots> = [
@@ -231,11 +241,12 @@ function extractJson(raw: string): string {
   return t;
 }
 
-export async function runIntakeTurn(
+async function runIntakeTurnOnce(
   history: IntakeTurn[],
   message: string,
   knownSlots: IntakeSlots,
-  images?: IntakeImage[],
+  images: IntakeImage[] | undefined,
+  retryNote: string,
 ): Promise<IntakeResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
@@ -248,8 +259,10 @@ export async function runIntakeTurn(
     .map(([k, v]) => `- ${k}: ${v}`)
     .join("\n");
 
-  const systemPrompt =
-    SYSTEM_PROMPT +
+  // Split deliberately: SYSTEM_PROMPT is a stable ~3k-token prefix and is
+  // sent as its own cacheable block, while everything that changes per turn
+  // lives after it. Fusing them would make the cache miss on every turn.
+  const dynamicSystem =
     (known
       ? `\n\n## Already known (do not ask about these again)\n${known}`
       : "\n\n## Already known\nNothing yet. This is the opening of the conversation.");
@@ -258,11 +271,21 @@ export async function runIntakeTurn(
   // the only thing standing between a fifteen-year-old and an adult read,
   // and the flag is sticky: it is computed over the whole transcript, so a
   // later turn that happens not to mention school cannot clear it.
-  const isMinor = minorFlagFor(
-    history.filter((h) => h.role === "user").map((h) => h.content),
-    message,
-  );
-  const finalSystemPrompt = isMinor ? systemPrompt + MINOR_INSTRUCTION : systemPrompt;
+  const userTurns = history.filter((h) => h.role === "user").map((h) => h.content);
+  const isMinor = minorFlagFor(userTurns, message);
+  const tier = sessionTier(userTurns, message);
+
+  // The tier instruction is a floor under the prompt, not a replacement for
+  // it. The prompt reads context and routes well; this makes the routing
+  // non-negotiable for the cases where being talked out of it is expensive.
+  const systemSuffix =
+    dynamicSystem +
+    TIER_INSTRUCTIONS[tier] +
+    (tier === "T3" && looksIdiomatic(message)
+      ? "\n\nNote: the phrase that triggered this may be a figure of speech. Ask once before treating it as literal."
+      : "") +
+    (isMinor ? MINOR_INSTRUCTION : "") +
+    retryNote;
 
   const currentContent: Msg["content"] = images?.length
     ? [
@@ -292,7 +315,10 @@ export async function runIntakeTurn(
       model: INTAKE_MODEL,
       max_tokens: 700,
       temperature: 0.6,
-      system: finalSystemPrompt,
+      system: [
+        { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+        { type: "text", text: systemSuffix },
+      ],
       messages,
     }),
   });
@@ -318,6 +344,7 @@ export async function runIntakeTurn(
       ready: false,
       safetyConcern: false,
       minor: isMinor,
+      tier,
     };
   }
 
@@ -334,5 +361,40 @@ export async function runIntakeTurn(
     ready: Boolean(parsed.ready) && slotsComplete(merged),
     safetyConcern: Boolean(parsed.safetyConcern),
     minor: isMinor,
+    tier,
   };
+}
+
+
+// The bans live in the prompt, which means they hold exactly as well as a
+// model at temperature 0.6 holds anything — across ten-plus turns per user it
+// drifts. Checking the reply costs nothing and one retry with the violation
+// quoted back fixes almost all of it. Two calls in the worst case is still
+// cheaper than one bad first impression.
+export async function runIntakeTurn(
+  history: IntakeTurn[],
+  message: string,
+  knownSlots: IntakeSlots,
+  images?: IntakeImage[],
+): Promise<IntakeResult> {
+  const first = await runIntakeTurnOnce(history, message, knownSlots, images, "");
+  const check = validateReply(first.reply);
+  if (check.ok) return first;
+
+  // Safety replies are never rewritten. The retry exists to fix tone, and a
+  // T3 answer that says the right thing clumsily is still the right thing —
+  // regenerating it risks losing the part that matters.
+  if (first.safetyConcern || first.tier === "T3") return first;
+
+  const second = await runIntakeTurnOnce(
+    history,
+    message,
+    knownSlots,
+    images,
+    retryInstruction(check.broken),
+  );
+
+  // If the rewrite also fails, ship the first one. A worse reply is better
+  // than a third round-trip and a user watching a spinner.
+  return validateReply(second.reply).ok ? second : first;
 }
