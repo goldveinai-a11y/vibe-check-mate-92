@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { captureRefCode } from "@/lib/anon-id";
 import { getUnlockedCount } from "@/lib/vibecheck.functions";
@@ -20,6 +20,7 @@ import {
   Flame,
   FileText,
   Plus,
+  ArrowRight,
 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const navigate = useNavigate();
+  const [freeText, setFreeText] = useState("");
 
   // Social proof above the fold. The count already existed and was only
   // shown on the results page - i.e. exclusively to people who had already
@@ -109,8 +111,8 @@ function Landing() {
               story about an AI reading a real conversation was sitting below
               the fold, where 76% of visitors never reached it. */}
           <p className="mt-5 max-w-xl text-base text-ink/70 sm:text-lg">
-            An AI reads your actual conversation and names the pattern — control, breadcrumbing, stonewalling —
-            with the exact quotes that prove it. Six questions to start. Screenshots optional.
+            Tell it what's going on, paste the messages, or send a screenshot — an AI reads what actually happened
+            and names the pattern, with the quotes that prove it.
           </p>
 
           {unlocked && (
@@ -124,22 +126,78 @@ function Landing() {
             </div>
           )}
 
-          {/* Question 1 of the quiz, inline. See startQuiz above for why
-              this replaced a "Start Your VibeCheck" button entirely. */}
-          <div className="mt-9 w-full max-w-md">
-            <p className="text-sm font-medium uppercase tracking-wide text-ink/45">Question 1 of 6</p>
-            <h2 className="font-serif mt-2 text-2xl sm:text-3xl">{QUIZ_STEP_ONE.question}</h2>
-            <div className="mt-5 grid gap-3">
-              {QUIZ_STEP_ONE.options?.map((opt) => (
+          {/* The entry point is now a conversation, not a form. Same six
+              questions underneath - but a chat window is a shape everyone
+              already knows how to use, and it lowers the cost of starting
+              to almost nothing: tap a reply, or just type. A numbered quiz
+              signals "fill this in"; a message signals "answer me", which
+              is a much smaller ask at the moment someone lands from an ad. */}
+          <div className="mt-9 w-full max-w-md rounded-3xl border border-border/60 bg-card p-4 text-left shadow-lg sm:p-5">
+            <div className="flex items-start gap-2.5">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-purple-soft">
+                <Sparkles className="h-4 w-4 text-purple-deep" />
+              </div>
+              <div className="min-w-0 rounded-2xl rounded-tl-md bg-muted/50 px-4 py-3">
+                <p className="text-[15px] leading-relaxed text-ink">{QUIZ_STEP_ONE.question}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col items-end gap-2">
+              {QUIZ_STEP_ONE.options?.filter((o) => o !== "Something else").map((opt) => (
                 <button
                   key={opt}
                   onClick={() => startQuiz(opt)}
-                  className="w-full rounded-2xl border border-border/60 bg-card px-5 py-4 text-left text-base shadow-sm transition hover:border-pink hover:bg-pink-soft/30"
+                  className="rounded-2xl rounded-br-md border border-pink/30 bg-pink-soft/50 px-4 py-2.5 text-right text-[15px] text-ink transition hover:bg-pink-soft"
                 >
                   {opt}
                 </button>
               ))}
             </div>
+
+            {/* Free text is a first-class option, not a fallback. Plenty of
+                people won't see themselves in any of the four - and the
+                thing they type instead is the most valuable input we get. */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (freeText.trim()) startQuiz(freeText.trim());
+              }}
+              className="mt-4 flex items-center gap-2 rounded-full border border-border/60 bg-cream px-2 py-1.5"
+            >
+              <input
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                maxLength={200}
+                placeholder="Or just tell me what's going on…"
+                className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] outline-none placeholder:text-ink/40"
+              />
+              <button
+                type="submit"
+                disabled={!freeText.trim()}
+                aria-label="Send"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-pink text-white transition disabled:opacity-30"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
+
+          {/* Names the wider problems out loud. Someone searching "am I the
+              toxic one" or "relationship OCD" needs to see their exact words
+              here to believe they're in the right place - the old page only
+              ever talked about decoding texts. */}
+          <div className="mt-5 flex max-w-md flex-wrap justify-center gap-2 text-xs text-ink/55">
+            {[
+              "Toxic relationships",
+              "Am I the toxic one?",
+              "Avoidant partners",
+              "Relationship OCD",
+              "Toxic marriage",
+            ].map((t) => (
+              <span key={t} className="rounded-full border border-border/50 px-3 py-1.5">
+                {t}
+              </span>
+            ))}
           </div>
 
           {/* "Private & secure" is what every product claims and nobody
