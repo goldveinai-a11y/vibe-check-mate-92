@@ -71,11 +71,22 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
 
   const endRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
   const seededRef = useRef(false);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
+
+  // Grow with the text. One of the three advertised ways in is "paste the
+  // messages", and a pasted argument is long — showing it through a slot the
+  // height of one line makes the thing we asked her to do feel unwelcome.
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 176) + "px";
+  }, [input]);
 
   // A reply tapped on the landing hero before this component mounted gets
   // replayed as her first message, so tapping "I walk on eggshells" reads
@@ -245,7 +256,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       </div>
 
       {!safety && (
-        <form onSubmit={onSubmit} className="border-t border-border/50 px-4 py-3">
+        <form onSubmit={onSubmit} className="border-t border-border/50 px-3 py-3 sm:px-4">
           {pending.length > 0 && (
             <div className="mb-2.5 flex flex-wrap gap-2">
               {pending.map((p, i) => (
@@ -272,7 +283,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={busy || handingOff || pending.length >= 6}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-ink/50 transition hover:bg-muted hover:text-ink disabled:opacity-40"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-ink/50 transition hover:bg-muted hover:text-ink disabled:opacity-40 sm:h-10 sm:w-10"
               aria-label="Attach screenshots"
             >
               <ImagePlus className="h-5 w-5" />
@@ -298,20 +309,20 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
                   void send();
                 }
               }}
-              rows={1}
+              ref={taRef} rows={2}
               maxLength={1500}
               disabled={handingOff}
               placeholder="Type, or paste the messages…"
-              className="max-h-32 min-h-[40px] flex-1 resize-none rounded-2xl border border-border/60 bg-cream px-4 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-pink/40 focus:outline-none"
+              className="max-h-44 min-h-[60px] flex-1 resize-none rounded-2xl border border-border/60 bg-cream px-4 py-3 text-base leading-relaxed text-ink placeholder:text-ink/40 focus:border-pink/40 focus:outline-none sm:min-h-[52px] sm:text-sm"
             />
 
             <button
               type="submit"
               disabled={(!input.trim() && pending.length === 0) || busy || handingOff}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-pink text-white transition disabled:opacity-30"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-pink text-white transition disabled:opacity-30 sm:h-10 sm:w-10"
               aria-label="Send"
             >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-5 w-5" />}
             </button>
           </div>
 
