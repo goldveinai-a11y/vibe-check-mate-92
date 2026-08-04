@@ -39,6 +39,7 @@ import {
   MINOR_INSTRUCTION,
   sessionTier,
   looksIdiomatic,
+  T3_IDIOM_NOTE,
   TIER_INSTRUCTIONS,
   validateReply,
   retryInstruction,
@@ -278,14 +279,31 @@ async function runIntakeTurnOnce(
   // The tier instruction is a floor under the prompt, not a replacement for
   // it. The prompt reads context and routes well; this makes the routing
   // non-negotiable for the cases where being talked out of it is expensive.
-  const systemSuffix =
-    dynamicSystem +
+  const systemSuffix = dynamicSystem + retryNote;
+
+  // The tier instruction does NOT go in the system prompt.
+  //
+  // It used to, at the end, and Haiku ignored it: on "my boyfriend gets mad
+  // when I hang out with my friends" the detector correctly said T2 and the
+  // model still produced a polite clarifier. Three thousand tokens of prompt
+  // in front of it is enough for the tail to lose the argument.
+  //
+  // Moving it to the front of the system prompt would fix attention and
+  // destroy caching — a cache breakpoint only covers the prefix before it,
+  // so a block that changes every turn in front of a static one means the
+  // static one is never a cache hit. Appending it to the last user turn
+  // instead keeps the cached prefix intact and puts the instruction in the
+  // position the model weighs most heavily: last.
+  const turnInstruction =
     TIER_INSTRUCTIONS[tier] +
-    (tier === "T3" && looksIdiomatic(message)
-      ? "\n\nNote: the phrase that triggered this may be a figure of speech. Ask once before treating it as literal."
-      : "") +
-    (isMinor ? MINOR_INSTRUCTION : "") +
-    retryNote;
+    (tier === "T3" && looksIdiomatic(message) ? T3_IDIOM_NOTE : "") +
+    (isMinor ? MINOR_INSTRUCTION : "");
+
+  const turnText = turnInstruction
+    ? (message || "(she attached screenshots of the conversation)") +
+      "\n\n---\n[Instruction for this reply only. She cannot see this text.]" +
+      turnInstruction
+    : message;
 
   const currentContent: Msg["content"] = images?.length
     ? [
@@ -295,9 +313,9 @@ async function runIntakeTurnOnce(
             source: { type: "base64", media_type: img.mediaType, data: img.base64 },
           }),
         ),
-        { type: "text", text: message || "(she attached screenshots of the conversation)" },
+        { type: "text", text: turnText || "(she attached screenshots of the conversation)" },
       ]
-    : message;
+    : turnText;
 
   const messages: Msg[] = [
     ...history.map((h) => ({ role: h.role, content: h.content })),
