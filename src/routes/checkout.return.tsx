@@ -111,7 +111,7 @@ function ReturnPage() {
       setSessionState(error ? "failed" : "logged_in");
       if (!error && !purchaseTrackedRef.current) {
         purchaseTrackedRef.current = true;
-        trackEvent("purchase_completed", {
+        trackEvent("purchase", {
           report_id: id,
           value: value ?? 0,
           currency: currency ?? "USD",
