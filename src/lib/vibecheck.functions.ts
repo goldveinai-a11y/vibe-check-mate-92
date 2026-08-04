@@ -277,12 +277,9 @@ const RunAnalysisInputSchema = z.object({
   images: z.array(ImageInputSchema).max(6).optional(),
   quiz: QuizAnswersSchema.optional(),
   // Carried from the intake so the report is not written blind to what the
-  // conversation already established. Without these the read prints "the
-  // part about you" at someone the intake has just decided not to say that
-  // to, and prices a report for someone it has just flagged as possibly
-  // under 18.
+  // conversation already established. Without it the read prints "the part
+  // about you" at someone the intake has just decided not to say that to.
   tier: z.enum(["T0", "T1", "T2", "T3"]).optional(),
-  minor: z.boolean().optional(),
 });
 
 // The expensive half. The client fires this WITHOUT awaiting it and
@@ -316,7 +313,7 @@ export const runAnalysis = createServerFn({ method: "POST" })
     if (images.length === 0 && !data.quiz) return { error: "no_evidence" };
 
     try {
-      const report = await analyzeConversation(images, data.quiz);
+      const report = await analyzeConversation(images, data.quiz, data.tier);
       const preview = buildPreview(report);
       const { error: updErr } = await supabaseAdmin
         .from("analyses")
