@@ -69,6 +69,13 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
   const [error, setError] = useState<string | null>(null);
   const [safety, setSafety] = useState(false);
 
+  // Analytics state. The chat is now the whole top of the funnel and the
+  // drop-off inside it was invisible — we knew it started and knew when it
+  // finished, and nothing in between, which is exactly where people leave.
+  const turnRef = useRef(0);
+  const askedForScreensRef = useRef(false);
+  const startedRef = useRef(false);
+
   const endRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -142,7 +149,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       },
       }).catch(() => {});
 
-      trackEvent("intake_completed", {
+      trackEvent("chat_finished", {
         turns: messages.filter((m) => m.role === "user").length,
         with_screenshots: images.length > 0,
         pasted: Boolean(finalSlots.pastedMessages),
@@ -164,7 +171,13 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
     const text = (textOverride ?? input).trim();
     if ((!text && pending.length === 0) || busy) return;
 
-    if (messages.filter((m) => m.role === "user").length === 0) onStarted?.();
+    if (messages.filter((m) => m.role === "user").length === 0) {
+      onStarted?.();
+      if (!startedRef.current) {
+        startedRef.current = true;
+        trackEvent("chat_started", { seeded: Boolean(textOverride) });
+      }
+    }
 
     const images = await Promise.all(pending.map((p) => fileToBase64(p.file)));
     const shown = text || (images.length === 1 ? "📎 screenshot" : `📎 ${images.length} screenshots`);
@@ -176,6 +189,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
     setPending([]);
     setBusy(true);
     setError(null);
+    const sentAt = Date.now();
 
     try {
       const { intakeTurn } = await import("@/lib/vibecheck.functions");
@@ -183,12 +197,54 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         data: { history, message: text, slots, images: images.length ? images : undefined },
       });
 
+      turnRef.current += 1;
+      const turn = turnRef.current;
+
+      trackEvent("chat_reply", {
+        turn_number: turn,
+        tier: res.tier ?? "T0",
+        has_image: images.length > 0,
+        chars: text.length,
+      });
+
+      // Time to the FIRST answer is its own metric: everything after it is
+      // spent by someone who has already decided the thing is worth talking
+      // to. Everything before it is spent deciding.
+      if (turn === 1) {
+        trackEvent("chat_first_reply", { latency_ms: Date.now() - sentAt, tier: res.tier ?? "T0" });
+      }
+
+      if (res.tier && res.tier !== "T0") {
+        trackEvent("chat_tier_detected", { tier: res.tier, turn_number: turn });
+      }
+
+      if (images.length > 0) {
+        trackEvent("chat_got_screenshots", { turn_number: turn, count: images.length });
+      }
+
+      // Pasted text counts as evidence exactly like a screenshot does, and
+      // it is the path that needs no trip to the photo gallery — worth
+      // knowing separately from the upload path.
+      if (!images.length && text.length > 400) {
+        trackEvent("chat_messages_pasted", { chars: text.length });
+      }
+
+      // Did the model actually make the ask? Measured against
+      // chat_got_screenshots this is the conversion rate on the one request
+      // that decides whether the report can quote him at all.
+      if (!askedForScreensRef.current && /show me the thread|paste the messages|screenshot/i.test(res.reply)) {
+        askedForScreensRef.current = true;
+        trackEvent("chat_asked_screenshots", { turn_number: turn });
+      }
+
+      if (res.capped) trackEvent("chat_capped", { turns: turn });
+
       setSlots(res.slots);
       setMessages((prev) => [...prev, { role: "assistant", content: res.reply }]);
 
       if (res.safetyConcern) {
         setSafety(true);
-        trackEvent("intake_safety_triggered", {});
+        trackEvent("chat_safety_triggered", { tier: res.tier ?? "T3", turn_number: turnRef.current });
         return;
       }
       if (res.ready) {
@@ -196,6 +252,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         setTimeout(() => void handOff(res.slots, images, res.tier), 1600);
       }
     } catch {
+      trackEvent("chat_error", { stage: "reply", turn_number: turnRef.current });
       setError("That didn't send. Try again.");
       setMessages((prev) => prev.slice(0, -1));
       setInput(text);
