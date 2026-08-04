@@ -45,7 +45,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 type Pending = { file: File; url: string };
 
 const OPENER =
-  "What's going on? Tell me as much or as little as you want — or paste the messages and I'll read them myself.";
+  "What's going on? Tell me as much or as little as you want. You can paste the messages or send screenshots too — I'll read them myself.";
 
 async function fileToBase64(file: File): Promise<{ mediaType: string; base64: string }> {
   const buf = await file.arrayBuffer();
@@ -84,6 +84,24 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
+
+  // Arriving on #chat should put the cursor in the box, not just scroll near
+  // it. On the landing page the header CTA used to be a link to the page you
+  // were already on, so it did nothing at all; from anywhere else it dropped
+  // you at the top of the page with the chat mostly below the fold.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const focusIfTargeted = () => {
+      if (window.location.hash !== "#chat") return;
+      document.getElementById("chat")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Deliberately not on mobile: focusing throws up the keyboard and
+      // hides the conversation she came to read.
+      if (window.matchMedia("(min-width: 640px)").matches) taRef.current?.focus();
+    };
+    focusIfTargeted();
+    window.addEventListener("hashchange", focusIfTargeted);
+    return () => window.removeEventListener("hashchange", focusIfTargeted);
+  }, []);
 
   // Grow with the text. One of the three advertised ways in is "paste the
   // messages", and a pasted argument is long — showing it through a slot the
@@ -276,7 +294,10 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
   };
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-3xl border border-border/60 bg-card shadow-lg">
+    <div
+      id="chat"
+      className="scroll-mt-24 flex flex-col overflow-hidden rounded-3xl border-2 border-pink/25 bg-card shadow-xl"
+    >
       <div className="flex items-center gap-2.5 border-b border-border/50 px-5 py-3.5">
         <div className="grid h-8 w-8 place-items-center rounded-xl bg-purple-soft">
           <Sparkles className="h-4 w-4 text-purple-deep" />
@@ -327,7 +348,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       </div>
 
       {!safety && (
-        <form onSubmit={onSubmit} className="border-t border-border/50 px-3 py-3 sm:px-4">
+        <form onSubmit={onSubmit} className="border-t-2 border-pink/20 bg-pink-soft/25 px-3 py-3 sm:px-4">
           {pending.length > 0 && (
             <div className="mb-2.5 flex flex-wrap gap-2">
               {pending.map((p, i) => (
@@ -383,8 +404,8 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
               ref={taRef} rows={2}
               maxLength={1500}
               disabled={handingOff}
-              placeholder="Type, or paste the messages…"
-              className="max-h-44 min-h-[60px] flex-1 resize-none rounded-2xl border border-border/60 bg-cream px-4 py-3 text-base leading-relaxed text-ink placeholder:text-ink/40 focus:border-pink/40 focus:outline-none sm:min-h-[52px] sm:text-sm"
+              placeholder="Type here — or paste the messages…"
+              className="max-h-44 min-h-[60px] flex-1 resize-none rounded-2xl border-2 border-pink/35 bg-card px-4 py-3 text-base leading-relaxed text-ink shadow-sm placeholder:text-ink/50 focus:border-pink focus:outline-none sm:min-h-[52px] sm:text-sm"
             />
 
             <button
@@ -398,7 +419,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
           </div>
 
           <p className="mt-2 text-center text-[11px] text-ink/40">
-            Screenshots are read once, then deleted. Nothing is ever sent to anyone.
+            Type, paste the messages, or tap the image icon to add screenshots — read once, then deleted.
           </p>
         </form>
       )}
