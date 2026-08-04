@@ -1,9 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { captureRefCode } from "@/lib/anon-id";
 import { getUnlockedCount } from "@/lib/vibecheck.functions";
-import { QUIZ_STEP_ONE, saveQuizDraft } from "@/lib/quiz";
 import {
   Sparkles,
   Heart,
@@ -20,7 +19,6 @@ import {
   Flame,
   FileText,
   Plus,
-  ArrowRight,
   AlertTriangle,
 } from "lucide-react";
 // AlertTriangle above is used by the "Red Flag Zone" report mockup. It was
@@ -30,6 +28,7 @@ import {
 // in the build catches a missing named import inside JSX; only the browser
 // does. Any new icon added below must be added here in the same edit.
 import { SiteHeader } from "@/components/SiteHeader";
+import { IntakeChat } from "@/components/IntakeChat";
 import { SiteFooter } from "@/components/SiteFooter";
 import { trackEvent } from "@/lib/analytics";
 
@@ -59,8 +58,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
-  const navigate = useNavigate();
-  const [freeText, setFreeText] = useState("");
+  // Set when an opener chip is tapped; IntakeChat replays it as her first
+  // message so the chip reads as having said something, not as having
+  // picked from a menu.
+  const [seed, setSeed] = useState<string | undefined>();
 
   // Social proof above the fold. The count already existed and was only
   // shown on the results page - i.e. exclusively to people who had already
@@ -76,17 +77,6 @@ function Landing() {
   useEffect(() => {
     captureRefCode();
   }, []);
-
-  // Answering question 1 here IS starting the quiz - there's no separate
-  // "begin" step. Tapping a concrete answer reads as answering a question;
-  // tapping a "Start" button reads as committing to a process. With 73% of
-  // visitors gone inside 10 seconds, removing that moment of commitment
-  // matters more than any wording change on a button.
-  const startQuiz = (answer: string) => {
-    saveQuizDraft({ situation: answer });
-    trackEvent("quiz_started", { situation: answer });
-    navigate({ to: "/quiz" });
-  };
 
   return (
     <main className="min-h-screen bg-cream text-ink">
@@ -140,60 +130,46 @@ function Landing() {
             </div>
           )}
 
-          {/* The entry point is now a conversation, not a form. Same six
-              questions underneath - but a chat window is a shape everyone
-              already knows how to use, and it lowers the cost of starting
-              to almost nothing: tap a reply, or just type. A numbered quiz
-              signals "fill this in"; a message signals "answer me", which
-              is a much smaller ask at the moment someone lands from an ad. */}
-          <div className="mt-9 w-full max-w-md rounded-3xl border border-border/60 bg-card p-4 text-left shadow-lg sm:p-5">
-            <div className="flex items-start gap-2.5">
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-purple-soft">
-                <Sparkles className="h-4 w-4 text-purple-deep" />
-              </div>
-              <div className="min-w-0 rounded-2xl rounded-tl-md bg-muted/50 px-4 py-3">
-                <p className="text-[15px] leading-relaxed text-ink">{QUIZ_STEP_ONE.question}</p>
-              </div>
-            </div>
+          {/* The real intake conversation, in place on the landing page.
+              What stood here before was a chat-shaped decoration: an AI
+              bubble, canned reply chips, and a text box that all navigated
+              to a six-question form. It made a promise in its shape and
+              broke it on the first tap, which is worse than an honest form
+              — the first thing the product did was misrepresent itself.
 
-            <div className="mt-4 flex flex-col items-end gap-2">
-              {QUIZ_STEP_ONE.options?.filter((o) => o !== "Something else").map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => startQuiz(opt)}
-                  className="rounded-2xl rounded-br-md border border-pink/30 bg-pink-soft/50 px-4 py-2.5 text-right text-[15px] text-ink transition hover:bg-pink-soft"
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
+              It lives inline rather than behind a /chat link because the
+              measured problem is 73% of visitors leaving inside ten
+              seconds. Every click between arrival and saying the first
+              thing is a click that loses most of them. */}
+          <div className="mt-9 w-full max-w-lg text-left">
+            <IntakeChat
+              seed={seed}
+              onStarted={() => trackEvent("intake_started", { seeded: Boolean(seed) })}
+            />
+          </div>
 
-            {/* Free text is a first-class option, not a fallback. Plenty of
-                people won't see themselves in any of the four - and the
-                thing they type instead is the most valuable input we get. */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (freeText.trim()) startQuiz(freeText.trim());
-              }}
-              className="mt-4 flex items-center gap-2 rounded-full border border-border/60 bg-cream px-2 py-1.5"
-            >
-              <input
-                value={freeText}
-                onChange={(e) => setFreeText(e.target.value)}
-                maxLength={200}
-                placeholder="Or just tell me what's going on…"
-                className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[15px] outline-none placeholder:text-ink/40"
-              />
+          {/* Openers, not quiz options. Tapping one sends it as her first
+              message and the conversation genuinely continues from there —
+              it isn't a hidden multiple-choice question. They exist because
+              a blank input is a harder ask than a sentence you can point
+              at, and these five are the situations the search data actually
+              shows people arriving with. */}
+          <div className="mt-4 flex w-full max-w-lg flex-wrap justify-center gap-2">
+            {[
+              "I end up apologising every time",
+              "He's hot and cold, constantly",
+              "I walk on eggshells around him",
+              "He went quiet on me",
+            ].map((opt) => (
               <button
-                type="submit"
-                disabled={!freeText.trim()}
-                aria-label="Send"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-pink text-white transition disabled:opacity-30"
+                key={opt}
+                onClick={() => setSeed(opt)}
+                disabled={Boolean(seed)}
+                className="rounded-full border border-pink/30 bg-pink-soft/40 px-3.5 py-2 text-[13px] text-ink/80 transition hover:bg-pink-soft disabled:opacity-40"
               >
-                <ArrowRight className="h-4 w-4" />
+                {opt}
               </button>
-            </form>
+            ))}
           </div>
 
           {/* Names the wider problems out loud. Someone searching "am I the
@@ -555,14 +531,20 @@ function Landing() {
           <p className="mt-4 text-base text-ink/70">
             Start the conversation. Screenshots optional. Your first read is free.
           </p>
-          <Link
-            to="/quiz"
-            onClick={() => trackEvent("cta_clicked", { position: "footer" })}
+          {/* Scrolls back to the chat rather than linking to /quiz. The
+              conversation is ON this page now, and sending someone from the
+              bottom of the page to a separate form would recreate exactly
+              the bait-and-switch this rebuild removed. */}
+          <button
+            onClick={() => {
+              trackEvent("cta_clicked", { position: "footer" });
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-pink px-8 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"
           >
             <Heart className="h-4 w-4 fill-white" />
             Start Your VibeCheck
-          </Link>
+          </button>
         </div>
       </section>
 
