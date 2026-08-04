@@ -12,6 +12,20 @@ export type QuizAnswers = {
   replySpeed: string;
   frustration?: string;
   theirName?: string;
+  // Everything below is collected by the intake CONVERSATION (see
+  // intake.server.ts), which replaced the six-question form. A fixed form
+  // physically cannot ask these — "what happened after the last argument"
+  // has no useful multiple-choice answer, and it is worth more than all
+  // five required fields put together. This is the whole reason the intake
+  // became a chat rather than a longer questionnaire.
+  specificIncident?: string;
+  herReaction?: string;
+  afterConflict?: string;
+  realQuestion?: string;
+  // Verbatim conversation she typed or pasted. Ranks with screenshots as
+  // real evidence — it IS the messages, just not as an image — so the
+  // quiz-only prompt is allowed to quote directly from it.
+  pastedMessages?: string;
 };
 
 function formatQuiz(quiz: QuizAnswers): string {
@@ -24,6 +38,27 @@ function formatQuiz(quiz: QuizAnswers): string {
   ];
   if (quiz.frustration?.trim()) {
     lines.push(`- What frustrates her most, in her own words: "${quiz.frustration.trim()}"`);
+  }
+  if (quiz.specificIncident?.trim()) {
+    lines.push(`- The most recent concrete thing that happened, in her words: "${quiz.specificIncident.trim()}"`);
+  }
+  if (quiz.herReaction?.trim()) {
+    lines.push(`- What SHE did in response to it: "${quiz.herReaction.trim()}"`);
+  }
+  if (quiz.afterConflict?.trim()) {
+    lines.push(
+      `- What happens after a disagreement (repair pattern): "${quiz.afterConflict.trim()}" — this is the highest-value signal here. Weigh it heavily in conversation_health, toxicity_score and the Gottman read.`,
+    );
+  }
+  if (quiz.realQuestion?.trim()) {
+    lines.push(
+      `- The question underneath her question: "${quiz.realQuestion.trim()}" — the report must actually answer this one, not circle it.`,
+    );
+  }
+  if (quiz.pastedMessages?.trim()) {
+    lines.push(
+      `- VERBATIM MESSAGES she pasted. These are real quotes and you MAY quote them exactly, the same way you would quote a screenshot:\n"""\n${quiz.pastedMessages.trim().slice(0, 4000)}\n"""`,
+    );
   }
   // The quiz asks about "him" throughout, so the person being analysed is
   // male unless a name says otherwise. Stated explicitly because the

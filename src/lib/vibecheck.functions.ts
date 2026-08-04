@@ -194,14 +194,77 @@ export const createAnalysis = createServerFn({ method: "POST" })
   });
 
 const QuizAnswersSchema = z.object({
-  situation: z.string().min(1).max(120),
-  relationship: z.string().min(1).max(120),
-  duration: z.string().min(1).max(120),
-  whoTextsFirst: z.string().min(1).max(120),
-  replySpeed: z.string().min(1).max(120),
-  frustration: z.string().max(400).optional(),
+  // Caps are generous because these no longer come from a fixed option list
+  // — the intake conversation writes them in her own words, so "almost
+  // always me, unless he wants something" is a normal value now.
+  situation: z.string().min(1).max(400),
+  relationship: z.string().min(1).max(200),
+  duration: z.string().min(1).max(200),
+  whoTextsFirst: z.string().min(1).max(200),
+  replySpeed: z.string().min(1).max(200),
+  frustration: z.string().max(600).optional(),
   theirName: z.string().max(40).optional(),
+  specificIncident: z.string().max(1200).optional(),
+  herReaction: z.string().max(800).optional(),
+  afterConflict: z.string().max(800).optional(),
+  realQuestion: z.string().max(400).optional(),
+  pastedMessages: z.string().max(6000).optional(),
 });
+
+// --- Intake conversation ---------------------------------------------
+// One turn of the chat that replaced the six-question form. Stateless on
+// the server: the client holds the transcript and the slots and sends both
+// back each turn. That's deliberate — an intake that isn't persisted can't
+// leak, and someone describing a bad relationship to a website is exactly
+// the person who should not have a half-finished draft sitting in our
+// database. It also means no migration and no new table.
+const IntakeSlotsSchema = z.object({
+  situation: z.string().max(400).optional(),
+  relationship: z.string().max(200).optional(),
+  duration: z.string().max(200).optional(),
+  whoTextsFirst: z.string().max(200).optional(),
+  replySpeed: z.string().max(200).optional(),
+  frustration: z.string().max(600).optional(),
+  theirName: z.string().max(40).optional(),
+  specificIncident: z.string().max(1200).optional(),
+  herReaction: z.string().max(800).optional(),
+  afterConflict: z.string().max(800).optional(),
+  realQuestion: z.string().max(400).optional(),
+  pastedMessages: z.string().max(6000).optional(),
+});
+
+const IntakeTurnInputSchema = z.object({
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) }))
+    .max(48),
+  message: z.string().max(1500),
+  slots: IntakeSlotsSchema,
+  images: z.array(ImageInputSchema).max(6).optional(),
+});
+
+export const intakeTurn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => IntakeTurnInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { runIntakeTurn, MAX_INTAKE_TURNS, slotsComplete } = await import("./intake.server");
+
+    // Runaway guard. Past the cap we stop asking and hand off with whatever
+    // we have — a read built on four slots is worth more than a chat that
+    // never ends, and the cost of an unbounded loop is real.
+    const userTurns = data.history.filter((h) => h.role === "user").length;
+    if (userTurns >= MAX_INTAKE_TURNS) {
+      return {
+        reply:
+          "I've got enough to work with. Let me pull the read together — give me a moment.",
+        slots: data.slots,
+        ready: slotsComplete(data.slots),
+        safetyConcern: false,
+        capped: true as const,
+      };
+    }
+
+    const result = await runIntakeTurn(data.history, data.message, data.slots, data.images);
+    return { ...result, slots: { ...data.slots, ...result.slots }, capped: false as const };
+  });
 
 // Images are optional now: a quiz-only run is a first-class path, not a
 // degraded one. That's what lets someone in TikTok's in-app browser - where
