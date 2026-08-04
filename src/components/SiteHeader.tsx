@@ -8,7 +8,7 @@ interface Props {
   unlockParams?: { id: string };
 }
 
-// Nav is deliberately three items. "Upload" is gone - the quiz is the
+// Nav is deliberately three items. "Upload" is gone - the chat is the
 // entry point now, and a menu item pointing at the bare upload page sent
 // people around the funnel rather than through it. "Example report" earns
 // its slot because "what do I actually get" is the question standing
@@ -43,10 +43,10 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
               </Link>
             ) : (
               // No report exists yet in this branch, so there is nothing to
-              // unlock - send people to the quiz to make one instead of to
+              // unlock - send people to the chat on the landing page instead of to
               // a page that can't do anything for them.
               <Link
-                to="/quiz"
+                to="/"
                 className="rounded-full bg-pink px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:opacity-90 sm:text-sm"
               >
                 Start a check
