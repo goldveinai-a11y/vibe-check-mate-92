@@ -68,25 +68,31 @@ type Tier = {
 };
 
 const TIERS: Tier[] = [
-  {
-    id: "single",
-    name: "Single Report",
-    price: "$1",
-    cents: ".99",
-    priceValue: 1.99,
-    sub: "One-time deep analysis of this single chat, plus 10 AI chat questions about your results. No subscription, no future access.",
-    cta: "Get Only This Report - $1.99",
-  },
+  // Order matters. Single used to sit first and anchored the page, which
+  // is the wrong anchor: it fully answers the question she arrived with,
+  // so weekly reads as "the same thing but more" - more of something she
+  // no longer needs once the report has landed. The two plans now answer
+  // two different questions, and the one that can't be satisfied by the
+  // other goes first.
   {
     id: "weekly",
-    name: "Premium Weekly",
+    name: "Where it's going",
     price: "$4",
     cents: ".99",
     priceValue: 4.99,
-    sub: "Unlimited chat uploads and unlimited AI chat about your results. Charged $4.99 today, renews every week. Cancel anytime.",
-    cta: "Get Unlimited - $4.99",
+    sub: "This report, and then the part one report can't do: run it again next week, and the week after. One read tells you what this is. Three tell you which way it's moving - and whether the 10-day call on him held. Unlimited reads and unlimited questions. $4.99 today, renews weekly, cancel anytime.",
+    cta: "See where it's going - $4.99",
     badge: "MOST POPULAR",
     highlight: true,
+  },
+  {
+    id: "single",
+    name: "What this is",
+    price: "$1",
+    cents: ".99",
+    priceValue: 1.99,
+    sub: "This one report, unlocked: every score, every flag with the quote it came from, and the 10-day call on his next move. Plus 10 questions about it. One chat, one moment in time - no follow-up read to check it against.",
+    cta: "Unlock this report - $1.99",
   },
   {
     id: "monthly",
@@ -203,7 +209,7 @@ function PaywallPage() {
               Unlock the full story of your vibe
             </h1>
             <p className="mt-4 max-w-2xl text-base text-ink/70">
-              You've seen the surface. Go deeper with a detailed, AI-powered breakdown of everything happening between the lines of your conversation - so you can stop wondering and know where you actually stand.
+              You've seen the surface. Below is the whole read - every score, every flag with the quote it came from, and a dated call on what he does next. Two questions, two prices: what this is, and where it's going.
             </p>
             <div className="mt-4 flex items-center gap-2 text-sm text-ink/60">
               <Lock className="h-4 w-4 text-mint" />
@@ -287,7 +293,7 @@ function PaywallPage() {
                 </li>
                 <li className="flex gap-2.5">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-                  Real trend tracking - see if it's cooling, don't just guess
+                  See it again next week - the only way to know if it's cooling
                 </li>
               </ul>
             </div>
@@ -434,7 +440,10 @@ function PaywallPage() {
                 <p className="text-center text-xs text-destructive">{checkoutError}</p>
               )}
               <p className="text-center text-xs text-ink/60">
-                Apple Pay - Google Pay - Card - Link - secure checkout by Stripe
+                $1.99 answers what this is. $4.99 answers where it is going - and that one needs more than a single day.
+            </p>
+            <p className="text-center text-xs text-ink/60">
+              Apple Pay - Google Pay - Card - Link - secure checkout by Stripe
               </p>
               <Link
                 to="/results/$id"
