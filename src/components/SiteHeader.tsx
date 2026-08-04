@@ -47,6 +47,7 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
               // a page that can't do anything for them.
               <Link
                 to="/"
+          hash="chat"
                 className="rounded-full bg-pink px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:opacity-90 sm:text-sm"
               >
                 Start a check
