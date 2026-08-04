@@ -236,23 +236,28 @@ function Landing() {
           </div>
 
           <div className="mt-8 rounded-3xl border border-border/60 bg-card p-4 shadow-lg sm:p-5">
-            <div className="rounded-2xl bg-pink p-5 text-white">
+            {/* Example switched to a control-pattern case. The old one was a
+                mild lopsided-effort read with 22% toxicity, sitting directly
+                under a headline asking "is it toxic?" - the page was
+                answering its own question with "not really", which is the
+                wrong proof for the person this page is now for. */}
+            <div className="rounded-2xl bg-destructive p-5 text-white">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest">
-                <Flame className="h-3 w-3" />
-                You're doing the work
+                <AlertTriangle className="h-3 w-3" />
+                Proceed with caution
               </span>
-              <h3 className="font-serif mt-3 text-3xl leading-tight">One-Sided Energy</h3>
+              <h3 className="font-serif mt-3 text-3xl leading-tight">Red Flag Zone</h3>
               <p className="mt-2 text-sm text-white/90">
-                The math isn't mathing. Effort and interest are lopsided.
+                You're apologising for things you didn't do. That's a pattern, not a rough patch.
               </p>
             </div>
 
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {[
-                { label: "Interest", value: 34, tone: "bg-pink" },
-                { label: "Reciprocity", value: 28, tone: "bg-pink" },
-                { label: "Response Consistency", value: 41, tone: "bg-mint" },
-                { label: "Toxicity", value: 22, tone: "bg-destructive" },
+                { label: "Toxicity", value: 71, tone: "bg-destructive" },
+                { label: "Conversation Health", value: 24, tone: "bg-destructive" },
+                { label: "Emotional Warmth", value: 38, tone: "bg-pink" },
+                { label: "Reciprocity", value: 29, tone: "bg-pink" },
               ].map((m) => (
                 <div key={m.label} className="rounded-2xl border border-border/60 p-3">
                   <div className="flex items-center justify-between text-sm">
@@ -270,9 +275,9 @@ function Landing() {
               <span className="rounded-full bg-destructive px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
                 Red Flag
               </span>
-              <h4 className="font-serif mt-2 text-lg">Breadcrumbing Pattern</h4>
+              <h4 className="font-serif mt-2 text-lg">Blame Reversal</h4>
               <p className="mt-1 select-none text-sm italic text-ink/60 blur-[3px]">
-                "the exact quote from their messages"
+                "the exact quote from his messages"
               </p>
             </div>
 
@@ -293,12 +298,13 @@ function Landing() {
           <div className="mt-6 grid gap-x-6 gap-y-2 text-sm text-ink/70 sm:grid-cols-2">
             {[
               "Every red flag, with the exact quote",
-              "Their attachment style, explained",
-              "Gottman pattern breakdown",
+              "Control and manipulation patterns, named",
+              "His attachment style, explained",
+              "Gottman's Four Horsemen check",
               "Hard numbers: who initiates, reply times",
               "Forecast if nothing changes",
               "Two replies written for you to send",
-              "An AI you can ask follow-up questions",
+              "An AI you can keep asking",
             ].map((item) => (
               <div key={item} className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-mint" />
@@ -371,28 +377,33 @@ function Landing() {
             </p>
           </div>
 
+          {/* Rewritten to match the chat entry above. It used to say "answer
+              six questions", which stopped being true the moment the front
+              door became a conversation - and a page that describes itself
+              inaccurately in its own How-it-works section undermines every
+              other claim on it. */}
           <div className="mt-10 grid gap-5 sm:grid-cols-2 md:grid-cols-3">
             {[
               {
-                Icon: PieChart,
+                Icon: MessageCircleHeart,
                 iconBg: "bg-pink-soft",
                 iconColor: "text-pink",
-                title: "Answer six questions",
-                body: "Who they are to you, who texts first, how fast they reply. Tap through in about thirty seconds.",
+                title: "Start talking",
+                body: "Tap an answer or just type what's going on. A few short questions to get the shape of it.",
               },
               {
                 Icon: UploadIcon,
                 iconBg: "bg-purple-soft",
                 iconColor: "text-purple",
-                title: "Add screenshots if you want",
-                body: "Optional. With them you get their exact words decoded and a reply to send. Without, you still get a full read.",
+                title: "Show the messages",
+                body: "Optional. Paste the texts or send screenshots - that's what lets us quote him back to you.",
               },
               {
                 Icon: Wand2,
                 iconBg: "bg-pink-soft",
                 iconColor: "text-pink",
-                title: "Get your read",
-                body: "Interest level, red flags, and the honest takeaway on where this is actually going.",
+                title: "Get the read",
+                body: "The pattern named - control, breadcrumbing, stonewalling - with evidence and what to do next.",
               },
             ].map((s) => (
               <div key={s.title} className="rounded-3xl border border-border/50 bg-card p-6 shadow-sm">
@@ -492,7 +503,11 @@ function Landing() {
               },
               {
                 q: "Do I need screenshots?",
-                a: "No. Six questions is enough for a full read. Screenshots make it sharper - we can quote their actual messages and write you a reply that answers what they really said - but plenty of people skip that step and still get something useful.",
+                a: "No. Telling us what's happening is enough for a full read. Screenshots or pasted messages make it sharper - we can quote him back to you and write a reply that answers what he actually said - but plenty of people skip that and still get something useful.",
+              },
+              {
+                q: "What if it's not about texting at all?",
+                a: "That's fine. Plenty of people come here about a marriage, a partner who twists things around, someone avoidant, or the loop of wondering whether they're the problem. Just say what's going on in your own words.",
               },
               {
                 q: "How accurate can it really be?",
@@ -524,7 +539,7 @@ function Landing() {
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl">Ready to stop guessing?</h2>
           <p className="mt-4 text-base text-ink/70">
-            Six quick questions. Screenshots optional. Your first read is free.
+            Start the conversation. Screenshots optional. Your first read is free.
           </p>
           <Link
             to="/quiz"
