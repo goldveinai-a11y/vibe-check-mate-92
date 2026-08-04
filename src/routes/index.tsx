@@ -29,15 +29,22 @@ import { trackEvent } from "@/lib/analytics";
 export const Route = createFileRoute("/")({
   // The landing page had no head block at all, so it inherited whatever the
   // root route set - meaning the one page most likely to be shared, linked
-  // or indexed had no title or description of its own. Written in the
-  // decoder framing rather than the old "compatibility score" one.
+  // or indexed had no title or description of its own.
+  //
+  // Rewritten twice now. First out of the "compatibility score" framing,
+  // and now out of the "six questions" one - the entry became a chat, so a
+  // description promising a six-question quiz mismatches both the page and
+  // any ad pointing at it. The wording leans on the terms that actually got
+  // clicked in search (toxic, manipulation, walking on eggshells) rather
+  // than the crush-and-ghosting vocabulary that got impressions and no
+  // clicks at all.
   head: () => ({
     meta: [
-      { title: "VibeCheck - decode what they actually meant" },
+      { title: "Is it toxic? An AI read on your relationship - VibeCheck" },
       {
         name: "description",
         content:
-          "Six quick questions and an honest read on where you stand: their real interest level, the red flags, and what their messages actually mean. First read free.",
+          "Tell an AI what's going on, or paste the messages. It names the pattern - control, blame-shifting, breadcrumbing, stonewalling - and shows the quotes that prove it. First read free.",
       },
     ],
   }),
