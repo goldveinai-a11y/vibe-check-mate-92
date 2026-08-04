@@ -5,11 +5,6 @@
 // argued out of a judgement; a regex cannot. This file is not a replacement
 // for the prompt — it is the backstop for the cases where being wrong is
 // expensive enough that we should not leave it to inference alone.
-//
-// It currently covers exactly one case: the user is, or may be, under 18.
-// That gap mattered most because the audience skews young, the landing page
-// invites exactly the kind of disclosure a fifteen-year-old makes, and
-// nothing anywhere in the product noticed.
 
 const MINOR_PATTERNS: RegExp[] = [
   /\b(i'?m|i am|im)\s*(only\s*)?1[0-7]\b/i,
@@ -24,8 +19,7 @@ const MINOR_PATTERNS: RegExp[] = [
 ];
 
 // Phrases that trip the patterns above without being the user's own age.
-// Checked first: a false positive here silently degrades the read for an
-// adult, and an adult being handled as a minor is its own kind of failure.
+// Checked first: an adult handled as a minor is its own kind of failure.
 const NOT_A_MINOR: RegExp[] = [
   /\b(he|she|they|my (son|daughter|sister|brother|cousin|niece|nephew|student))\s+(is|was)\s*1[0-7]\b/i,
   /\bback in (high\s*school|school)\b/i,
@@ -51,7 +45,7 @@ export function minorFlagFor(previousTurns: string[], current: string): boolean 
 // the rest of the prompt where they conflict.
 export const MINOR_INSTRUCTION = `
 
-## She may be under 18 — this section overrides everything above
+\\ She may be under 18 — this section overrides everything above
 
 Something in this conversation suggests she is a minor. Assume she is, and do not ask her to confirm it.
 
@@ -60,5 +54,179 @@ Something in this conversation suggests she is a minor. Assume she is, and do no
 - Point her toward one adult she trusts — a parent, a teacher, a school counsellor, an older sibling, a coach. Do not choose for her and do not tell her to report anything.
 - The right resource for this age group is loveisrespect: 1.866.331.9474, or text LOVEIS to 22522. Free, confidential, and built for teenagers specifically. Use it in place of a generic helpline.
 - Never suggest that controlling, frightening or possessive behaviour is normal "at your age" or "when you're young". It is the same behaviour it would be at thirty.
-- Everything else in this prompt still applies. She came for a straight answer and being sixteen does not make her owed a softer one — it makes her owed a safer one.
+- Everything else in this prompt still applies. She came for a straight answer, and being sixteen does not make her owed a softer one — it makes her owed a safer one.
 `;
+
+// ---------------------------------------------------------------------------
+// Tiers
+//
+// The prompt already routes high-signal phrases well and should stay the
+// primary mechanism — it reads context, a regex cannot. What a regex can do
+// is refuse to be talked out of the routing. These tiers are the floor, not
+// the ceiling: they raise the branch the model is on, never lower it.
+//
+//   T0  ordinary conversation
+//   T1  a fear dynamic — she organises her behaviour around his reaction
+//   T2  markers of coercive control — monitoring, isolation, money, threats
+//   T3  harm, or a threat of it
+//
+// T1 matters most and is the one every competitor gets wrong. It is NOT an
+// alarm. It is a change of depth. Panicking at "eggshells" is as much a
+// failure as ignoring it.
+
+export type Tier = "T0" | "T1" | "T2" | "T3";
+
+const T1_PATTERNS: RegExp[] = [
+  /\bwalk(ing)? on eggshells\b/i,
+  /\bon eggshells\b/i,
+  /\btiptoe(ing)? around\b/i,
+  /\b(afraid|scared|nervous) to (disagree|say|bring (it|that) up|ask|tell him|speak up)\b/i,
+  /\bi just go along\b/i,
+  /\b(it'?s )?easier (to agree|not to say|not to bring)/i,
+  /\bhe'?ll lose it\b/i,
+  /\bsets? him off\b/i,
+  /\bhis temper\b/i,
+  /\bi apolog(ise|ize) (for everything|even when|when i haven'?t)/i,
+  /\bnever know (which|what) (version|mood|him)/i,
+  /\bbrace (myself|for)\b/i,
+  /\bcareful how i (say|word|phrase)/i,
+];
+
+const T2_PATTERNS: RegExp[] = [
+  /\b(checks?|goes? through|reads?|looks? through) my (phone|messages|dms|texts)\b/i,
+  /\b(wants?|demands?|has) (all )?my passwords?\b/i,
+  /\btracks? (me|my location)\b/i,
+  /\b(has to|needs to) know where i am\b/i,
+  /\bwon'?t let me (see|go|work|have|leave)\b/i,
+  /\bdoesn'?t let me\b/i,
+  /\b(hates|doesn'?t like) my (friends|family)\b/i,
+  /\bcut me off from\b/i,
+  /\bi stopped (seeing|going|talking to)\b/i,
+  /\bcontrols? (the|our|my) money\b/i,
+  /\bgives? me an allowance\b/i,
+  /\bthreaten(s|ed)? to (post|share|send|leak)\b/i,
+  /\bthreaten(s|ed)? to (hurt|kill) himself\b/i,
+  /\bsays? he'?ll (hurt|kill) himself\b/i,
+  /\bif i leave he'?ll\b/i,
+];
+
+const T3_PATTERNS: RegExp[] = [
+  /\b(hit|hits|slapped|punched|kicked|shoved|pushed) me\b/i,
+  /\b(choked|strangled) me\b/i,
+  /\bhands? around my (neck|throat)\b/i,
+  /\bthrew (something|it) at me\b/i,
+  /\bthreaten(s|ed)? to (kill|hurt) me\b/i,
+  /\b(scared|afraid|terrified) (he'?ll|he will|of him) hurt/i,
+  /\bi'?m (not safe|in danger)\b/i,
+  /\b(forced|pressured) me (in)?to (sex|sleep|send)/i,
+  /\braped\b/i,
+  /\b(kill myself|end it all|hurt myself|self.?harm)\b/i,
+];
+
+// Figures of speech that trip T3 without meaning it. When one of these is
+// present, the model asks once before treating it as real rather than
+// escalating at a phrase.
+const IDIOMS: RegExp[] = [
+  /\bhe'?d kill me if\b/i,
+  /\bi'?m dying\b/i,
+  /\bkilled it\b/i,
+  /\bshoot me\b/i,
+  /\bdead to me\b/i,
+];
+
+const RANK: Record<Tier, number> = { T0: 0, T1: 1, T2: 2, T3: 3 };
+
+export function detectTier(text: string): Tier {
+  if (!text) return "T0";
+  if (T3_PATTERNS.some((r) => r.test(text))) return "T3";
+  if (T2_PATTERNS.some((r) => r.test(text))) return "T2";
+  if (T1_PATTERNS.some((r) => r.test(text))) return "T1";
+  return "T0";
+}
+
+export function looksIdiomatic(text: string): boolean {
+  return IDIOMS.some((r) => r.test(text));
+}
+
+// Sticky, for the same reason the minor flag is: the tier describes the
+// relationship, not the sentence. Once she has said he checks her phone, a
+// later turn about brunch does not put us back on T0.
+export function sessionTier(previousTurns: string[], current: string): Tier {
+  return [...previousTurns, current].reduce<Tier>((acc, t) => {
+    const next = detectTier(t);
+    return RANK[next] > RANK[acc] ? next : acc;
+  }, "T0");
+}
+
+export const TIER_INSTRUCTIONS: Record<Tier, string> = {
+  T0: "",
+
+  T1: `
+
+\\ Detected: a fear dynamic — this changes your next reply
+
+She has described organising her own behaviour around avoiding his reaction. Treat it as a safety-of-expression problem, not a communication problem, and say so.
+
+- Do NOT alarm her, do NOT mention abuse or helplines, do NOT tell her to leave. Nothing here should read as an intervention. Change the branch, not the temperature.
+- The question that matters most is whether the rules are STABLE or MOVING. A predictable temper and rules that shift are different situations, and the second is the more serious one. Ask it, and tell her why you asked.
+- Ask what he actually DOES when she gets it wrong. Behaviour, not mood.
+- Do not name anything she is doing to maintain the dynamic. Adapting to a volatile person is a rational response, not a flaw, and saying otherwise here is both cruel and wrong.
+`,
+
+  T2: `
+
+\\ Detected: markers of coercive control — name it once, without drama
+
+Monitoring, isolation, control of money and threats are not separate quirks; they are one documented pattern. Say that plainly in one short paragraph. Do NOT say "you are being abused" — you do not have the whole picture and that sentence ends the conversation.
+
+Then offer the route exactly once and let her choose: "There are people whose whole job is this specific situation — free, confidential, any hour. Want the number, or want to keep going first?"
+
+- NEVER advise leaving, staying, confronting, or issuing an ultimatum. Leaving is the most dangerous period and safety planning needs a trained advocate, not a chat product.
+- Do NOT suggest collecting evidence, screenshotting or recording unless she raises it. If the device is monitored, that creates risk.
+- If she mentioned him checking her phone, add one line: use a private window and clear this afterwards.
+- Do not name anything she is doing to maintain the dynamic, for the rest of this conversation.
+`,
+
+  T3: `
+
+\\ Detected: harm or a threat of it — stop the intake
+
+If this could be a figure of speech, ask once, plainly, before anything else: "I want to make sure I read that right — has that actually happened, or is it a turn of phrase?" Then route on her answer.
+
+Otherwise set safetyConcern=true and stop. No more questions, no analysis, no scores, no read. Say you believe her in one sentence. Say this is past what a conversation-reader is for. Give her a helpline for her country — loveisrespect (1.866.331.9474, or text LOVEIS to 22522) in the US, the National Domestic Abuse Helpline (0808 2000 247) in the UK, Women's Aid (1800 341 900) in Ireland. Offer to stay and keep talking.
+
+Do NOT ask for detail about what happened. Do NOT ask why she stays. Do NOT tell her to leave or to stay. Do NOT make any prediction.
+`,
+};
+
+// ---------------------------------------------------------------------------
+// Output validation
+//
+// The bans live in the prompt, which means they hold exactly as well as a
+// model at temperature 0.6 holds anything — over ten-plus turns per user it
+// will drift. Checking the output costs nothing, and one retry with the
+// violation quoted back fixes almost all of it.
+
+const BANNED: Array<{ rule: string; re: RegExp }> = [
+  { rule: "hedging (usually means / can be a sign)", re: /\b(usually means|often means|typically means|can be a sign|tends to mean|it might be that)\b/i },
+  { rule: "empty sympathy", re: /\b(that sounds (really |so )?(hard|tough|difficult|painful)|i hear you|that must be exhausting)\b/i },
+  { rule: "diagnosing him", re: /\bhe('s| is) (a )?(narcissist|sociopath|avoidant|toxic person|abuser)\b/i },
+  { rule: "telling her what to do about the relationship", re: /\byou should (leave|break up|dump|end it)\b/i },
+  { rule: "manipulation advice", re: /\b(go silent|ignore him so|make him (jealous|chase|miss you)|post a story)\b/i },
+];
+
+export function validateReply(reply: string): { ok: boolean; broken: string[] } {
+  const broken = BANNED.filter((b) => b.re.test(reply)).map((b) => b.rule);
+  return { ok: broken.length === 0, broken };
+}
+
+export function retryInstruction(broken: string[]): string {
+  return `
+
+\\ Your previous reply broke these rules and was discarded
+
+` + broken.map((b) => "- " + b).join("\n") + `
+
+Write the reply again. Same situation, same question if it was a good one, but without the violation. Do not apologise for the previous attempt or refer to it; she never saw it.
+`;
+}
