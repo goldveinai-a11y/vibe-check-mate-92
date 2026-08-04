@@ -161,7 +161,8 @@ function PaywallPage() {
     setCheckoutError(null);
     setLoadingPlan(planId);
     const tier = TIERS.find((t) => t.id === planId)!;
-    trackEvent("checkout_started", { report_id: id, value: tier.priceValue, currency: "USD", plan: planId, winback: winbackActive });
+    trackEvent("plan_selected", { report_id: id, plan: planId, price: tier.priceValue });
+    trackEvent("begin_checkout", { report_id: id, value: tier.priceValue, currency: "USD", plan: planId, winback: winbackActive });
     try {
       const origin = window.location.origin;
       const successUrl = `${origin}/checkout/return?id=${id}&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email.trim())}&plan=${planId}&value=${tier.priceValue}&currency=USD`;
