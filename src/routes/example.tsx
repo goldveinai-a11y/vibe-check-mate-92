@@ -35,25 +35,32 @@ import { trackEvent } from "@/lib/analytics";
 export const Route = createFileRoute("/example")({
   head: () => ({
     meta: [
-      { title: "Example report - see a full VibeCheck" },
+      { title: "Example report - a full VibeCheck on a toxic pattern" },
       {
         name: "description",
         content:
-          "A complete example VibeCheck report: interest score, every red flag with receipts, attachment style, forecast, and the exact replies to send.",
+          "A complete example VibeCheck report on a blame-shifting partner: toxicity score, every red flag with the exact quotes, the psychology behind it, and what to send back.",
       },
     ],
   }),
   component: ExamplePage,
 });
 
+// The example case was rebuilt around a control-and-blame pattern rather
+// than the old breadcrumbing-crush one. Not a cosmetic swap: the landing
+// page now leads with "Is it toxic - or are you overthinking it?", and a
+// sample report whose headline finding was "he's a bit dry over text"
+// answered a question nobody arriving from that headline is asking. It
+// also under-sold the product - the toxicity work is the strongest thing
+// the analysis does and it was represented here by a single 26% bar.
 const SCORES = [
-  { label: "Interest", value: 34, Icon: Heart, tone: "pink" as const },
-  { label: "Reciprocity", value: 28, Icon: Users, tone: "pink" as const },
-  { label: "Emotional Warmth", value: 41, Icon: Heart, tone: "pink" as const },
-  { label: "Flirting Signals", value: 37, Icon: Flame, tone: "purple" as const },
-  { label: "Response Consistency", value: 22, Icon: TrendingUp, tone: "mint" as const },
-  { label: "Conversation Health", value: 39, Icon: Activity, tone: "mint" as const },
-  { label: "Toxicity Level", value: 26, Icon: AlertTriangle, tone: "danger" as const },
+  { label: "Interest", value: 52, Icon: Heart, tone: "pink" as const },
+  { label: "Reciprocity", value: 29, Icon: Users, tone: "pink" as const },
+  { label: "Emotional Warmth", value: 31, Icon: Heart, tone: "pink" as const },
+  { label: "Flirting Signals", value: 26, Icon: Flame, tone: "purple" as const },
+  { label: "Response Consistency", value: 38, Icon: TrendingUp, tone: "mint" as const },
+  { label: "Conversation Health", value: 21, Icon: Activity, tone: "mint" as const },
+  { label: "Toxicity Level", value: 74, Icon: AlertTriangle, tone: "danger" as const },
 ];
 
 const BAR = { pink: "bg-pink", mint: "bg-mint", purple: "bg-purple", danger: "bg-destructive" };
@@ -64,13 +71,13 @@ const TEXT = { pink: "text-pink", mint: "text-mint", purple: "text-purple", dang
 // toxicity score would point the wrong way and quietly make a bad
 // conversation look like a good one.
 const SEVEN_AXES = [
-  { label: "Interest", value: 34 },
-  { label: "Reciprocity", value: 28 },
-  { label: "Warmth", value: 41 },
-  { label: "Flirting", value: 37 },
-  { label: "Consistency", value: 22 },
-  { label: "Health", value: 39 },
-  { label: "Non-toxic", value: 74 },
+  { label: "Interest", value: 52 },
+  { label: "Reciprocity", value: 29 },
+  { label: "Warmth", value: 31 },
+  { label: "Flirting", value: 26 },
+  { label: "Consistency", value: 38 },
+  { label: "Health", value: 21 },
+  { label: "Non-toxic", value: 26 },
 ];
 
 function pointOnRadar(index: number, ratio: number): string {
@@ -101,24 +108,25 @@ function ExamplePage() {
               This is what you actually get
             </h1>
             <p className="mt-4 text-base text-ink/70">
-              A full unlocked report, start to finish. Nothing blurred. Made-up conversation - yours is built from
-              your own answers and screenshots.
+              A full unlocked report, start to finish. Nothing blurred. This one is a made-up eight-month
+              relationship where every argument somehow ends with her apologising - yours is built from your own
+              conversation.
             </p>
           </div>
 
           {/* Verdict */}
-          <div className="mt-8 rounded-3xl bg-pink p-6 text-white shadow-lg sm:p-8">
+          <div className="mt-8 rounded-3xl bg-destructive p-6 text-white shadow-lg sm:p-8">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest">
-              <Flame className="h-3 w-3" />
-              You're doing the work
+              <AlertTriangle className="h-3 w-3" />
+              Proceed with caution
             </span>
-            <h2 className="font-serif mt-3 text-4xl leading-[1.05] sm:text-5xl">One-Sided Energy</h2>
+            <h2 className="font-serif mt-3 text-4xl leading-[1.05] sm:text-5xl">Blame Reversal</h2>
             <p className="mt-3 text-base leading-relaxed text-white/90">
-              The math isn't mathing. You're carrying this thread almost single-handedly, and Jake is doing just
-              enough to keep it from ending.
+              You're not imagining it. Every time you raise something, the conversation turns into your reaction to
+              it - and you end up apologising for a thing you didn't do.
             </p>
             <span className="mt-4 inline-block rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest">
-              33% Overall Vibe
+              74% Toxicity
             </span>
           </div>
 
@@ -188,19 +196,22 @@ function ExamplePage() {
             <div className="mt-4 space-y-4">
               {[
                 {
-                  word: "sometime",
+                  word: "you're overreacting",
                   type: "red" as const,
-                  impact: "Appears three times, never once with a day attached. This is the whole pattern in one word.",
+                  impact:
+                    "Four times in three weeks, always within two messages of you naming something concrete. It moves the subject from what he did to how you responded.",
                 },
                 {
-                  word: "miss talking to you",
+                  word: "I never said that",
+                  type: "red" as const,
+                  impact:
+                    "Used twice about things sitting in the same thread, a few messages up. Whether or not he means it, the effect is that you stop trusting your own memory.",
+                },
+                {
+                  word: "sorry, I was stressed",
                   type: "beige" as const,
-                  impact: "Real warmth, but it landed at 11:40pm and was never followed up. Feels bigger than it is.",
-                },
-                {
-                  word: "how'd the thing go",
-                  type: "green" as const,
-                  impact: "He retained a detail from four days earlier without being reminded. Genuinely a good sign.",
+                  impact:
+                    "A real apology, and he does mean it in the moment. But it explains the outburst rather than changing it - the same sequence repeats eight days later.",
                 },
               ].map((k) => (
                 <div key={k.word}>
@@ -225,24 +236,25 @@ function ExamplePage() {
             </div>
             <ul className="mt-4 space-y-3 text-sm leading-relaxed text-white/85">
               <li>
-                Out of the last 18 messages, you opened the conversation 14 times. Jake opened it twice, both times
-                after 11pm.
+                You apologised 11 times in this thread. He apologised twice, both after you had already apologised
+                first.
               </li>
               <li>
-                Your average message runs 24 words. His run 6. That gap has widened every week since you started
-                talking.
+                Every one of the five disagreements followed the same three steps: you name something, he reframes
+                it as your reaction, you apologise. Five out of five.
               </li>
               <li>
-                Reply time went from under 10 minutes in week one to a median of 7 hours now - with two stretches
-                over 24 hours.
+                Your messages get longer as arguments go on - 18 words, then 44, then 90. That's over-explaining,
+                and it usually means you're being asked to justify yourself.
               </li>
               <li>
-                He asks a follow-up question in 11% of his replies. Above 40% is what genuine curiosity usually
-                looks like.
+                He answers a direct question with a question about you in 6 of 9 cases. That's not evasiveness by
+                accident; it's consistent enough to be the strategy.
               </li>
               <li>
-                <span className="font-medium text-white">Communication style:</span> asymmetric engagement with
-                avoidant leaning - high emotional expressiveness, low conversational reciprocity.
+                <span className="font-medium text-white">Communication style:</span> reactive, blame-externalising,
+                affectionate on repair - warmth returns quickly after conflict, which is exactly what makes the
+                pattern hard to see from inside it.
               </li>
             </ul>
           </div>
@@ -257,12 +269,13 @@ function ExamplePage() {
               Your voice style
             </div>
             <h3 className="font-serif mt-3 text-xl leading-tight">
-              Warm, generous, and doing most of the structural work
+              Careful, pre-apologetic, and negotiating before you've asked
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-ink/75">
-              Long, layered messages with multiple threads in one send. You ask questions constantly, mirror their
-              energy upward rather than matching it, and reliably rescue any silence longer than a day. That's a
-              generous way to text - and it's exactly why the imbalance here is invisible from the inside.
+              You soften almost every request before it lands - "sorry, I know you're busy", "this is probably
+              nothing, but". You explain your feelings in paragraphs and then explain them again. None of that is a
+              flaw in you; it's what people learn to do when raising something has been expensive before. It's also
+              the clearest evidence in this thread that it has been.
             </p>
           </div>
 
@@ -273,11 +286,11 @@ function ExamplePage() {
             <span className="rounded-full bg-mint px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
               Green Flag
             </span>
-            <h4 className="font-serif mt-3 text-xl">He remembers the small stuff</h4>
-            <p className="mt-2 text-sm italic text-ink/70">"how'd the thing with your boss go"</p>
+            <h4 className="font-serif mt-3 text-xl">He does come back</h4>
+            <p className="mt-2 text-sm italic text-ink/70">"I hate when we're like this"</p>
             <p className="mt-2 text-sm text-ink/80">
-              Unprompted callback to something you mentioned four days earlier. Low effort to send, but it means he
-              retained it - a genuinely good sign in an otherwise thin thread.
+              He never lets a fight sit for days. That's real, and it's why leaving feels wrong - repair is present
+              here. Worth being clear-eyed about it though: repair without change is what makes a loop a loop.
             </p>
           </div>
 
@@ -285,11 +298,12 @@ function ExamplePage() {
             <span className="rounded-full bg-mint px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
               Green Flag
             </span>
-            <h4 className="font-serif mt-3 text-xl">He closes warmly, every time</h4>
-            <p className="mt-2 text-sm italic text-ink/70">"sleep well, talk tomorrow x"</p>
+            <h4 className="font-serif mt-3 text-xl">No name-calling, no threats</h4>
+            <p className="mt-2 text-sm italic text-ink/70">"I'm not trying to make you feel bad"</p>
             <p className="mt-2 text-sm text-ink/80">
-              Every conversation ends with warmth rather than trailing off. It costs him nothing, but people who are
-              fully checked out don't bother with the sign-off - they just stop replying.
+              Nothing in this thread crosses into contempt, insults or intimidation. That matters, and it's why this
+              reads as a bad pattern rather than something more serious. It also means the problem is the shape of
+              the arguments, not the temperature of them.
             </p>
           </div>
 
@@ -297,11 +311,14 @@ function ExamplePage() {
             <span className="rounded-full bg-destructive px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
               Red Flag
             </span>
-            <h4 className="font-serif mt-3 text-xl">Plans that never get a date</h4>
-            <p className="mt-2 text-sm italic text-ink/70">"we should definitely do that sometime"</p>
+            <h4 className="font-serif mt-3 text-xl">The subject becomes your reaction</h4>
+            <p className="mt-2 text-sm italic text-ink/70">
+              "why do you always turn everything into a thing"
+            </p>
             <p className="mt-2 text-sm text-ink/80">
-              Third time this exact structure appears - enthusiasm plus no date. Someone who wants to see you names
-              a day. "Sometime" is a way to sound willing while committing to nothing.
+              You raised him cancelling for the third time. Two messages later the conversation is about whether
+              you're too sensitive - and it never returns to the cancellation. That switch happens in all five
+              disagreements here.
             </p>
           </div>
 
@@ -309,11 +326,12 @@ function ExamplePage() {
             <span className="rounded-full bg-destructive px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
               Red Flag
             </span>
-            <h4 className="font-serif mt-3 text-xl">Warmth that arrives only late at night</h4>
-            <p className="mt-2 text-sm italic text-ink/70">"miss talking to you tbh"</p>
+            <h4 className="font-serif mt-3 text-xl">Your memory gets contradicted, in writing</h4>
+            <p className="mt-2 text-sm italic text-ink/70">"I never said I'd be there, you assumed"</p>
             <p className="mt-2 text-sm text-ink/80">
-              Both of his warmest messages landed after 11pm, and neither was followed up the next morning. Affection
-              that only shows up at that hour is usually about his mood, not about you.
+              He said it in this thread, on the 14th, at 6:42pm - eleven messages above where he denies it. You
+              don't have a memory problem. This is the specific thing that makes people start screenshotting their
+              own relationship.
             </p>
           </div>
 
@@ -323,15 +341,20 @@ function ExamplePage() {
               <Brain className="h-4 w-4" />
               Psychological read
             </div>
-            <h4 className="font-serif mt-3 text-xl">Avoidant attachment, fairly textbook</h4>
+            <h4 className="font-serif mt-3 text-xl">DARVO, and it's consistent</h4>
             <p className="mt-2 text-sm text-ink/80">
-              Warmth that spikes then withdraws, vague future-talk, and consistent under-matching of your effort.
-              Under Bowlby and Ainsworth's framework this reads as avoidant: closeness is welcome right up until it
-              implies obligation, at which point distance re-appears.
+              Deny, Attack, Reverse Victim and Offender - a sequence first described by Jennifer Freyd. It runs in
+              order here: the event is denied, your reaction is attacked, and by the end he is the one who has been
+              treated unfairly. Five for five is not a bad week. It's a habit.
             </p>
             <p className="mt-3 text-sm text-ink/80">
-              On Gottman's Four Horsemen there's no contempt or criticism here - the issue is stonewalling. Direct
-              questions about plans get answered around rather than answered.
+              On Gottman's Four Horsemen, two of the four are present: defensiveness in almost every exchange, and
+              criticism aimed at who you are ("you always") rather than what happened. Contempt and stonewalling are
+              not - which is genuinely the difference between a fixable pattern and a finished one.
+            </p>
+            <p className="mt-3 text-sm text-ink/80">
+              One honest caveat: this reads a conversation, not a person. It can tell you the shape of what happens
+              between you. It can't tell you what he intends by it.
             </p>
           </div>
 
@@ -345,19 +368,19 @@ function ExamplePage() {
 
             <div className="mt-5 space-y-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">Warm</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">Calm</p>
                 <div className="mt-2 flex items-start gap-2 rounded-2xl bg-white/10 p-3.5">
                   <p className="min-w-0 flex-1 text-sm leading-relaxed">
-                    ok but "sometime" is doing a lot of work there. free thursday?
+                    i'm not upset about how i said it. i'm upset about thursday. can we stay on that one thing
                   </p>
                   <Copy className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/40" />
                 </div>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">Pulled back</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">Firmer</p>
                 <div className="mt-2 flex items-start gap-2 rounded-2xl bg-white/10 p-3.5">
                   <p className="min-w-0 flex-1 text-sm leading-relaxed">
-                    haha sounds good - let me know when you actually want to make it happen
+                    you did say it - it's still in this chat. i'm not arguing about whether i remember right
                   </p>
                   <Copy className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/40" />
                 </div>
@@ -365,8 +388,8 @@ function ExamplePage() {
             </div>
 
             <p className="mt-5 text-sm text-white/60">
-              Both name the pattern without accusing him of anything. The first hands him one easy way to prove
-              you wrong; the second hands the effort back and stops there.
+              Neither one accuses him of anything or asks him to agree he's toxic - that request never lands. Both
+              do the one thing that breaks this loop: refuse the subject change and stay on the original event.
             </p>
           </div>
 
@@ -388,18 +411,18 @@ function ExamplePage() {
 
             <div className="mt-5 space-y-3">
               <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-pink px-4 py-3 text-sm text-white">
-                Am I overthinking this, or is my read fair?
+                Am I the toxic one here? I do get really worked up.
               </div>
               <div className="w-fit max-w-[92%] rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm leading-relaxed text-ink/85 shadow-sm">
-                Your read is fair - it's literally in the data. You sent 9 of 13 messages (69%), and they've never
-                once asked you a follow-up question or brought up a topic. So it's less "do they like me" and more
-                "they like me, but I'm carrying this entire conversation." That gap burns people out in 4-6 weeks
-                if it doesn't shift.
+                You do escalate - your messages triple in length mid-argument and there's sarcasm in two of them.
+                That's real and it's worth owning. But look at the order: in all five disagreements the escalation
+                comes after the subject has already been switched to you. That's a response to the pattern, not the
+                cause of it. Someone can be reacting badly and still not be the one running the loop.
               </div>
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              {["Suggest a reply", "Do they like me?", "What happens next?", "I'm spiralling"].map((chip) => (
+              {["Am I the problem?", "Is this abuse or just a bad patch?", "What do I say next?", "I'm spiralling"].map((chip) => (
                 <span
                   key={chip}
                   className="rounded-full border border-purple/25 bg-white px-3.5 py-1.5 text-xs font-medium text-ink/70"
@@ -418,7 +441,7 @@ function ExamplePage() {
                 Their type in 3 words
               </div>
               <div className="mt-4 flex flex-col gap-2">
-                {["affectionate", "conversationally passive", "emoji-fluent"].map((w) => (
+                {["defensive", "blame-shifting", "quick to make up"].map((w) => (
                   <span
                     key={w}
                     className="rounded-full bg-purple-soft px-4 py-2 text-center font-serif text-lg text-purple-deep"
@@ -440,17 +463,17 @@ function ExamplePage() {
               </div>
               <div className="mt-4 rounded-2xl bg-muted/40 p-4">
                 <p className="text-[10px] uppercase tracking-widest text-ink/50">Weekly change</p>
-                <p className="font-serif text-4xl leading-none">-8%</p>
-                <p className="mt-1 text-xs text-ink/60">Cooling</p>
+                <p className="font-serif text-4xl leading-none">-5%</p>
+                <p className="mt-1 text-xs text-ink/60">Grinding down, not blowing up</p>
               </div>
               <div className="mt-2 rounded-2xl bg-muted/40 p-4">
-                <p className="text-[10px] uppercase tracking-widest text-ink/50">Window</p>
-                <p className="font-serif text-2xl leading-tight">3-5 weeks</p>
+                <p className="text-[10px] uppercase tracking-widest text-ink/50">Loop repeats every</p>
+                <p className="font-serif text-2xl leading-tight">8-10 days</p>
               </div>
               <div className="mt-2 rounded-2xl bg-muted/40 p-4">
                 <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-ink/50">
                   <span>Trend</span>
-                  <span>3-5 weeks</span>
+                  <span>5 arguments</span>
                 </div>
                 <svg viewBox="0 0 120 40" className="mt-2 h-12 w-full" role="img" aria-label="Declining trend line">
                   <polyline
@@ -472,11 +495,16 @@ function ExamplePage() {
           <div className="mt-5 rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
             <h3 className="font-serif text-2xl">If nothing changes</h3>
             <p className="mt-3 text-sm leading-relaxed text-ink/80">
-              This doesn't end in a blow-up - it ends in a slow fade, probably over the next three to five weeks.
-              The pattern is stable and it works for him exactly as it is, which means he has no reason to change
-              it while you keep carrying the thread. The single move that would tell you everything is to stop
-              opening the conversation for a week and see whether it survives. If he closes the gap, you had a busy
-              person. If it goes quiet, you had your answer already and were being generous about it.
+              This one doesn't fade - it stabilises. The loop already works: he avoids an uncomfortable conversation,
+              the fight resolves warmly, and nothing is renegotiated. What changes over the next few months is you:
+              the apologies get faster, the requests get smaller, and the list of subjects that feel worth raising
+              gets shorter. That's the real cost here, and it's gradual enough to miss.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-ink/80">
+              The move that tells you most is narrow and boring: pick one small, factual thing and stay on it for
+              the whole exchange, without defending your tone. Someone who was being careless will follow you back
+              to the point. Someone who needs the subject changed will change it again - and you'll have watched it
+              happen on purpose instead of at 2am afterwards.
             </p>
           </div>
 
@@ -487,9 +515,9 @@ function ExamplePage() {
                 <Award className="h-4 w-4" />
                 Vibe Award
               </div>
-              <h4 className="font-serif mt-3 text-2xl leading-tight">Gold Medalist in Dry Texting</h4>
+              <h4 className="font-serif mt-3 text-2xl leading-tight">Undefeated in Arguments He Started</h4>
               <p className="mt-2 text-sm text-white/85">
-                Six words per message and somehow still keeping you up at night.
+                Five for five. You've apologised eleven times; he's been wrong zero.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-medium">
@@ -510,7 +538,8 @@ function ExamplePage() {
               <h4 className="font-serif mt-3 text-2xl leading-tight">Marianne &amp; Connell</h4>
               <div className="mt-1 text-xs uppercase tracking-widest text-ink/50">from Normal People</div>
               <p className="mt-3 text-sm text-ink/80">
-                One person always reaching, one always retreating, both pretending that's just how it is.
+                Two people who genuinely love each other and still can't have one conversation that ends where it
+                started.
               </p>
             </div>
           </div>
@@ -524,7 +553,8 @@ function ExamplePage() {
             </div>
             <h3 className="font-serif mt-4 text-2xl">Loop closed.</h3>
             <p className="mx-auto mt-2 max-w-sm text-sm text-ink/70">
-              You know exactly where you stand. Whatever happens next, you're not walking in blind anymore.
+              You weren't imagining it, and you weren't being dramatic. Whatever you decide to do next, you're not
+              deciding it in the dark.
             </p>
           </div>
 
@@ -547,11 +577,28 @@ function ExamplePage() {
             ))}
           </div>
 
+          {/* Once the example case is about control and blame rather than a
+              crush, a line like this stops being optional. Some fraction of
+              people reading a page titled "is it toxic" are in something
+              worse than a bad pattern, and a product that scores their
+              relationship and then says nothing is quietly pretending it
+              can't tell the difference. It also costs nothing in
+              conversion - being the one product in the category that says
+              "this isn't therapy" is a trust asset, not a leak. */}
+          <div className="mt-5 rounded-3xl border border-border/60 bg-muted/30 p-5">
+            <p className="text-sm leading-relaxed text-ink/70">
+              <span className="font-medium text-ink">One thing this isn't.</span> A report reads a conversation - it
+              isn't therapy and it isn't a safety assessment. If you're being threatened, frightened, controlled
+              financially or physically, that's past what any analysis is for, and a domestic abuse helpline in your
+              country is the right call rather than an app.
+            </p>
+          </div>
+
           {/* CTA */}
           <div className="mt-10 rounded-3xl border border-border/60 bg-card p-6 text-center shadow-sm sm:p-8">
             <h3 className="font-serif text-2xl sm:text-3xl">Now do yours</h3>
             <p className="mt-2 text-sm text-ink/70">
-              Six quick questions. Screenshots optional. Your first read is free.
+              Start the conversation. Screenshots optional. Your first read is free.
             </p>
             <Link
               to="/quiz"
