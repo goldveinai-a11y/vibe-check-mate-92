@@ -7,6 +7,7 @@ import { getAnalysisFull, getCheckins } from "@/lib/vibecheck.functions";
 import { getAnonId } from "@/lib/anon-id";
 import type { Report, Flag } from "@/lib/vibecheck-schema";
 import { computeDelusionLevel } from "@/lib/vibecheck-schema";
+import { PredictionBeat, SafetyBanner, SelfMirrorCard } from "@/components/PredictionBeat";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ShareCard, exportShareCard, type ShareCardData } from "@/components/ShareCard";
 import { CompatibilityRadar } from "@/components/CompatibilityRadar";
@@ -58,7 +59,14 @@ function ReportPage() {
   }
 
   const { report, createdAt } = data as { locked: false; report: Report; createdAt: string };
-  const viral = report.viral;
+  // When the safety router fires, the entire viral layer is suppressed: no
+  // award, no pop-culture pairing, no "their type in 3 words", no share
+  // cards. A badge reading "Gold Medalist in Dry Texting" next to someone
+  // describing coercion is not a tone problem, it's the product failing at
+  // the one moment it matters. One boolean turns all of it off at the
+  // source rather than case-by-case at each render site.
+  const safetyConcern = report.safety?.concern === true;
+  const viral = safetyConcern ? undefined : report.viral;
   const s = report.scores;
   const overallScore = Math.round(
     (s.interest_score + s.reciprocity_score + s.emotional_warmth + s.response_consistency + s.flirting_signals + (100 - s.toxicity_score) + s.conversation_health) / 7,
@@ -155,6 +163,8 @@ function ReportPage() {
       <SiteHeader showUnlock={false} />
       <section className="px-5 pt-4">
         <div className="mx-auto max-w-3xl">
+          {report.safety?.concern && <SafetyBanner safety={report.safety} />}
+
           <div className="flex flex-col items-center text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-mint px-4 py-2 text-xs font-medium text-white">
               <CheckCircle2 className="h-3.5 w-3.5" />
@@ -437,7 +447,20 @@ function ReportPage() {
               />
             </div>
 
-            <CloseTheLoop report={report} overallScore={overallScore} />
+            {report.self_mirror && <SelfMirrorCard mirror={report.self_mirror} />}
+
+            {report.prediction ? (
+              <PredictionBeat
+                prediction={report.prediction}
+                createdAt={createdAt}
+                id={id}
+                surface="full_report"
+              />
+            ) : (
+              // Reports written before the prediction field existed still
+              // need an ending. They keep the old one.
+              <CloseTheLoop report={report} overallScore={overallScore} />
+            )}
           </div>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3 text-center">
@@ -737,6 +760,9 @@ function ReplyCard({ label, text, accent }: { label: string; text: string; accen
 // of the report silently ending. No new data, no invented percentages -
 // just a framed pause on what's already been said (vibe_award / overallScore
 // / future_outlook), reusing values already in scope on the report page.
+//
+// KEPT ONLY AS A FALLBACK for reports generated before `prediction` existed.
+// New reports end on PredictionBeat above. Do not route new work here.
 function CloseTheLoop({ report, overallScore }: { report: Report; overallScore: number }) {
   const [closed, setClosed] = useState(false);
   // Was "You have your read: couch potato with potential -" which reads as

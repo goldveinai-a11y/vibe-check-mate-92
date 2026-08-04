@@ -21,7 +21,14 @@ import {
   FileText,
   Plus,
   ArrowRight,
+  AlertTriangle,
 } from "lucide-react";
+// AlertTriangle above is used by the "Red Flag Zone" report mockup. It was
+// missing from this list when that mockup was added and took the entire
+// landing page down with "AlertTriangle is not defined" — the page rendered
+// its own error boundary, so the site looked deployed and was not. Nothing
+// in the build catches a missing named import inside JSX; only the browser
+// does. Any new icon added below must be added here in the same edit.
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { trackEvent } from "@/lib/analytics";

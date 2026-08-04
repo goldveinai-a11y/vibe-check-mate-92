@@ -10,6 +10,7 @@ import { ShareCard, exportShareCard, type ShareCardData } from "@/components/Sha
 import { InterestDonut } from "@/components/InterestDonut";
 import { StickyUnlockBar } from "@/components/StickyUnlockBar";
 import { AddScreenshotsCard } from "@/components/AddScreenshotsCard";
+import { PredictionBeat, SafetyBanner } from "@/components/PredictionBeat";
 import { trackEvent } from "@/lib/analytics";
 
 const previewQuery = (id: string) =>
@@ -214,6 +215,12 @@ function ResultsPage() {
               Here's the appetizer. The full report has the receipts - every red flag, exact quote, and forecast, zero sugarcoating.
             </p>
           </div>
+
+          {preview.safety?.concern && (
+            <div className="mt-8">
+              <SafetyBanner safety={preview.safety} />
+            </div>
+          )}
 
           <motion.div
             ref={heroRef}
@@ -503,6 +510,26 @@ function ResultsPage() {
               One-time payment - Instant access - No receipts kept
             </p>
           </div>
+
+          {/* Placed BELOW the unlock CTA on purpose.
+              The prediction is not a second offer competing with the
+              purchase — it's what catches the ~95% who scroll past it. Put
+              it above the CTA and it gives a reason to wait instead of buy
+              ("I'll just see what the email says"); put it here and it only
+              ever speaks to people who were leaving anyway.
+              This is also the only place in the entire free flow where an
+              email is asked for, which makes it the only source of
+              addresses for anyone who hasn't paid. */}
+          {preview.prediction && (
+            <div className="mt-10">
+              <PredictionBeat
+                prediction={preview.prediction}
+                createdAt={data.created_at as string}
+                id={id}
+                surface="free_preview"
+              />
+            </div>
+          )}
         </div>
       </section>
 
