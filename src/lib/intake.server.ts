@@ -37,6 +37,8 @@
 import {
   sessionTier,
   looksIdiomatic,
+  detectLoop,
+  LOOP_INSTRUCTION,
   T3_IDIOM_NOTE,
   TIER_INSTRUCTIONS,
   validateReply,
@@ -295,6 +297,12 @@ async function runIntakeTurnOnce(
   const userTurns = history.filter((h) => h.role === "user").map((h) => h.content);
   const tier = sessionTier(userTurns, message);
 
+  // A separate axis from the tier. The tier is about him; this is about what
+  // the asking is doing to her. Counted against slots already filled,
+  // because circling — many turns, few facts — is itself the signal.
+  const filled = REQUIRED_SLOTS.filter((k) => Boolean(knownSlots[k]?.toString().trim())).length;
+  const inLoop = detectLoop(userTurns, message, filled);
+
   // The tier instruction is a floor under the prompt, not a replacement for
   // it. The prompt reads context and routes well; this makes the routing
   // non-negotiable for the cases where being talked out of it is expensive.
@@ -315,7 +323,8 @@ async function runIntakeTurnOnce(
   // position the model weighs most heavily: last.
   const turnInstruction =
     TIER_INSTRUCTIONS[tier] +
-    (tier === "T3" && looksIdiomatic(message) ? T3_IDIOM_NOTE : "");
+    (tier === "T3" && looksIdiomatic(message) ? T3_IDIOM_NOTE : "") +
+    (inLoop ? LOOP_INSTRUCTION : "");
 
   const turnText = turnInstruction
     ? (message || "(she attached screenshots of the conversation)") +
