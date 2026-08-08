@@ -51,7 +51,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         feature: "Works without screenshots",
-        us: "Yes - six questions is enough for a full read",
+        us: "Yes - a short AI chat is enough for a full read",
         them: "No - it needs the conversation to reply to",
       },
       {

@@ -33,13 +33,21 @@ import { trackEvent } from "@/lib/analytics";
 export const Route = createFileRoute("/rocd")({
   head: () => ({
     meta: [
-      { title: "Why the answer never sticks - relationship doubt, read honestly" },
+      { title: "Relationship doubt: why the answer never sticks" },
       {
         name: "description",
         content:
-          "If you keep checking whether you really love him, re-reading the messages, asking friends the same question - you don't need another answer. You've had those. An AI that names the loop instead of feeding it.",
+          "If you keep checking whether you really love him and re-reading the messages, you don't need another answer. An AI that names the loop instead of feeding it.",
       },
+      { property: "og:title", content: "Relationship doubt: why the answer never sticks" },
+      {
+        property: "og:description",
+        content:
+          "Checking, re-reading, asking again. VibeCheck names the doubt loop instead of feeding it.",
+      },
+      { property: "og:url", content: "https://vibecheckapp.app/rocd" },
     ],
+    links: [{ rel: "canonical", href: "https://vibecheckapp.app/rocd" }],
   }),
   component: RocdPage,
 });

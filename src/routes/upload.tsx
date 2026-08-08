@@ -331,7 +331,7 @@ function UploadPage() {
                   <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
                     {files.map((f, i) => (
                       <div key={i} className="relative aspect-[3/5] overflow-hidden rounded-2xl bg-muted">
-                        <img src={f.previewUrl} alt={f.name} className="h-full w-full object-cover" />
+                        <img src={f.previewUrl} alt="" className="h-full w-full object-cover" />
                         <button
                           onClick={() => setFiles((cur) => cur.filter((_, idx) => idx !== i))}
                           className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white"

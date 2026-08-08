@@ -138,6 +138,9 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       const { createAnalysis, runAnalysis } = await import("@/lib/vibecheck.functions");
       const anonId = getAnonId();
       const created = await createAnalysis({ data: { ownerAnonId: anonId } });
+      if (!("id" in created)) {
+        throw new Error(created.code === "free_limit_reached" ? "limit" : created.error);
+      }
 
       const quiz = {
         situation: finalSlots.situation ?? "not stated",
@@ -217,10 +220,16 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
 
       turnRef.current += 1;
       const turn = turnRef.current;
+      const resTier = ("tier" in res ? res.tier : undefined) as
+        | "T0"
+        | "T1"
+        | "T2"
+        | "T3"
+        | undefined;
 
       trackEvent("chat_reply", {
         turn_number: turn,
-        tier: res.tier ?? "T0",
+        tier: resTier ?? "T0",
         has_image: images.length > 0,
         chars: text.length,
       });
@@ -229,11 +238,11 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       // spent by someone who has already decided the thing is worth talking
       // to. Everything before it is spent deciding.
       if (turn === 1) {
-        trackEvent("chat_first_reply", { latency_ms: Date.now() - sentAt, tier: res.tier ?? "T0" });
+        trackEvent("chat_first_reply", { latency_ms: Date.now() - sentAt, tier: resTier ?? "T0" });
       }
 
-      if (res.tier && res.tier !== "T0") {
-        trackEvent("chat_tier_detected", { tier: res.tier, turn_number: turn });
+      if (resTier && resTier !== "T0") {
+        trackEvent("chat_tier_detected", { tier: resTier, turn_number: turn });
       }
 
       if (images.length > 0) {
@@ -262,12 +271,12 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
 
       if (res.safetyConcern) {
         setSafety(true);
-        trackEvent("chat_safety_triggered", { tier: res.tier ?? "T3", turn_number: turnRef.current });
+        trackEvent("chat_safety_triggered", { tier: resTier ?? "T3", turn_number: turnRef.current });
         return;
       }
       if (res.ready) {
         // Let her read the closing line before the screen changes.
-        setTimeout(() => void handOff(res.slots, images, res.tier), 1600);
+        setTimeout(() => void handOff(res.slots, images, resTier), 1600);
       }
     } catch {
       trackEvent("chat_error", { stage: "reply", turn_number: turnRef.current });
@@ -402,6 +411,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
                 }
               }}
               ref={taRef} rows={2}
+              aria-label="Your message"
               maxLength={1500}
               disabled={handingOff}
               placeholder="Type here — or paste the messages…"

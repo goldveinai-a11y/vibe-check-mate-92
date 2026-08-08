@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ScienceRouteImport } from './routes/science'
+import { Route as RocdRouteImport } from './routes/rocd'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RefundRouteImport } from './routes/refund'
 import { Route as QuizRouteImport } from './routes/quiz'
@@ -44,9 +46,19 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScienceRoute = ScienceRouteImport.update({
   id: '/science',
   path: '/science',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RocdRoute = RocdRouteImport.update({
+  id: '/rocd',
+  path: '/rocd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -167,7 +179,9 @@ export interface FileRoutesByFullPath {
   '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
@@ -193,7 +207,9 @@ export interface FileRoutesByTo {
   '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
@@ -220,7 +236,9 @@ export interface FileRoutesById {
   '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
@@ -248,7 +266,9 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/refund'
     | '/reset-password'
+    | '/rocd'
     | '/science'
+    | '/sitemap.xml'
     | '/terms'
     | '/upload'
     | '/analyzing/$id'
@@ -274,7 +294,9 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/refund'
     | '/reset-password'
+    | '/rocd'
     | '/science'
+    | '/sitemap.xml'
     | '/terms'
     | '/upload'
     | '/analyzing/$id'
@@ -300,7 +322,9 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/refund'
     | '/reset-password'
+    | '/rocd'
     | '/science'
+    | '/sitemap.xml'
     | '/terms'
     | '/upload'
     | '/analyzing/$id'
@@ -327,7 +351,9 @@ export interface RootRouteChildren {
   QuizRoute: typeof QuizRoute
   RefundRoute: typeof RefundRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  RocdRoute: typeof RocdRoute
   ScienceRoute: typeof ScienceRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   UploadRoute: typeof UploadRoute
   AnalyzingIdRoute: typeof AnalyzingIdRoute
@@ -360,11 +386,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/science': {
       id: '/science'
       path: '/science'
       fullPath: '/science'
       preLoaderRoute: typeof ScienceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rocd': {
+      id: '/rocd'
+      path: '/rocd'
+      fullPath: '/rocd'
+      preLoaderRoute: typeof RocdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -527,7 +567,9 @@ const rootRouteChildren: RootRouteChildren = {
   QuizRoute: QuizRoute,
   RefundRoute: RefundRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  RocdRoute: RocdRoute,
   ScienceRoute: ScienceRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   UploadRoute: UploadRoute,
   AnalyzingIdRoute: AnalyzingIdRoute,

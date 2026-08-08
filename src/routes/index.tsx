@@ -50,9 +50,18 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Tell an AI what's going on, or paste the messages. It names the pattern - control, blame-shifting, breadcrumbing, stonewalling - and shows the quotes that prove it. First read free.",
+          "Tell an AI what's going on, or paste the messages. It names the pattern and shows the quotes that prove it. First read free.",
       },
+      { property: "og:title", content: "Is it toxic? An AI read on your relationship" },
+      {
+        property: "og:description",
+        content:
+          "Paste the messages. VibeCheck names the pattern and shows the quotes that prove it. First read free.",
+      },
+      { property: "og:url", content: "https://vibecheckapp.app/" },
+      { property: "og:type", content: "website" },
     ],
+    links: [{ rel: "canonical", href: "https://vibecheckapp.app/" }],
   }),
   component: Landing,
 });

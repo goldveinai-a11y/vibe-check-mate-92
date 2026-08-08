@@ -29,7 +29,17 @@ export const Route = createFileRoute("/results/$id")({
   head: () => ({
     meta: [
       { title: "Your vibe check - free preview" },
-      { name: "description", content: "Free preview of your AI chat breakdown." },
+      {
+        name: "description",
+        content:
+          "A free preview of your VibeCheck read: interest, red flags and where the conversation is actually going, with the quotes behind it.",
+      },
+      { property: "og:title", content: "Your vibe check - free preview" },
+      {
+        property: "og:description",
+        content:
+          "Interest, red flags and where it's really going - a free preview of your AI chat breakdown.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
