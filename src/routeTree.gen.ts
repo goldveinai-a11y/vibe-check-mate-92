@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ScienceRouteImport } from './routes/science'
+import { Route as RocdRouteImport } from './routes/rocd'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RefundRouteImport } from './routes/refund'
 import { Route as QuizRouteImport } from './routes/quiz'
@@ -47,6 +48,11 @@ const TermsRoute = TermsRouteImport.update({
 const ScienceRoute = ScienceRouteImport.update({
   id: '/science',
   path: '/science',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RocdRoute = RocdRouteImport.update({
+  id: '/rocd',
+  path: '/rocd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/quiz': typeof QuizRoute
   '/refund': typeof RefundRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/refund'
     | '/reset-password'
+    | '/rocd'
     | '/science'
     | '/terms'
     | '/upload'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/refund'
     | '/reset-password'
+    | '/rocd'
     | '/science'
     | '/terms'
     | '/upload'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/refund'
     | '/reset-password'
+    | '/rocd'
     | '/science'
     | '/terms'
     | '/upload'
@@ -327,6 +339,7 @@ export interface RootRouteChildren {
   QuizRoute: typeof QuizRoute
   RefundRoute: typeof RefundRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  RocdRoute: typeof RocdRoute
   ScienceRoute: typeof ScienceRoute
   TermsRoute: typeof TermsRoute
   UploadRoute: typeof UploadRoute
@@ -365,6 +378,13 @@ declare module '@tanstack/react-router' {
       path: '/science'
       fullPath: '/science'
       preLoaderRoute: typeof ScienceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rocd': {
+      id: '/rocd'
+      path: '/rocd'
+      fullPath: '/rocd'
+      preLoaderRoute: typeof RocdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -527,6 +547,7 @@ const rootRouteChildren: RootRouteChildren = {
   QuizRoute: QuizRoute,
   RefundRoute: RefundRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  RocdRoute: RocdRoute,
   ScienceRoute: ScienceRoute,
   TermsRoute: TermsRoute,
   UploadRoute: UploadRoute,
@@ -546,3 +567,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
