@@ -77,6 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "google-site-verification", content: "ck9l5hAWMePQ1Fe_JdMlfV_FMbn2FUSJwml1HRWfvCE" },
       { title: "VibeCheck — brutally honest chat analysis" },
       { name: "description", content: "Upload your chat screenshots. Get an unfiltered AI breakdown of interest, red flags, and where it's really going." },
       { property: "og:title", content: "VibeCheck — brutally honest chat analysis" },
