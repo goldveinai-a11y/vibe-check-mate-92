@@ -132,6 +132,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
     finalSlots: IntakeSlots,
     images: Array<{ mediaType: string; base64: string }>,
     tier?: "T0" | "T1" | "T2" | "T3",
+    loop?: boolean,
   ) => {
     setHandingOff(true);
     try {
@@ -167,6 +168,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         quiz,
         images: images.length ? images : undefined,
         ...(tier ? { tier } : {}),
+        ...(loop ? { loop } : {}),
       },
       }).catch(() => {});
 
@@ -276,7 +278,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       }
       if (res.ready) {
         // Let her read the closing line before the screen changes.
-        setTimeout(() => void handOff(res.slots, images, resTier), 1600);
+        setTimeout(() => void handOff(res.slots, images, res.tier, res.loop), 1600);
       }
     } catch {
       trackEvent("chat_error", { stage: "reply", turn_number: turnRef.current });
