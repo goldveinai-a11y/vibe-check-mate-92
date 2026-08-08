@@ -355,9 +355,22 @@ async function runIntakeTurnOnce(
   // telling her to go and screenshot the conversation is unsafe.
   const hasEvidence =
     Boolean(knownSlots.pastedMessages?.toString().trim()) || Boolean(images?.length);
-  const alreadyAsked = history.some(
-    (h) => h.role === "assistant" && /show me the thread|paste the messages|screenshot/i.test(h.content),
-  );
+  // Two guards, because the naive version of this never fired once.
+  //
+  // The opener is an assistant message and it says "you can paste the
+  // messages or send screenshots too" — so a check for the word screenshot
+  // anywhere in the assistant history matched the greeting itself, on turn
+  // one, forever. Skipping index 0 removes the greeting; the tighter phrases
+  // below make sure only the actual ask counts, not a passing mention.
+  const alreadyAsked = history
+    .slice(1)
+    .some(
+      (h) =>
+        h.role === "assistant" &&
+        /show me the thread|show me the actual|stop guessing|send me the screenshots|show me the messages/i.test(
+          h.content,
+        ),
+    );
   const turnNumber = userTurns.length + 1;
   const askForThread =
     !hasEvidence && !alreadyAsked && turnNumber >= 3 && turnNumber <= 7 && tier !== "T2" && tier !== "T3";
