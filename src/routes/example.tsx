@@ -209,7 +209,7 @@ function ExamplePage() {
                 },
                 {
                   word: "sorry, I was stressed",
-                  type: "beige" as const,
+                  type: "beige" as "red" | "green" | "beige",
                   impact:
                     "A real apology, and he does mean it in the moment. But it explains the outburst rather than changing it - the same sequence repeats eight days later.",
                 },

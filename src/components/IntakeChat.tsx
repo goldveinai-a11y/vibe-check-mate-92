@@ -138,6 +138,9 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       const { createAnalysis, runAnalysis } = await import("@/lib/vibecheck.functions");
       const anonId = getAnonId();
       const created = await createAnalysis({ data: { ownerAnonId: anonId } });
+      if (!("id" in created)) {
+        throw new Error(created.code === "free_limit_reached" ? "limit" : created.error);
+      }
 
       const quiz = {
         situation: finalSlots.situation ?? "not stated",
