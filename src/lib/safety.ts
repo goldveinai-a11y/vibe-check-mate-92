@@ -157,6 +157,82 @@ Say you believe her, in one sentence, before anything else. Say this is past wha
 `,
 };
 
+// ---------------------------------------------------------------------------
+// The reassurance loop
+//
+// A separate axis from the tiers. The tiers describe what he is doing; this
+// describes what the asking itself is doing.
+//
+// "relationship ocd" is 27k searches a month and climbing fast, and the
+// people behind it are compulsively seeking certainty about a relationship
+// that is often fine. A product that reads your relationship on demand,
+// hands you a number and invites you back is, for that person, not help —
+// it is the compulsion with better UX. Answering harder makes it worse, and
+// it feels like it is working every single time.
+//
+// So this is detected and named rather than fed. Naming it is also the only
+// honest thing to sell her: the answer she wants is not in the messages, and
+// no amount of re-reading them will put it there.
+//
+// This is not a diagnosis and must never be presented as one.
+
+const LOOP_SELF_REPORT: RegExp[] = [
+  /\b(asked|googled|searched|read)\b[^.!?]{0,40}\b(again|\d+ times|so many times|a hundred times|over and over)/i,
+  /\b(1[0-2]|[1-9])\s?am\b/i,
+  /\b(intrusive thought|ruminat|obsess|reassurance|compuls)/i,
+  /\bkeep (asking|checking|googling|going over)/i,
+  /\bcan'?t stop (checking|thinking about it|asking|googling)/i,
+  /\bsame (question|thing) (again|twenty|ten)/i,
+  /\bi know i (keep|already) ask/i,
+];
+
+const REASSURANCE_ASK: RegExp[] = [
+  /\b(do|what do) you think\b/i,
+  /\bis (this|that) a sign\b/i,
+  /\bdoes (this|that) mean\b/i,
+  /\b(just )?tell me (which|if|whether|what)/i,
+  /\bam i (just )?(overthinking|crazy|imagining|making it up)/i,
+  /\bwhat if i'?m\b/i,
+  /\bhonest read\b/i,
+];
+
+export function detectLoop(
+  previousUserTurns: string[],
+  current: string,
+  filledRequiredSlots: number,
+): boolean {
+  const all = [...previousUserTurns, current];
+  if (all.some((t) => LOOP_SELF_REPORT.some((r) => r.test(t)))) return true;
+
+  const asks = all.filter((t) => REASSURANCE_ASK.some((r) => r.test(t))).length;
+  if (asks >= 3) return true;
+
+  // Circling: six turns in and the basic facts are still not on the table
+  // means the conversation is going around something rather than through it.
+  if (all.length >= 6 && filledRequiredSlots < 3) return true;
+
+  return false;
+}
+
+export const LOOP_INSTRUCTION = `
+
+\\ Detected: a reassurance loop, not a relationship question
+
+The asking has become the problem. She is chasing certainty about something certainty is not available for, and every answer buys a few minutes before the question comes back.
+
+Name it once, plainly, without diagnosing her — something close to: "The checking, the googling, asking the same thing twenty times — that is not a love problem, that is anxiety doing laps. It does not care what the true answer is; it just needs you to keep looking for a certainty you cannot get."
+
+Then change what you are offering:
+
+- Do NOT answer the reassurance question again, however she rephrases it. Answering is what keeps it running.
+- Do NOT hand her a verdict on whether she loves him, whether he is the one, or whether she should leave. Those are the exact objects the loop feeds on.
+- Do NOT tell her the relationship is fine either. Reassurance pointing the other way is still reassurance.
+- DO move her from the feeling to the behaviour: what actually happens between them on an ordinary day, when she is not inspecting it.
+- Say plainly that a score will not settle this. It will not. If she reads one, feels better for an hour and comes back, the product has taken her money and left her worse.
+- Never say OCD. Never name a disorder. Describe the loop, never the person.
+- If she mentions she already has a therapist, that is the right room for this, and you can say so without pushing her away.
+`;
+
 const BANNED: Array<{ rule: string; re: RegExp }> = [
   { rule: "hedging (usually means / can be a sign)", re: /\b(usually means|often means|typically means|can be a sign|tends to mean|it might be that)\b/i },
   { rule: "empty sympathy", re: /\b(that sounds (really |so )?(hard|tough|difficult|painful)|i hear you|that must be exhausting)\b/i },
