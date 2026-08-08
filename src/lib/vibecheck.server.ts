@@ -271,10 +271,37 @@ Everything else in the report stays as normal.
 `;
 }
 
+// The reassurance loop, carried over from the intake (see safety.ts).
+//
+// This one changes the report more than the tier does. The whole artefact —
+// a score, a forecast, a dated call on what he does next — is a machine for
+// producing certainty, and certainty is exactly what the loop feeds on. Sold
+// unchanged to someone in it, the report works for an hour and then costs
+// her another loop. So the read still gets written, but it leads with the
+// thing that is actually true and stops handing over the objects she will
+// go back and check.
+function loopOverride(loop?: boolean): string {
+  if (!loop) return "";
+  return `
+
+OVERRIDE — the intake found a reassurance loop rather than a relationship question.
+
+Open the read with that, before any score is discussed. Something close to: the question she came with is not the one that can be answered here, and re-reading the messages is not going to settle it.
+
+- Do NOT produce a prediction. A dated, checkable claim is the single most compulsive object this report can hand her, and she will come back to check it.
+- Do NOT write the forecast as a verdict on where the relationship is going. Describe what would actually tell her something over time — his behaviour, not her feelings about it.
+- Do NOT declare that the relationship is fine, or that it is doomed. Both are reassurance and both restart the loop.
+- Scores still appear, but say plainly, once, near the top: this number describes the conversation, not whether she loves him, and it will not settle the question she is asking.
+- Keep self_mirror, but write it about the checking, not about her worth.
+- Never name a disorder. Describe the pattern, never the person.
+`;
+}
+
 export async function analyzeConversation(
   images: ImageInput[],
   quiz?: QuizAnswers,
   tier?: IntakeTier,
+  loop?: boolean,
 ): Promise<Report> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
@@ -346,7 +373,7 @@ Return the JSON report exactly as specified in the system prompt. No prose, no m
         // This matters even more on quiz-only runs, where the input space is
         // a handful of fixed option labels and collapse risk is highest.
         temperature: 0.4,
-        system: systemPrompt + tierOverride(tier),
+        system: systemPrompt + tierOverride(tier) + loopOverride(loop),
         messages: [{ role: "user", content }],
       }),
     });
