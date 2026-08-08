@@ -159,7 +159,7 @@ export function AddScreenshotsCard({ id }: { id: string }) {
             <div className="mt-4 grid grid-cols-4 gap-2">
               {files.map((f, i) => (
                 <div key={i} className="relative aspect-[3/5] overflow-hidden rounded-xl bg-muted">
-                  <img src={f.previewUrl} alt={f.name} className="h-full w-full object-cover" />
+                  <img src={f.previewUrl} alt="" className="h-full w-full object-cover" />
                   <button
                     onClick={() => setFiles((cur) => cur.filter((_, idx) => idx !== i))}
                     className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 text-xs text-white"

@@ -411,6 +411,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
                 }
               }}
               ref={taRef} rows={2}
+              aria-label="Your message"
               maxLength={1500}
               disabled={handingOff}
               placeholder="Type here — or paste the messages…"
