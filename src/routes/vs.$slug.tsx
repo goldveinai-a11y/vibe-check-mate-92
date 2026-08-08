@@ -16,7 +16,7 @@ export const Route = createFileRoute("/vs/$slug")({
     if (!competitor) throw notFound();
     return competitor;
   },
-  head: ({ loaderData }) => ({
+  head: ({ params, loaderData }) => ({
     meta: loaderData
       ? [
           { title: `VibeCheck vs ${loaderData.name} - which one do you actually need?` },
@@ -24,8 +24,15 @@ export const Route = createFileRoute("/vs/$slug")({
             name: "description",
             content: `${loaderData.difference} An honest side-by-side, including when ${loaderData.name} is the better choice.`,
           },
+          { property: "og:title", content: `VibeCheck vs ${loaderData.name}` },
+          {
+            property: "og:description",
+            content: `An honest side-by-side of VibeCheck and ${loaderData.name}, including when ${loaderData.name} is the better choice.`,
+          },
+          { property: "og:url", content: `https://vibecheckapp.app/vs/${params.slug}` },
         ]
       : [],
+    links: loaderData ? [{ rel: "canonical", href: `https://vibecheckapp.app/vs/${params.slug}` }] : [],
   }),
   component: VersusPage,
   notFoundComponent: () => (
@@ -149,7 +156,7 @@ function VersusPage() {
           <div className="mt-10 rounded-3xl border border-border/60 bg-card p-6 text-center shadow-sm sm:p-8">
             <h2 className="font-serif text-2xl sm:text-3xl">See where you actually stand</h2>
             <p className="mt-2 text-sm text-ink/70">
-              Six quick questions. Screenshots optional. Your first read is free.
+              A short AI chat. Screenshots optional. Your first read is free.
             </p>
             <Link
               to="/quiz"
