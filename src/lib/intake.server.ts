@@ -114,7 +114,15 @@ const REQUIRED_SLOTS: Array<keyof IntakeSlots> = [
 // the moment it is due, and silent otherwise.
 const THREAD_NUDGE = `
 
-REMINDER FOR THIS REPLY: she has not shown you the messages yet, and you have not asked. Ask now, once, as an upgrade in accuracy rather than a requirement — then carry on with your next question in the same reply so it never reads as a gate. Do not ask again after this.
+## MANDATORY IN THIS REPLY: ask to see the messages
+
+She has shown you nothing yet and you have not asked. Ask in this reply. Not the next one.
+
+This overrides the one-question-per-reply rule. The request is not a question for the purposes of that rule, so make the request AND ask your next question in the same reply. That is required, not permitted: an ask on its own reads as a gate she has to pass before you will keep talking.
+
+Frame it as accuracy, never as a requirement, and keep it to one line — something in the shape of "I have been working off your description; show me the thread itself and I stop guessing." Then continue straight into your question.
+
+If she says no or ignores it, never ask again, and mean it when you say the read still works without them.
 `;
 
 const SLOT_QUESTIONS: Record<string, string> = {
