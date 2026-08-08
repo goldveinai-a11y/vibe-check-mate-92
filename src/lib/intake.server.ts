@@ -98,6 +98,17 @@ const REQUIRED_SLOTS: Array<keyof IntakeSlots> = [
   "replySpeed",
 ];
 
+// What to ask when the model thinks it is finished and the slot list says
+// otherwise. Deterministic, so the recovery costs nothing and cannot itself
+// fail.
+const SLOT_QUESTIONS: Record<string, string> = {
+  situation: "One more thing before I run it — in a line, what is actually going on between you two?",
+  relationship: "One thing I still need: what is he to you? Crush, talking stage, boyfriend, husband, ex?",
+  duration: "And how long has this been going on?",
+  whoTextsFirst: "Who usually starts the conversation — you, him, or is it about even?",
+  replySpeed: "Last one: how fast does he usually reply, and is it predictable?",
+};
+
 export function slotsComplete(slots: IntakeSlots): boolean {
   return REQUIRED_SLOTS.every((k) => Boolean(slots[k]?.toString().trim()));
 }
@@ -373,17 +384,37 @@ async function runIntakeTurnOnce(
   }
 
   const merged: IntakeSlots = { ...knownSlots, ...(parsed.slots ?? {}) };
+  const complete = slotsComplete(merged);
+  const safety = Boolean(parsed.safetyConcern);
+
+  // The model announcing it is done while the slot list disagrees used to be
+  // silent and fatal. It would write "I have what I need to run the read",
+  // readiness would be denied in code, and nothing would happen — no error,
+  // no next question, no handoff. It happened at turn seven, which is the
+  // point of maximum investment and the worst possible place to go quiet:
+  // a real person reads that as broken and leaves.
+  //
+  // The gate itself is right — a conversation that FEELS finished to a
+  // language model is not one that collected what the report needs. What was
+  // wrong is that the model could make a promise the code then refused to
+  // keep. So the promise never reaches her: the reply is swapped for the
+  // question that actually unblocks the handoff.
+  let reply = (parsed.reply ?? "").trim() || "Tell me a bit more about that.";
+  if (parsed.ready && !complete && !safety) {
+    const missing = REQUIRED_SLOTS.find((k) => !merged[k]?.toString().trim());
+    if (missing && SLOT_QUESTIONS[missing]) reply = SLOT_QUESTIONS[missing];
+  }
 
   return {
-    reply: (parsed.reply ?? "").trim() || "Tell me a bit more about that.",
+    reply,
     slots: parsed.slots ?? {},
     // Readiness is decided in code, not taken on trust. The model proposes;
     // the slot list disposes. This is the same principle as scoring in code
     // rather than by model — a conversation that "feels done" to a language
     // model is not the same thing as one that collected what the report
     // needs, and the report is what we're actually shipping.
-    ready: Boolean(parsed.ready) && slotsComplete(merged),
-    safetyConcern: Boolean(parsed.safetyConcern),
+    ready: Boolean(parsed.ready) && complete,
+    safetyConcern: safety,
     tier,
   };
 }
