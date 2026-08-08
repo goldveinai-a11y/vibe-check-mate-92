@@ -180,7 +180,12 @@ const LOOP_SELF_REPORT: RegExp[] = [
   /\b(asked|googled|searched|read)\b[^.!?]{0,40}\b(again|\d+ times|so many times|a hundred times|over and over)/i,
   /\b(1[0-2]|[1-9])\s?am\b/i,
   /\b(intrusive thought|ruminat|obsess|reassurance|compuls)/i,
-  /\bkeep (asking|checking|googling|going over)/i,
+  // "keep opening the chat to see if it says read" is how this is actually
+  // typed. The earlier list wanted the word "checking", which is the word a
+  // clinician uses and almost nobody else does.
+  /\bkeep (asking|checking|googling|going over|opening|refreshing|looking at|re.?reading|re.?checking)/i,
+  /\b(check|checking|looking at|refreshing)\b[^.!?]{0,30}\b(last seen|online|active|read receipt|delivered|our chat|his (story|profile|instagram))/i,
+  /\b(a )?(hundred|thousand|million) times\b/i,
   /\bcan'?t stop (checking|thinking about it|asking|googling)/i,
   /\bsame (question|thing) (again|twenty|ten)/i,
   /\bi know i (keep|already) ask/i,
