@@ -280,6 +280,9 @@ const RunAnalysisInputSchema = z.object({
   // conversation already established. Without it the read prints "the part
   // about you" at someone the intake has just decided not to say that to.
   tier: z.enum(["T0", "T1", "T2", "T3"]).optional(),
+  // Reassurance loop. Changes the read more than the tier does: it turns off
+  // the prediction and the verdict, which are the objects the loop feeds on.
+  loop: z.boolean().optional(),
 });
 
 // The expensive half. The client fires this WITHOUT awaiting it and
@@ -313,7 +316,7 @@ export const runAnalysis = createServerFn({ method: "POST" })
     if (images.length === 0 && !data.quiz) return { error: "no_evidence" };
 
     try {
-      const report = await analyzeConversation(images, data.quiz, data.tier);
+      const report = await analyzeConversation(images, data.quiz, data.tier, data.loop);
       const preview = buildPreview(report);
       const { error: updErr } = await supabaseAdmin
         .from("analyses")
