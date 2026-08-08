@@ -88,8 +88,9 @@ export type IntakeResult = {
   slots: IntakeSlots;
   ready: boolean;
   safetyConcern: boolean;
-  // Set in code from the transcript, never inferred by the model.
+  // Both set in code from the transcript, never inferred by the model.
   tier: Tier;
+  loop: boolean;
 };
 
 const REQUIRED_SLOTS: Array<keyof IntakeSlots> = [
@@ -389,6 +390,7 @@ async function runIntakeTurnOnce(
       ready: false,
       safetyConcern: false,
       tier,
+      loop: inLoop,
     };
   }
 
@@ -425,6 +427,7 @@ async function runIntakeTurnOnce(
     ready: Boolean(parsed.ready) && complete,
     safetyConcern: safety,
     tier,
+    loop: inLoop,
   };
 }
 
