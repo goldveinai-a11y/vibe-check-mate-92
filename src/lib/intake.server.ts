@@ -104,6 +104,19 @@ const REQUIRED_SLOTS: Array<keyof IntakeSlots> = [
 // What to ask when the model thinks it is finished and the slot list says
 // otherwise. Deterministic, so the recovery costs nothing and cannot itself
 // fail.
+
+// The ask for the thread, nudged from code rather than hoped for.
+//
+// It is written into the prompt, and on a situationship it still did not
+// fire in five turns — the one case where every scrap of evidence lives in
+// the texts and there is nothing else to read. A soft instruction competing
+// with forty other soft instructions loses. This makes it non-optional at
+// the moment it is due, and silent otherwise.
+const THREAD_NUDGE = `
+
+REMINDER FOR THIS REPLY: she has not shown you the messages yet, and you have not asked. Ask now, once, as an upgrade in accuracy rather than a requirement — then carry on with your next question in the same reply so it never reads as a gate. Do not ask again after this.
+`;
+
 const SLOT_QUESTIONS: Record<string, string> = {
   situation: "One more thing before I run it — in a line, what is actually going on between you two?",
   relationship: "One thing I still need: what is he to you? Crush, talking stage, boyfriend, husband, ex?",
@@ -181,7 +194,12 @@ Why it works: it re-categorises the problem in the first line, gives her languag
 - Never agree without evidence. If she says "he's a narcissist", the answer is not "he sounds like one". It's closer to: "Maybe. What I've got so far is X. I'd believe it if Y were also true — is it?"
 - Never validate reflexively. "That sounds awful" is empty. "Apologising for something you didn't do, three times in two weeks, is a pattern" is not.
 - If she is doing something that keeps the dynamic running, you may name it — as mechanics, never as fault, and never in your first two replies. You have not earned it yet.
+- Three further conditions on that, all of which must hold before you say it:
+  (a) She has not already named it herself. If she says "I always text first" and you reply that she always texts first, that is the banned restatement wearing a insight costume — and worse, it lands as blame for something she volunteered.
+  (b) The evidence is not currently pointing at his inaction. If he agreed to something twice and never proposed a date, the stalled thing is him. Telling her SHE stalled it is a misreading, and she is primed to accept it — which is exactly why it does damage. Read the last actor correctly before you assign anything.
+  (c) You can state it as a cost to her rather than a flaw in her. "You are choosing the certainty of daily texts over the risk of knowing" is a cost. "You are too available" is a flaw.
 - Never tell her to go quiet, ignore him, post a story, or make him jealous. That is manipulation advice and it is not what this product does.
+- Do NOT write the message for her. You may name the move that would tell her something — "the version of this that gets you an answer is proposing a specific day" — but do not hand over the wording. Drafted replies are what the report is for; giving them away here means she gets the deliverable before she gets the read, and then there is nothing left to unlock. Naming the move is relief. Writing it out is the product.
 
 ## How to run the conversation
 
@@ -304,6 +322,18 @@ async function runIntakeTurnOnce(
   const filled = REQUIRED_SLOTS.filter((k) => Boolean(knownSlots[k]?.toString().trim())).length;
   const inLoop = detectLoop(userTurns, message, filled);
 
+  // Due when: nothing to read yet, she is far enough in to have been paid
+  // something, we have not already asked, and it is not a branch where
+  // telling her to go and screenshot the conversation is unsafe.
+  const hasEvidence =
+    Boolean(knownSlots.pastedMessages?.toString().trim()) || Boolean(images?.length);
+  const alreadyAsked = history.some(
+    (h) => h.role === "assistant" && /show me the thread|paste the messages|screenshot/i.test(h.content),
+  );
+  const turnNumber = userTurns.length + 1;
+  const askForThread =
+    !hasEvidence && !alreadyAsked && turnNumber >= 3 && turnNumber <= 7 && tier !== "T2" && tier !== "T3";
+
   // The tier instruction is a floor under the prompt, not a replacement for
   // it. The prompt reads context and routes well; this makes the routing
   // non-negotiable for the cases where being talked out of it is expensive.
@@ -325,7 +355,8 @@ async function runIntakeTurnOnce(
   const turnInstruction =
     TIER_INSTRUCTIONS[tier] +
     (tier === "T3" && looksIdiomatic(message) ? T3_IDIOM_NOTE : "") +
-    (inLoop ? LOOP_INSTRUCTION : "");
+    (inLoop ? LOOP_INSTRUCTION : "") +
+    (askForThread ? THREAD_NUDGE : "");
 
   const turnText = turnInstruction
     ? (message || "(she attached screenshots of the conversation)") +
