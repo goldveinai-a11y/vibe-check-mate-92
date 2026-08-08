@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ScienceRouteImport } from './routes/science'
 import { Route as RocdRouteImport } from './routes/rocd'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -43,6 +44,11 @@ const UploadRoute = UploadRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScienceRoute = ScienceRouteImport.update({
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/rocd': typeof RocdRoute
   '/science': typeof ScienceRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
   '/analyzing/$id': typeof AnalyzingIdRoute
@@ -259,6 +268,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/rocd'
     | '/science'
+    | '/sitemap.xml'
     | '/terms'
     | '/upload'
     | '/analyzing/$id'
@@ -286,6 +296,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/rocd'
     | '/science'
+    | '/sitemap.xml'
     | '/terms'
     | '/upload'
     | '/analyzing/$id'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/rocd'
     | '/science'
+    | '/sitemap.xml'
     | '/terms'
     | '/upload'
     | '/analyzing/$id'
@@ -341,6 +353,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   RocdRoute: typeof RocdRoute
   ScienceRoute: typeof ScienceRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   UploadRoute: typeof UploadRoute
   AnalyzingIdRoute: typeof AnalyzingIdRoute
@@ -371,6 +384,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/science': {
@@ -549,6 +569,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   RocdRoute: RocdRoute,
   ScienceRoute: ScienceRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   UploadRoute: UploadRoute,
   AnalyzingIdRoute: AnalyzingIdRoute,

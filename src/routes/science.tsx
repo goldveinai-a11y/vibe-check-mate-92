@@ -29,9 +29,17 @@ export const Route = createFileRoute("/science")({
       {
         name: "description",
         content:
-          "The psychology VibeCheck's analysis is built on: attachment theory, Gottman's relationship research, nonviolent communication, and the Big Five - plus an honest note on what AI reads well and what it can't.",
+          "The psychology behind VibeCheck: attachment theory, Gottman's research, nonviolent communication and the Big Five - plus what AI can't read.",
       },
+      { property: "og:title", content: "The research behind VibeCheck" },
+      {
+        property: "og:description",
+        content:
+          "Attachment theory, Gottman, nonviolent communication and the Big Five - the models behind every VibeCheck read.",
+      },
+      { property: "og:url", content: "https://vibecheckapp.app/science" },
     ],
+    links: [{ rel: "canonical", href: "https://vibecheckapp.app/science" }],
   }),
   component: SciencePage,
 });
@@ -180,7 +188,7 @@ function SciencePage() {
           <div className="mt-10 text-center">
             <h3 className="font-serif text-2xl sm:text-3xl">Ready to see yours?</h3>
             <p className="mt-2 text-sm text-ink/70">
-              Six quick questions. Screenshots optional. Your first read is free.
+              A short AI chat. Screenshots optional. Your first read is free.
             </p>
             <Link
               to="/quiz"
