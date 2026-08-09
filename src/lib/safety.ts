@@ -212,9 +212,19 @@ export function detectLoop(
   const asks = all.filter((t) => REASSURANCE_ASK.some((r) => r.test(t))).length;
   if (asks >= 3) return true;
 
-  // Circling: six turns in and the basic facts are still not on the table
-  // means the conversation is going around something rather than through it.
-  if (all.length >= 6 && filledRequiredSlots < 3) return true;
+  // A third rule used to live here: six turns in with fewer than three slots
+  // filled counted as circling. It was wrong, and it fired on a woman eleven
+  // years into a marriage who had described her situation clearly and at
+  // length. Her slots were empty because our extractor had not recognised
+  // what she wrote, not because she was going in circles.
+  //
+  // That is the whole problem with it: unfilled slots measure OUR extraction,
+  // not her state, and the two have nothing to do with each other. A signal
+  // about the user should never be built on a proxy for our own bug.
+  //
+  // filledRequiredSlots stays in the signature — the caller passes it, and a
+  // future version may find an honest use for it.
+  void filledRequiredSlots;
 
   return false;
 }
