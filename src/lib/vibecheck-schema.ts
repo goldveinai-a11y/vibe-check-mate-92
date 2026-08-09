@@ -132,8 +132,19 @@ export const ReportSchema = z.object({
   scores: ScoresSchema,
   hardcore_analytics: HardcoreAnalyticsSchema,
   psychological_analysis: PsychAnalysisSchema,
-  green_flags: z.array(FlagSchema).min(1).max(6),
-  red_flags: z.array(FlagSchema).min(1).max(6),
+  // Both were .min(1), and that took down a real report: an eleven-year
+  // marriage built on contempt, where the model honestly found nothing good
+  // to list. Zod rejected the empty array and the user got "the AI could not
+  // read it" instead of her read.
+  //
+  // The floor of one is a demand for false balance, and it fails at exactly
+  // the two ends of the scale where the read matters most — a relationship
+  // with no green flags left, and a genuinely healthy one with no red flags
+  // to find. It also fails hardest for the most distressed user, who is the
+  // one most likely to pay. A product whose whole pitch is refusing to tell
+  // her what she wants to hear should not require it to invent a positive.
+  green_flags: z.array(FlagSchema).min(0).max(6),
+  red_flags: z.array(FlagSchema).min(0).max(6),
   future_outlook: z.string(),
   suggested_replies: SuggestedRepliesSchema.optional(),
   viral: ViralSchema.optional(),
