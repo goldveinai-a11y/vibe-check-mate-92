@@ -319,14 +319,14 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         </div>
       </div>
 
-      <div className="max-h-[52vh] min-h-[280px] space-y-3 overflow-y-auto px-5 py-5">
+      <div className="max-h-[62vh] min-h-[400px] space-y-3 overflow-y-auto px-4 py-5 sm:max-h-[56vh] sm:min-h-[440px] sm:px-6 sm:py-6">
         {messages.map((m, i) => (
           <div
             key={i}
             className={
               m.role === "user"
-                ? "ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-pink px-4 py-2.5 text-sm leading-relaxed text-white"
-                : "w-fit max-w-[92%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-sm leading-relaxed text-ink/85"
+                ? "ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-pink px-4 py-2.5 text-[15px] leading-relaxed text-white sm:max-w-[75%]"
+                : "w-fit max-w-[92%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-muted/60 px-4 py-2.5 text-[15px] leading-relaxed text-ink/85 sm:max-w-[85%]"
             }
           >
             {m.content}
