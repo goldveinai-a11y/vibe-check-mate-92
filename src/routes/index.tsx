@@ -150,7 +150,7 @@ function Landing() {
               measured problem is 73% of visitors leaving inside ten
               seconds. Every click between arrival and saying the first
               thing is a click that loses most of them. */}
-          <div className="mt-9 w-full max-w-lg text-left">
+          <div className="mt-9 w-full max-w-lg text-left sm:max-w-2xl lg:max-w-3xl">
             <IntakeChat
               seed={seed}
               onStarted={() => { if (seed) trackEvent("chip_clicked", { chip_text: seed }); }}
