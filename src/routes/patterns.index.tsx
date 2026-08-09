@@ -54,21 +54,21 @@ const ENTRIES: Entry[] = [
     title: "Walking on eggshells",
     blurb:
       "What the phrase actually describes, and the single question that separates a difficult temper from something worse.",
-    live: false,
+    live: true,
   },
   {
     to: "/patterns/blame-shifting",
     title: "When it always ends up being your fault",
     blurb:
       "He did something, you said it hurt, and somehow the conversation is now about your reaction.",
-    live: false,
+    live: true,
   },
   {
     to: "/patterns/avoidant-partner",
     title: "He pulls away every time you get close",
     blurb:
       "Warm week, then distance, then back like nothing happened. What the timing tells you.",
-    live: false,
+    live: true,
   },
 ];
 
