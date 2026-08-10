@@ -329,7 +329,13 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       }
       if (res.ready) {
         // Let her read the closing line before the screen changes.
-        setTimeout(() => void handOff(res.slots, evidenceRef.current, res.tier, res.loop), 1600);
+        // res.tier / res.loop read straight off the union here was a type
+        // error that predates the escape-hatch work: both members of the
+        // union carry ready: boolean, so if (res.ready) narrows nothing.
+        // metaRef already holds the guarded values from this same turn.
+        const t = metaRef.current.tier;
+        const lp = metaRef.current.loop;
+        setTimeout(() => void handOff(res.slots, evidenceRef.current, t, lp), 1600);
       }
     } catch {
       trackEvent("chat_error", { stage: "reply", turn_number: turnRef.current });
