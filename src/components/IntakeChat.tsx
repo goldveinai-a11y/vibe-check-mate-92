@@ -69,6 +69,13 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
   const [error, setError] = useState<string | null>(null);
   const [safety, setSafety] = useState(false);
 
+  // She has no way out of the conversation except waiting for the model to
+  // decide it has enough. Over two days of paid traffic, thirteen people
+  // started a chat, the median stopped at three replies, and exactly one
+  // reached a read. The gate was never the interesting part of the product —
+  // the read is — so from turn three she can take it whenever she wants.
+  const userTurns = messages.filter((m) => m.role === "user").length;
+
   // Analytics state. The chat is now the whole top of the funnel and the
   // drop-off inside it was invisible — we knew it started and knew when it
   // finished, and nothing in between, which is exactly where people leave.
@@ -80,6 +87,17 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const seededRef = useRef(false);
+
+  // Screenshots accumulate across the whole conversation.
+  //
+  // They used to reach the report only if they happened to be attached on
+  // the same turn the model declared itself ready. A thread sent at turn two
+  // and a handoff at turn five produced a read with no evidence in it at
+  // all — the model then wrote the report off her description alone while
+  // the product had the actual messages sitting in memory. Two of the three
+  // screenshot uploads we have ever received were lost this way.
+  const evidenceRef = useRef<Array<{ mediaType: string; base64: string }>>([]);
+  const metaRef = useRef<{ tier?: "T0" | "T1" | "T2" | "T3"; loop?: boolean }>({});
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -203,6 +221,9 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
     }
 
     const images = await Promise.all(pending.map((p) => fileToBase64(p.file)));
+    if (images.length) {
+      evidenceRef.current = [...evidenceRef.current, ...images].slice(-6);
+    }
     const shown = text || (images.length === 1 ? "📎 screenshot" : `📎 ${images.length} screenshots`);
 
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
@@ -228,6 +249,8 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         | "T2"
         | "T3"
         | undefined;
+
+      metaRef.current = { tier: resTier, loop: res.loop };
 
       trackEvent("chat_reply", {
         turn_number: turn,
@@ -278,7 +301,7 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       }
       if (res.ready) {
         // Let her read the closing line before the screen changes.
-        setTimeout(() => void handOff(res.slots, images, res.tier, res.loop), 1600);
+        setTimeout(() => void handOff(res.slots, evidenceRef.current, res.tier, res.loop), 1600);
       }
     } catch {
       trackEvent("chat_error", { stage: "reply", turn_number: turnRef.current });
@@ -379,6 +402,23 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
                 </div>
               ))}
             </div>
+          )}
+
+          {userTurns >= 3 && !handingOff && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                trackEvent("chat_read_requested", {
+                  turns: userTurns,
+                  with_screenshots: evidenceRef.current.length > 0,
+                });
+                void handOff(slots, evidenceRef.current, metaRef.current.tier, metaRef.current.loop);
+              }}
+              className="mb-2.5 w-full rounded-2xl border-2 border-pink/50 bg-card px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-pink-soft/60 disabled:opacity-40"
+            >
+              That&rsquo;s enough &mdash; read it now
+            </button>
           )}
 
           <div className="flex items-end gap-2">
