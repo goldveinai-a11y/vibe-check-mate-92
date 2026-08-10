@@ -179,6 +179,11 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
       // Fired WITHOUT await, exactly like the old quiz handoff: the read
       // takes 40-90s and holding the request open for it is what used to
       // make half of all analyses look like failures.
+      trackEvent("analysis_run_started", {
+        report_id: created.id,
+        with_screenshots: images.length > 0,
+      });
+
       void runAnalysis({
         data: {
         id: created.id,
@@ -188,7 +193,24 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         ...(tier ? { tier } : {}),
         ...(loop ? { loop } : {}),
       },
-      }).catch(() => {});
+      })
+        .then(() => {
+          trackEvent("analysis_run_returned", { report_id: created.id });
+        })
+        .catch((e: unknown) => {
+          // This used to be .catch(() => {}) — the single most expensive
+          // empty block in the product. The read is fired from here and the
+          // page navigates away in the same tick, so if the request dies
+          // (backgrounded tab on mobile, dropped connection, cold start) the
+          // row sits at "processing" forever with nothing to flip it and
+          // nothing anywhere recording why. Three of the three analyses
+          // started during the first two days of paid traffic ended up in
+          // exactly that state, and this swallowed every explanation.
+          trackEvent("analysis_run_error", {
+            report_id: created.id,
+            message: e instanceof Error ? e.message.slice(0, 120) : "unknown",
+          });
+        });
 
       trackEvent("chat_finished", {
         turns: messages.filter((m) => m.role === "user").length,
