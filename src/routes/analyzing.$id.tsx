@@ -116,12 +116,13 @@ function AnalyzingPage() {
               <p className="mt-2 max-w-sm text-sm text-ink/60">
                 Nothing was charged and this one doesn't count against you - give it another go.
               </p>
-              {/* Back to /quiz, not /upload - the quiz is the live entry
-                  point now, and dropping someone onto the bare upload page
-                  after a failure means asking for screenshots again with
-                  none of the context they already gave. */}
+              {/* Was /quiz, which is now a redirect to the homepage — so the
+                  one button on the failure screen quietly threw people to the
+                  top of the landing page instead of back into the chat. Goes
+                  to the chat anchor directly. */}
               <Link
-                to="/quiz"
+                to="/"
+                hash="chat"
                 className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-pink px-6 py-4 text-base font-medium text-white shadow-md transition hover:opacity-90"
               >
                 <Sparkles className="h-4 w-4" />
