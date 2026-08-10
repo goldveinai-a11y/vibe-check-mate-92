@@ -23,10 +23,15 @@ import { Route as ExampleRouteImport } from './routes/example'
 import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PatternsIndexRouteImport } from './routes/patterns.index'
 import { Route as VsSlugRouteImport } from './routes/vs.$slug'
 import { Route as ResultsIdRouteImport } from './routes/results.$id'
 import { Route as ReportIdRouteImport } from './routes/report.$id'
 import { Route as PaywallIdRouteImport } from './routes/paywall.$id'
+import { Route as PatternsWalkingOnEggshellsRouteImport } from './routes/patterns.walking-on-eggshells'
+import { Route as PatternsBlameShiftingRouteImport } from './routes/patterns.blame-shifting'
+import { Route as PatternsAvoidantPartnerRouteImport } from './routes/patterns.avoidant-partner'
+import { Route as PatternsAmITheToxicOneRouteImport } from './routes/patterns.am-i-the-toxic-one'
 import { Route as CompareIdRouteImport } from './routes/compare.$id'
 import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
 import { Route as CheckinIdRouteImport } from './routes/checkin.$id'
@@ -106,6 +111,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PatternsIndexRoute = PatternsIndexRouteImport.update({
+  id: '/patterns/',
+  path: '/patterns/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VsSlugRoute = VsSlugRouteImport.update({
   id: '/vs/$slug',
   path: '/vs/$slug',
@@ -124,6 +134,27 @@ const ReportIdRoute = ReportIdRouteImport.update({
 const PaywallIdRoute = PaywallIdRouteImport.update({
   id: '/paywall/$id',
   path: '/paywall/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatternsWalkingOnEggshellsRoute =
+  PatternsWalkingOnEggshellsRouteImport.update({
+    id: '/patterns/walking-on-eggshells',
+    path: '/patterns/walking-on-eggshells',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const PatternsBlameShiftingRoute = PatternsBlameShiftingRouteImport.update({
+  id: '/patterns/blame-shifting',
+  path: '/patterns/blame-shifting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatternsAvoidantPartnerRoute = PatternsAvoidantPartnerRouteImport.update({
+  id: '/patterns/avoidant-partner',
+  path: '/patterns/avoidant-partner',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatternsAmITheToxicOneRoute = PatternsAmITheToxicOneRouteImport.update({
+  id: '/patterns/am-i-the-toxic-one',
+  path: '/patterns/am-i-the-toxic-one',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompareIdRoute = CompareIdRouteImport.update({
@@ -188,10 +219,15 @@ export interface FileRoutesByFullPath {
   '/checkin/$id': typeof CheckinIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/compare/$id': typeof CompareIdRoute
+  '/patterns/am-i-the-toxic-one': typeof PatternsAmITheToxicOneRoute
+  '/patterns/avoidant-partner': typeof PatternsAvoidantPartnerRoute
+  '/patterns/blame-shifting': typeof PatternsBlameShiftingRoute
+  '/patterns/walking-on-eggshells': typeof PatternsWalkingOnEggshellsRoute
   '/paywall/$id': typeof PaywallIdRoute
   '/report/$id': typeof ReportIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/vs/$slug': typeof VsSlugRoute
+  '/patterns/': typeof PatternsIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -216,10 +252,15 @@ export interface FileRoutesByTo {
   '/checkin/$id': typeof CheckinIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/compare/$id': typeof CompareIdRoute
+  '/patterns/am-i-the-toxic-one': typeof PatternsAmITheToxicOneRoute
+  '/patterns/avoidant-partner': typeof PatternsAvoidantPartnerRoute
+  '/patterns/blame-shifting': typeof PatternsBlameShiftingRoute
+  '/patterns/walking-on-eggshells': typeof PatternsWalkingOnEggshellsRoute
   '/paywall/$id': typeof PaywallIdRoute
   '/report/$id': typeof ReportIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/vs/$slug': typeof VsSlugRoute
+  '/patterns': typeof PatternsIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -245,10 +286,15 @@ export interface FileRoutesById {
   '/checkin/$id': typeof CheckinIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/compare/$id': typeof CompareIdRoute
+  '/patterns/am-i-the-toxic-one': typeof PatternsAmITheToxicOneRoute
+  '/patterns/avoidant-partner': typeof PatternsAvoidantPartnerRoute
+  '/patterns/blame-shifting': typeof PatternsBlameShiftingRoute
+  '/patterns/walking-on-eggshells': typeof PatternsWalkingOnEggshellsRoute
   '/paywall/$id': typeof PaywallIdRoute
   '/report/$id': typeof ReportIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/vs/$slug': typeof VsSlugRoute
+  '/patterns/': typeof PatternsIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -275,10 +321,15 @@ export interface FileRouteTypes {
     | '/checkin/$id'
     | '/checkout/return'
     | '/compare/$id'
+    | '/patterns/am-i-the-toxic-one'
+    | '/patterns/avoidant-partner'
+    | '/patterns/blame-shifting'
+    | '/patterns/walking-on-eggshells'
     | '/paywall/$id'
     | '/report/$id'
     | '/results/$id'
     | '/vs/$slug'
+    | '/patterns/'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -303,10 +354,15 @@ export interface FileRouteTypes {
     | '/checkin/$id'
     | '/checkout/return'
     | '/compare/$id'
+    | '/patterns/am-i-the-toxic-one'
+    | '/patterns/avoidant-partner'
+    | '/patterns/blame-shifting'
+    | '/patterns/walking-on-eggshells'
     | '/paywall/$id'
     | '/report/$id'
     | '/results/$id'
     | '/vs/$slug'
+    | '/patterns'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -331,10 +387,15 @@ export interface FileRouteTypes {
     | '/checkin/$id'
     | '/checkout/return'
     | '/compare/$id'
+    | '/patterns/am-i-the-toxic-one'
+    | '/patterns/avoidant-partner'
+    | '/patterns/blame-shifting'
+    | '/patterns/walking-on-eggshells'
     | '/paywall/$id'
     | '/report/$id'
     | '/results/$id'
     | '/vs/$slug'
+    | '/patterns/'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -360,10 +421,15 @@ export interface RootRouteChildren {
   CheckinIdRoute: typeof CheckinIdRoute
   CheckoutReturnRoute: typeof CheckoutReturnRoute
   CompareIdRoute: typeof CompareIdRoute
+  PatternsAmITheToxicOneRoute: typeof PatternsAmITheToxicOneRoute
+  PatternsAvoidantPartnerRoute: typeof PatternsAvoidantPartnerRoute
+  PatternsBlameShiftingRoute: typeof PatternsBlameShiftingRoute
+  PatternsWalkingOnEggshellsRoute: typeof PatternsWalkingOnEggshellsRoute
   PaywallIdRoute: typeof PaywallIdRoute
   ReportIdRoute: typeof ReportIdRoute
   ResultsIdRoute: typeof ResultsIdRoute
   VsSlugRoute: typeof VsSlugRoute
+  PatternsIndexRoute: typeof PatternsIndexRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -470,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/patterns/': {
+      id: '/patterns/'
+      path: '/patterns'
+      fullPath: '/patterns/'
+      preLoaderRoute: typeof PatternsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vs/$slug': {
       id: '/vs/$slug'
       path: '/vs/$slug'
@@ -496,6 +569,34 @@ declare module '@tanstack/react-router' {
       path: '/paywall/$id'
       fullPath: '/paywall/$id'
       preLoaderRoute: typeof PaywallIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patterns/walking-on-eggshells': {
+      id: '/patterns/walking-on-eggshells'
+      path: '/patterns/walking-on-eggshells'
+      fullPath: '/patterns/walking-on-eggshells'
+      preLoaderRoute: typeof PatternsWalkingOnEggshellsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patterns/blame-shifting': {
+      id: '/patterns/blame-shifting'
+      path: '/patterns/blame-shifting'
+      fullPath: '/patterns/blame-shifting'
+      preLoaderRoute: typeof PatternsBlameShiftingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patterns/avoidant-partner': {
+      id: '/patterns/avoidant-partner'
+      path: '/patterns/avoidant-partner'
+      fullPath: '/patterns/avoidant-partner'
+      preLoaderRoute: typeof PatternsAvoidantPartnerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patterns/am-i-the-toxic-one': {
+      id: '/patterns/am-i-the-toxic-one'
+      path: '/patterns/am-i-the-toxic-one'
+      fullPath: '/patterns/am-i-the-toxic-one'
+      preLoaderRoute: typeof PatternsAmITheToxicOneRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compare/$id': {
@@ -576,10 +677,15 @@ const rootRouteChildren: RootRouteChildren = {
   CheckinIdRoute: CheckinIdRoute,
   CheckoutReturnRoute: CheckoutReturnRoute,
   CompareIdRoute: CompareIdRoute,
+  PatternsAmITheToxicOneRoute: PatternsAmITheToxicOneRoute,
+  PatternsAvoidantPartnerRoute: PatternsAvoidantPartnerRoute,
+  PatternsBlameShiftingRoute: PatternsBlameShiftingRoute,
+  PatternsWalkingOnEggshellsRoute: PatternsWalkingOnEggshellsRoute,
   PaywallIdRoute: PaywallIdRoute,
   ReportIdRoute: ReportIdRoute,
   ResultsIdRoute: ResultsIdRoute,
   VsSlugRoute: VsSlugRoute,
+  PatternsIndexRoute: PatternsIndexRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
