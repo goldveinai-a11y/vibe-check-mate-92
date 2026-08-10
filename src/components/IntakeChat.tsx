@@ -272,7 +272,13 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         | "T3"
         | undefined;
 
-      metaRef.current = { tier: resTier, loop: res.loop };
+      // Guarded the same way resTier is: the turn result is a union and
+      // the safety-response member carries neither field, so reading them
+      // unguarded is a type error rather than a runtime one.
+      metaRef.current = {
+        tier: resTier,
+        loop: "loop" in res ? Boolean(res.loop) : undefined,
+      };
 
       trackEvent("chat_reply", {
         turn_number: turn,
