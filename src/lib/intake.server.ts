@@ -93,13 +93,17 @@ export type IntakeResult = {
   loop: boolean;
 };
 
-const REQUIRED_SLOTS: Array<keyof IntakeSlots> = [
-  "situation",
-  "relationship",
-  "duration",
-  "whoTextsFirst",
-  "replySpeed",
-];
+// Two, not five.
+//
+// The gate used to be all five of situation, relationship, duration,
+// whoTextsFirst and replySpeed. Two days of paid traffic says the median
+// conversation stops at three replies, so the gate was set above where most
+// people actually stop — thirteen chats produced one read. Duration, who
+// texts first and reply speed are still asked for and still used when they
+// arrive; they just no longer decide whether she is allowed to have the
+// thing she came for. A read on partial data that says so is worth more
+// than a perfect read nobody reaches.
+const REQUIRED_SLOTS: Array<keyof IntakeSlots> = ["situation", "relationship"];
 
 // What to ask when the model thinks it is finished and the slot list says
 // otherwise. Deterministic, so the recovery costs nothing and cannot itself
