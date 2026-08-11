@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { Sparkles, ArrowUp, ImagePlus, X, AlertCircle, Loader2 } from "lucide-react";
-import { getAnonId } from "@/lib/anon-id";
 import { trackEvent } from "@/lib/analytics";
+import { scoreEngagement, decidePaywall } from "@/lib/engagement";
 
 // Mirrored locally rather than imported from intake.server.ts. It's a
 // type-only import so it would almost certainly be erased — but "almost
@@ -59,15 +58,29 @@ async function fileToBase64(file: File): Promise<{ mediaType: string; base64: st
 }
 
 export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () => void }) {
-  const navigate = useNavigate();
   const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: OPENER }]);
   const [slots, setSlots] = useState<IntakeSlots>({});
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<Pending[]>([]);
   const [busy, setBusy] = useState(false);
-  const [handingOff, setHandingOff] = useState(false);
+  const [handingOff] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [safety, setSafety] = useState(false);
+
+  // The wall. Not a page — it goes up inside the conversation, over a reply
+  // she can already half-read. engagement.ts decides when.
+  const [walled, setWalled] = useState(false);
+  const [teaser, setTeaser] = useState("");
+  const [dismissedOnce, setDismissedOnce] = useState(false);
+
+  const sessionStartRef = useRef(Date.now());
+  const returningRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    returningRef.current = window.localStorage.getItem("vc_seen_before") === "1";
+    window.localStorage.setItem("vc_seen_before", "1");
+  }, []);
 
   // She has no way out of the conversation except waiting for the model to
   // decide it has enough. Over two days of paid traffic, thirteen people
@@ -141,94 +154,6 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seed]);
-
-  // The tier travels with the handoff. The intake decides per turn whether
-  // it may name what she is doing to sustain the dynamic, and on T1/T2 it
-  // may not — but the report generator used to be told none of that and
-  // printed the self-mirror anyway.
-  const handOff = async (
-    finalSlots: IntakeSlots,
-    images: Array<{ mediaType: string; base64: string }>,
-    tier?: "T0" | "T1" | "T2" | "T3",
-    loop?: boolean,
-  ) => {
-    setHandingOff(true);
-    try {
-      const { createAnalysis, runAnalysis } = await import("@/lib/vibecheck.functions");
-      const anonId = getAnonId();
-      const created = await createAnalysis({ data: { ownerAnonId: anonId } });
-      if (!("id" in created)) {
-        throw new Error(created.code === "free_limit_reached" ? "limit" : created.error);
-      }
-
-      const quiz = {
-        situation: finalSlots.situation ?? "not stated",
-        relationship: finalSlots.relationship ?? "not stated",
-        duration: finalSlots.duration ?? "not stated",
-        whoTextsFirst: finalSlots.whoTextsFirst ?? "not stated",
-        replySpeed: finalSlots.replySpeed ?? "not stated",
-        frustration: finalSlots.frustration,
-        theirName: finalSlots.theirName,
-        specificIncident: finalSlots.specificIncident,
-        herReaction: finalSlots.herReaction,
-        afterConflict: finalSlots.afterConflict,
-        realQuestion: finalSlots.realQuestion,
-        pastedMessages: finalSlots.pastedMessages,
-      };
-
-      // Fired WITHOUT await, exactly like the old quiz handoff: the read
-      // takes 40-90s and holding the request open for it is what used to
-      // make half of all analyses look like failures.
-      trackEvent("analysis_run_started", {
-        report_id: created.id,
-        with_screenshots: images.length > 0,
-      });
-
-      void runAnalysis({
-        data: {
-        id: created.id,
-        ownerAnonId: anonId,
-        quiz,
-        images: images.length ? images : undefined,
-        ...(tier ? { tier } : {}),
-        ...(loop ? { loop } : {}),
-      },
-      })
-        .then(() => {
-          trackEvent("analysis_run_returned", { report_id: created.id });
-        })
-        .catch((e: unknown) => {
-          // This used to be .catch(() => {}) — the single most expensive
-          // empty block in the product. The read is fired from here and the
-          // page navigates away in the same tick, so if the request dies
-          // (backgrounded tab on mobile, dropped connection, cold start) the
-          // row sits at "processing" forever with nothing to flip it and
-          // nothing anywhere recording why. Three of the three analyses
-          // started during the first two days of paid traffic ended up in
-          // exactly that state, and this swallowed every explanation.
-          trackEvent("analysis_run_error", {
-            report_id: created.id,
-            message: e instanceof Error ? e.message.slice(0, 120) : "unknown",
-          });
-        });
-
-      trackEvent("chat_finished", {
-        turns: messages.filter((m) => m.role === "user").length,
-        with_screenshots: images.length > 0,
-        pasted: Boolean(finalSlots.pastedMessages),
-      });
-
-      void navigate({ to: "/analyzing/$id", params: { id: created.id } });
-    } catch (err) {
-      setHandingOff(false);
-      const msg = err instanceof Error ? err.message : "";
-      setError(
-        msg.toLowerCase().includes("limit")
-          ? "You've used your free reads on this device."
-          : "Couldn't start the read. Try again in a moment.",
-      );
-    }
-  };
 
   const send = async (textOverride?: string) => {
     const text = (textOverride ?? input).trim();
@@ -327,15 +252,46 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         trackEvent("chat_safety_triggered", { tier: resTier ?? "T3", turn_number: turnRef.current });
         return;
       }
-      if (res.ready) {
-        // Let her read the closing line before the screen changes.
-        // res.tier / res.loop read straight off the union here was a type
-        // error that predates the escape-hatch work: both members of the
-        // union carry ready: boolean, so if (res.ready) narrows nothing.
-        // metaRef already holds the guarded values from this same turn.
-        const t = metaRef.current.tier;
-        const lp = metaRef.current.loop;
-        setTimeout(() => void handOff(res.slots, evidenceRef.current, t, lp), 1600);
+      // The read used to fire here. It does not any more: the conversation
+      // is the product now, and a one-shot report that ends it was the thing
+      // that made thirteen chats produce one result.
+      //
+      // What happens instead is the wall — and only if she has earned it in
+      // the sense engagement.ts means: enough given to her first, nothing in
+      // the middle of a disclosure, never at a safety tier.
+      const breakdown = scoreEngagement({
+        turns: [
+          ...history.map((h) => ({ role: h.role, content: h.content })),
+          { role: "user" as const, content: text, images: images.length },
+          { role: "assistant" as const, content: res.reply },
+        ],
+        sessionMs: Date.now() - sessionStartRef.current,
+        returning: returningRef.current,
+      });
+
+      const decision = decidePaywall({
+        breakdown,
+        lastUserMessage: text,
+        tier: resTier ?? "T0",
+        isPaid: false,
+      });
+
+      if (decision.show) {
+        // She sees the reply start and then lose focus mid-thought. A flat
+        // "upgrade to continue" hides the thing she would be buying; this
+        // shows it to her and then takes it away, which is the whole
+        // difference between the two screens.
+        const cut = res.reply.slice(0, 130);
+        setTeaser(cut.slice(0, cut.lastIndexOf(" ")) + "…");
+        setMessages((prev) => prev.slice(0, -1));
+        setWalled(true);
+        trackEvent("paywall_shown", {
+          reason: decision.reason,
+          score: breakdown.score,
+          turns: breakdown.userMessages,
+          with_screenshots: breakdown.screenshots > 0,
+        });
+      }
       }
     } catch {
       trackEvent("chat_error", { stage: "reply", turn_number: turnRef.current });
@@ -415,7 +371,67 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
         <div ref={endRef} />
       </div>
 
-      {!safety && (
+      {walled && (
+        <div className="border-t-2 border-pink/20 bg-pink-soft/25 px-4 py-5 sm:px-6">
+          <div className="relative">
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink/85">{teaser}</p>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-pink-soft/95 to-transparent" />
+          </div>
+
+          <p className="mt-4 text-[15px] font-medium leading-snug text-ink">
+            The rest of that — and everything after it — is on the paid side.
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink/65">
+            Reads your screenshots, remembers this conversation next time, and makes dated calls
+            you can check.
+          </p>
+
+          <div className="mt-5 space-y-2.5">
+            <a
+              href="/subscribe?plan=trial7"
+              onClick={() => trackEvent("plan_selected", { plan: "trial7" })}
+              className="relative block rounded-2xl border-2 border-pink bg-card px-4 py-3.5 transition hover:bg-pink-soft/40"
+            >
+              <span className="absolute -top-2.5 right-4 rounded-full bg-pink px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                Most popular
+              </span>
+              <span className="flex items-baseline justify-between">
+                <span className="text-[15px] font-medium text-ink">7 days full access</span>
+                <span className="text-[15px] font-semibold text-ink">&euro;1.00</span>
+              </span>
+              <span className="mt-1 block text-xs text-ink/55">then &euro;29.99/month, cancel anytime</span>
+            </a>
+
+            <a
+              href="/subscribe?plan=weekly"
+              onClick={() => trackEvent("plan_selected", { plan: "weekly" })}
+              className="block rounded-2xl border border-border/70 bg-card px-4 py-3.5 transition hover:bg-muted/50"
+            >
+              <span className="flex items-baseline justify-between">
+                <span className="text-[15px] font-medium text-ink">3 days free</span>
+                <span className="text-[15px] font-semibold text-ink">&euro;0.00</span>
+              </span>
+              <span className="mt-1 block text-xs text-ink/55">then &euro;9.99/week, cancel anytime</span>
+            </a>
+          </div>
+
+          {!dismissedOnce && (
+            <button
+              type="button"
+              onClick={() => {
+                setDismissedOnce(true);
+                setWalled(false);
+                trackEvent("paywall_dismissed", { turns: userTurns });
+              }}
+              className="mt-4 w-full text-center text-sm text-ink/50 underline decoration-ink/20 underline-offset-4 hover:text-ink/70"
+            >
+              Not now
+            </button>
+          )}
+        </div>
+      )}
+
+      {!safety && !walled && (
         <form onSubmit={onSubmit} className="border-t-2 border-pink/20 bg-pink-soft/25 px-3 py-3 sm:px-4">
           {pending.length > 0 && (
             <div className="mb-2.5 flex flex-wrap gap-2">
@@ -436,23 +452,6 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
                 </div>
               ))}
             </div>
-          )}
-
-          {userTurns >= 3 && !handingOff && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                trackEvent("chat_read_requested", {
-                  turns: userTurns,
-                  with_screenshots: evidenceRef.current.length > 0,
-                });
-                void handOff(slots, evidenceRef.current, metaRef.current.tier, metaRef.current.loop);
-              }}
-              className="mb-2.5 w-full rounded-2xl border-2 border-pink/50 bg-card px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-pink-soft/60 disabled:opacity-40"
-            >
-              That&rsquo;s enough &mdash; read it now
-            </button>
           )}
 
           <div className="flex items-end gap-2">
