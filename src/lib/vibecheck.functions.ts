@@ -758,7 +758,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       if (!prices.data.length) return { error: `Price ${priceLookup} not found` };
       const price = prices.data[0];
 
-      // For monthly plan: resolve the one-time $4.99 upfront trial fee.
+      // For monthly plan: resolve the one-time €1.00 upfront trial fee.
       let trialFeePriceId: string | undefined;
       if (data.plan === "monthly") {
         const feePrices = await stripe.prices.list({ lookup_keys: ["vibecheck_monthly_trial_fee"] });
@@ -799,8 +799,8 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       };
 
       const isSubscription = data.plan !== "single";
-      // For monthly paid trial: charge $4.99 upfront AND start recurring $9.99/mo
-      // after 3-day trial. Stripe Checkout does NOT support subscription_data.add_invoice_items,
+      // For monthly paid trial: charge €1.00 upfront AND start recurring €29.99/mo
+      // after a 7-day trial. Stripe Checkout does NOT support subscription_data.add_invoice_items,
       // but a subscription-mode session accepts a one-time price as a second line item —
       // that one-time price is billed at checkout completion while the recurring price
       // enters the trial. This gives us the exact "pay now, then subscribe" behavior.
@@ -833,7 +833,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
           ? {
               subscription_data: {
                 metadata,
-                ...(data.plan === "monthly" ? { trial_period_days: 3 } : {}),
+                ...(data.plan === "monthly" ? { trial_period_days: 7 } : {}),
               },
             }
           : {
