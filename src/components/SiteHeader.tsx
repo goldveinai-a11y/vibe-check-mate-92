@@ -32,8 +32,7 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
         <nav className="hidden items-center gap-8 md:flex">
           <Link to="/" className="text-sm text-ink/80 transition hover:text-ink">Home</Link>
           <Link to="/patterns" className="text-sm text-ink/80 transition hover:text-ink">Patterns</Link>
-          <Link to="/example" className="text-sm text-ink/80 transition hover:text-ink">Example report</Link>
-          <Link to="/my-reports" className="text-sm text-ink/80 transition hover:text-ink">My Reports</Link>
+          <Link to="/quiz" className="text-sm text-ink/80 transition hover:text-ink">The full read</Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -75,9 +74,8 @@ export function SiteHeader({ showUnlock = true, unlockHref, unlockParams }: Prop
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-5 py-3">
             <Link to="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">Home</Link>
             <Link to="/patterns" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-base text-ink/80 hover:bg-cream">Patterns</Link>
-              <Link to="/example" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">Example report</Link>
+              <Link to="/quiz" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-base text-ink/80 hover:bg-cream">The full read</Link>
             <Link to="/science" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">The research</Link>
-            <Link to="/my-reports" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-ink hover:bg-muted">My Reports</Link>
           </div>
         </div>
       )}
