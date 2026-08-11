@@ -292,7 +292,6 @@ export function IntakeChat({ seed, onStarted }: { seed?: string; onStarted?: () 
           with_screenshots: breakdown.screenshots > 0,
         });
       }
-      }
     } catch {
       trackEvent("chat_error", { stage: "reply", turn_number: turnRef.current });
       setError("That didn't send. Try again.");
