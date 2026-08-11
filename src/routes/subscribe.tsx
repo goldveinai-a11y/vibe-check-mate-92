@@ -52,7 +52,11 @@ function SubscribePage() {
             // fee; weekly is the plain weekly price with its free days.
             plan: plan === "weekly" ? "weekly" : "monthly",
             environment: window.location.hostname === "vibecheckapp.app" ? "live" : "sandbox",
-            returnUrl: window.location.origin + "/?paywall=abandoned#chat",
+            // Both are required by the checkout schema. Success drops her back
+            // into the chat unlocked; cancel drops her back into it unchanged,
+            // in the same place she left off rather than on a dead page.
+            returnUrl: window.location.origin + "/?paid=1#chat",
+            cancelUrl: window.location.origin + "/?paywall=abandoned#chat",
           },
         });
 
