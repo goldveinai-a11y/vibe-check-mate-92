@@ -52,7 +52,11 @@ const INTAKE_MODEL = "claude-haiku-4-5-20251001";
 // filled five slots in this many turns isn't going to, and at that point
 // the honest move is to run the read with what we have rather than keep
 // asking.
-export const MAX_INTAKE_TURNS = 22;
+export // Was 22, from when the chat was an intake with a report at the end and a
+// finite set of questions to get through. The chat has no end now, so this
+// is only a runaway guard — the paywall stops the conversation long before
+// anyone reaches it.
+const MAX_INTAKE_TURNS = 200;
 
 export const INTAKE_MESSAGE_MAX_LEN = 1500;
 
